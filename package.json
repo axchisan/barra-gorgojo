@@ -20,6 +20,7 @@
     "e2e:servidor": "rm -rf .wrangler/e2e && NEGOCIO=ejemplo vite build --outDir dist-e2e --emptyOutDir && wrangler dev --port 8788 --assets dist-e2e --alias '#negocio:./negocio.ejemplo/catalogo.ts' --var CLAVE:prueba --var FIRMA:firma-solo-para-e2e --persist-to .wrangler/e2e --show-interactive-dev-session=false",
     "verificar": "pnpm tipos && pnpm test",
     "recorrido": "node scripts/recorrido.mjs",
+    "resumen": "esbuild scripts/resumen-estado.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/resumen-estado.mjs --log-level=warning && node node_modules/.cache/resumen-estado.mjs",
     "desplegar": "pnpm build && wrangler deploy",
     "desplegar:pruebas": "pnpm build && wrangler deploy --env pruebas"
   },
@@ -35,6 +36,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3",

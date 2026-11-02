@@ -121,7 +121,7 @@ Pasos:
 6. B6 · Ensayo completo en el entorno de pruebas (A2) con el corte real.
 7. B7 · **Ejecución en producción**, fuera de horario, con el negocio avisado y los
    celulares a mano. **Pedir confirmación explícita antes de este paso.**
-8. B8 · Rotar `CLAVE`; regla de retención de 365 días en el bucket; anotar fecha y `seq`
+8. B8 · ~~Rotar `CLAVE`~~ (hecho el 2026-11-02 junto con `FIRMA`); regla de retención de 365 días en el bucket; anotar fecha y `seq`
    del corte en `negocio/docs/09`.
 9. B9 · **El catálogo sale del código.** En la base limpia, el catálogo vigente entra como
    operaciones `producto` y `orden` del registro (la migración ya las genera), así que el
