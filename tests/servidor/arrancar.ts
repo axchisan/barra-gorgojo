@@ -5,6 +5,7 @@
 // porque este todavía exige Vitest 4.
 
 import { unstable_startWorker } from "wrangler";
+import { BASE_ORIGINAL } from "../../src/dominio/base";
 
 export const CLAVE = "clave-de-prueba";
 
@@ -36,7 +37,8 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
     bindings: {
       CLAVE: { type: "plain_text", value: CLAVE },
       FIRMA: { type: "plain_text", value: "firma-de-prueba-larga-y-aleatoria" },
-      ...(base ? { BASE: { type: "plain_text" as const, value: base } } : {}),
+      // Siempre explícita: las pruebas no dependen de la base vigente en wrangler.jsonc.
+      BASE: { type: "plain_text" as const, value: base ?? BASE_ORIGINAL },
       ...(migracion ? { MIGRACION: { type: "plain_text" as const, value: migracion } } : {}),
     },
     dev: { persist: persistir ?? false, server: { port: 0 }, inspector: false, watch: false, logLevel: "error" },
