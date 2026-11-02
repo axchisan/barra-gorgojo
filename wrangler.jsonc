@@ -16,6 +16,9 @@
   "triggers": { "crons": ["30 10 * * *"] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Barra"] }],
   "observability": { "enabled": true },
+  // Nombre de la base (instancia del Durable Object). Cambiarlo es pasar a otra base:
+  // ver negocio/docs/10. Volver atrás = volver a poner el nombre anterior y desplegar.
+  "vars": { "BASE": "reten-del-gorgojo" },
 
   // Entorno de pruebas: `pnpm desplegar:pruebas`. Otro Worker, así que su Durable
   // Object y sus datos no tienen nada que ver con producción. Sin Cron; respaldos a
@@ -27,7 +30,8 @@
         "bindings": [{ "name": "BARRA", "class_name": "Barra" }]
       },
       "r2_buckets": [{ "binding": "RESPALDOS", "bucket_name": "barra-gorgojo-pruebas-respaldos" }],
-      "triggers": { "crons": [] }
+      "triggers": { "crons": [] },
+      "vars": { "BASE": "reten-del-gorgojo" }
     }
   }
 }

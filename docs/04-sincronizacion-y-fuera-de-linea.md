@@ -215,3 +215,25 @@ Desde entonces:
 **Regla:** nunca cambiar en el código un precio del catálogo base que ya se haya usado sin
 revisar este punto. Los cambios de precio se hacen desde la app, que los registra como
 operaciones.
+
+## Cambio de base (2026-11-02)
+
+Para pasar producción a una base limpia (o volver atrás) se cambia el nombre de la
+instancia del Durable Object (`vars.BASE` en `wrangler.jsonc`). Lo anotado contra una
+base **nunca** debe aplicarse en otra: podría revivir cuentas descartadas. Por eso:
+
+- La **foto** y la respuesta de **entrar** dicen su `base`. El celular guarda la que
+  conoce en `bg.base`; uno de la versión 0.1, que no la guardaba, es de la original
+  (`BASE_ORIGINAL` en `src/dominio/base.ts`).
+- Cada **envío de operaciones** (WebSocket y HTTP) dice para qué base es. El servidor no
+  aplica las de otra base (las que no lo dicen son de la original): responde con su foto
+  (HTTP 409) y deja un aviso en el registro del Worker.
+- El celular que recibe una foto de otra base descarta lo confirmado y **aparta** sus
+  pendientes en `bg.pendientes-base-anterior`. No se reenvían nunca; la pantalla de inicio
+  lo avisa y el administrador los descarga para revisarlos a mano (regla 8).
+- Rutas solo del administrador: `GET /api/admin/respaldo` (el mismo JSON del respaldo
+  diario, con `base`) y `POST /api/admin/importar`, que además exige la cabecera
+  `x-migracion` con el secreto `MIGRACION` y solo carga en una base vacía (si no, 409).
+
+Pruebas: `tests/servidor/barra.test.ts` («cambio de base») y
+`tests/e2e/cambio-de-base.spec.ts`.

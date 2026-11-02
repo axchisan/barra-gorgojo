@@ -2,6 +2,7 @@
 // Ver docs/03-arquitectura.md (ADR-01) y docs/04-sincronizacion-y-fuera-de-linea.md.
 
 import { DurableObject } from "cloudflare:workers";
+import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
 import { aplicar, esOperacion, estadoVacio, recortar, type Estado, type Operacion } from "../dominio/estado";
 
@@ -13,7 +14,15 @@ interface Env {
   CLAVE: string;
   /** Llave para firmar sesiones. Secreto: `wrangler secret put FIRMA`. */
   FIRMA: string;
+  /** Nombre de la base (instancia del Durable Object). Variable de wrangler.jsonc. */
+  BASE?: string;
+  /** Llave de la importación de la migración. Sin ella, importar está apagado. */
+  MIGRACION?: string;
 }
+
+const ADMINISTRADOR = "Administrador";
+const nombreBase = (env: Env) => env.BASE || BASE_ORIGINAL;
+const barraDe = (env: Env) => env.BARRA.get(env.BARRA.idFromName(nombreBase(env)));
 
 const DIA = 24 * 3600_000;
 const DURACION_SESION = 60 * DIA;
@@ -67,14 +76,15 @@ export default {
         await new Promise((r) => setTimeout(r, 800)); // frena el ensayo y error
         return json({ error: "La clave no es correcta." }, 401);
       }
-      return json({ token: await firmarSesion(env, persona), persona });
+      return json({ token: await firmarSesion(env, persona), persona, base: nombreBase(env) });
     }
 
     const token = url.searchParams.get("t") ?? req.headers.get("authorization")?.replace(/^Bearer /, "") ?? null;
     const persona = await leerSesion(env, token);
     if (!persona) return json({ error: "sesion" }, 401);
+    if (url.pathname.startsWith("/api/admin/") && persona !== ADMINISTRADOR) return json({ error: "Solo el administrador." }, 403);
 
-    const barra = env.BARRA.get(env.BARRA.idFromName("reten-del-gorgojo"));
+    const barra = barraDe(env);
     const interna = new URL(req.url);
     interna.searchParams.delete("t");
     const cabeceras = new Headers(req.headers);
@@ -84,20 +94,23 @@ export default {
 
   /** Todos los días a las 5:30 a. m. de Colombia: copia del registro completo en R2. */
   async scheduled(_evento: ScheduledController, env: Env): Promise<void> {
-    const barra = env.BARRA.get(env.BARRA.idFromName("reten-del-gorgojo"));
+    const barra = barraDe(env);
     const { texto, operaciones } = await barra.respaldo();
     const comprimido = await new Response(new Blob([texto]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
     const fecha = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
     await env.RESPALDOS.put(`respaldos/${fecha}.json.gz`, comprimido, {
       httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-      customMetadata: { operaciones: String(operaciones) },
+      customMetadata: { operaciones: String(operaciones), base: nombreBase(env) },
     });
   },
 } satisfies ExportedHandler<Env>;
 
 // ── Durable Object ───────────────────────────────────────────────────
 
-type Mensaje = { tipo: "hola" } | { tipo: "ops"; ops: unknown[] };
+type Mensaje = { tipo: "hola" } | { tipo: "ops"; ops: unknown[]; base?: unknown };
+
+/** La base a la que el celular dice mandar sus operaciones. Sin decirlo: la original. */
+const baseDelEnvio = (b: unknown) => (typeof b === "string" && b ? b : BASE_ORIGINAL);
 
 export class Barra extends DurableObject<Env> {
   private estado: Estado = estadoVacio();
@@ -116,12 +129,7 @@ export class Barra extends DurableObject<Env> {
         recibida_en INTEGER NOT NULL
       )`);
       // El estado es el resultado de aplicar el registro en orden.
-      for (const fila of sql.exec<{ seq: number; datos: string }>("SELECT seq, datos FROM operaciones ORDER BY seq")) {
-        const op = JSON.parse(fila.datos) as Operacion;
-        op.seq = fila.seq;
-        aplicar(this.estado, op);
-        this.seq = fila.seq;
-      }
+      this.rearmar();
     });
   }
 
@@ -130,12 +138,68 @@ export class Barra extends DurableObject<Env> {
     const filas = this.ctx.storage.sql
       .exec<{ seq: number; datos: string; recibida_en: number }>("SELECT seq, datos, recibida_en FROM operaciones ORDER BY seq")
       .toArray();
-    const texto = JSON.stringify({ generado: Date.now(), seq: this.seq, operaciones: filas.map((f) => ({ ...JSON.parse(f.datos), seq: f.seq, recibida_en: f.recibida_en })) });
+    const texto = JSON.stringify({ generado: Date.now(), base: this.base, seq: this.seq, operaciones: filas.map((f) => ({ ...JSON.parse(f.datos), seq: f.seq, recibida_en: f.recibida_en })) });
     return { texto, operaciones: filas.length };
   }
 
+  private get base() {
+    return nombreBase(this.env);
+  }
+
   private foto() {
-    return { tipo: "foto" as const, estado: recortar(this.estado, Date.now()), seq: this.seq };
+    return { tipo: "foto" as const, base: this.base, estado: recortar(this.estado, Date.now()), seq: this.seq };
+  }
+
+  /** Rearma el estado aplicando el registro guardado, en orden. */
+  private rearmar() {
+    this.estado = estadoVacio();
+    this.seq = 0;
+    for (const fila of this.ctx.storage.sql.exec<{ seq: number; datos: string }>("SELECT seq, datos FROM operaciones ORDER BY seq")) {
+      const op = JSON.parse(fila.datos) as Operacion;
+      op.seq = fila.seq;
+      aplicar(this.estado, op);
+      this.seq = fila.seq;
+    }
+  }
+
+  private avisarATodos(mensaje: unknown) {
+    const texto = JSON.stringify(mensaje);
+    for (const ws of this.ctx.getWebSockets()) {
+      try { ws.send(texto); } catch { /* conexión muerta: se limpia sola */ }
+    }
+  }
+
+  /**
+   * Operaciones para otra base (un celular que todavía no sabe del cambio): no se aplican.
+   * Se registra, y el celular recibe la foto con la base nueva para que las aparte.
+   */
+  private esDeOtraBase(base: unknown, persona: string, cuantas: number): boolean {
+    const suya = baseDelEnvio(base);
+    if (suya === this.base) return false;
+    console.warn(JSON.stringify({ aviso: "operaciones-de-otra-base", base: suya, actual: this.base, persona, cuantas }));
+    return true;
+  }
+
+  /** Carga un registro depurado en una base vacía (migración). Ver negocio/docs/10. */
+  private importar(operaciones: unknown[]): Response {
+    if (this.seq !== 0) return json({ error: "La base no está vacía.", seq: this.seq }, 409);
+    if (!operaciones.length || !operaciones.every(esOperacion)) return json({ error: "Hay operaciones sin forma válida." }, 400);
+    const ids = new Set(operaciones.map((o) => o.id));
+    if (ids.size !== operaciones.length) return json({ error: "Hay operaciones con id repetido." }, 400);
+    const ahora = Date.now();
+    this.ctx.storage.transactionSync(() => {
+      for (const crudo of operaciones) {
+        const { seq: _s, recibida_en: _r, ...op } = crudo as Operacion & { recibida_en?: number };
+        this.ctx.storage.sql.exec(
+          "INSERT INTO operaciones (id, persona, datos, recibida_en) VALUES (?, ?, ?, ?)",
+          op.id, op.persona, JSON.stringify(op), ahora,
+        );
+      }
+    });
+    this.rearmar();
+    this.avisarATodos(this.foto());
+    const cuentas = Object.values(this.estado.cuentas);
+    return json({ base: this.base, seq: this.seq, cuentas: cuentas.length, total: cuentas.reduce((t, c) => t + c.lineas.reduce((s, l) => s + (l.anulada ? 0 : l.precio * l.cantidad), 0), 0) });
   }
 
   /** Recibe operaciones de un celular. Idempotente por `id`. */
@@ -145,7 +209,7 @@ export class Barra extends DurableObject<Env> {
     for (const crudo of ops.slice(0, 200)) {
       if (!esOperacion(crudo)) continue;
       // El catálogo lo cambia solo el administrador. Se marca como recibida para que salga de la cola.
-      if ((crudo.t === "producto" || crudo.t === "orden") && persona !== "Administrador") {
+      if ((crudo.t === "producto" || crudo.t === "orden") && persona !== ADMINISTRADOR) {
         aceptadas.push(crudo.id);
         continue;
       }
@@ -175,10 +239,7 @@ export class Barra extends DurableObject<Env> {
       op.seq = seq;
       this.seq = seq;
       aceptadas.push(op.id);
-      const aviso = JSON.stringify({ tipo: "op", op });
-      for (const ws of this.ctx.getWebSockets()) {
-        try { ws.send(aviso); } catch { /* conexión muerta: se limpia sola */ }
-      }
+      this.avisarATodos({ tipo: "op", op });
     }
     return aceptadas;
   }
@@ -194,11 +255,23 @@ export class Barra extends DurableObject<Env> {
       return new Response(null, { status: 101, webSocket: cliente });
     }
     if (url.pathname === "/api/ops" && req.method === "POST") {
-      const { ops } = (await req.json().catch(() => ({ ops: [] }))) as { ops: unknown[] };
-      const ok = this.recibir(Array.isArray(ops) ? ops : [], persona);
+      const { ops, base } = (await req.json().catch(() => ({ ops: [] }))) as { ops: unknown[]; base?: unknown };
+      const lista = Array.isArray(ops) ? ops : [];
+      if (lista.length && this.esDeOtraBase(base, persona, lista.length)) return json({ error: "base", ok: [], ...this.foto() }, 409);
+      const ok = this.recibir(lista, persona);
       return json({ ok, ...this.foto() });
     }
     if (url.pathname === "/api/foto") return json(this.foto());
+    // Las rutas /api/admin/ ya llegan filtradas por el Worker: solo el administrador.
+    if (url.pathname === "/api/admin/respaldo" && req.method === "GET") {
+      return new Response(this.respaldo().texto, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+    }
+    if (url.pathname === "/api/admin/importar" && req.method === "POST") {
+      const llave = this.env.MIGRACION;
+      if (!llave || !igualesEnTiempoConstante(req.headers.get("x-migracion") ?? "", llave)) return json({ error: "Importar está apagado." }, 403);
+      const { operaciones } = (await req.json().catch(() => ({}))) as { operaciones?: unknown };
+      return this.importar(Array.isArray(operaciones) ? operaciones : []);
+    }
     return json({ error: "No existe" }, 404);
   }
 
@@ -208,7 +281,10 @@ export class Barra extends DurableObject<Env> {
     try { m = JSON.parse(mensaje); } catch { return; }
     const persona = this.ctx.getTags(ws)[0] ?? "";
     if (m.tipo === "hola") ws.send(JSON.stringify(this.foto()));
-    else if (m.tipo === "ops" && Array.isArray(m.ops)) ws.send(JSON.stringify({ tipo: "ok", ids: this.recibir(m.ops, persona) }));
+    else if (m.tipo === "ops" && Array.isArray(m.ops)) {
+      if (m.ops.length && this.esDeOtraBase(m.base, persona, m.ops.length)) ws.send(JSON.stringify(this.foto()));
+      else ws.send(JSON.stringify({ tipo: "ok", ids: this.recibir(m.ops, persona) }));
+    }
   }
 
   async webSocketClose(ws: WebSocket, code: number) {

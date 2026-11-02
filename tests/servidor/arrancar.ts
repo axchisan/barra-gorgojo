@@ -12,8 +12,12 @@ export interface Servidor {
   dir: URL;
   entrar(persona: string, clave?: string): Promise<Response>;
   token(persona: string): Promise<string>;
-  ops(token: string, ops: unknown[]): Promise<{ ok: string[]; seq: number; estado: any }>;
-  foto(token: string): Promise<{ seq: number; estado: any }>;
+  ops(token: string, ops: unknown[], base?: string): Promise<{ ok: string[]; seq: number; estado: any; base: string }>;
+  /** Como `ops`, pero devuelve la respuesta cruda (para ver códigos de error). */
+  opsCrudo(token: string, ops: unknown[], base?: string): Promise<Response>;
+  foto(token: string): Promise<{ seq: number; estado: any; base: string }>;
+  /** GET o POST a una ruta de la API con la sesión de `token`. */
+  pedir(token: string, ruta: string, init?: RequestInit): Promise<Response>;
   /** Abre un WebSocket como un celular y junta lo que llega. */
   conectar(token: string): Promise<{ mensajes: any[]; cerrar(): void }>;
   apagar(): Promise<void>;
@@ -23,13 +27,17 @@ export interface Servidor {
  * @param catalogo archivo que hace de `#negocio` (por defecto, el de ejemplo)
  * @param persistir carpeta para la base; sin ella, todo vive en memoria
  */
-export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", persistir }: { catalogo?: string; persistir?: string } = {}): Promise<Servidor> {
+export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", persistir, base, migracion }: {
+  catalogo?: string; persistir?: string; base?: string; migracion?: string;
+} = {}): Promise<Servidor> {
   const w = await unstable_startWorker({
     config: "wrangler.jsonc",
     build: { alias: { "#negocio": catalogo } },
     bindings: {
       CLAVE: { type: "plain_text", value: CLAVE },
       FIRMA: { type: "plain_text", value: "firma-de-prueba-larga-y-aleatoria" },
+      ...(base ? { BASE: { type: "plain_text" as const, value: base } } : {}),
+      ...(migracion ? { MIGRACION: { type: "plain_text" as const, value: migracion } } : {}),
     },
     dev: { persist: persistir ?? false, server: { port: 0 }, inspector: false, watch: false, logLevel: "error" },
   });
@@ -49,11 +57,13 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
       if (!r.ok) throw new Error(`No pudo entrar ${persona}: ${r.status}`);
       return ((await r.json()) as { token: string }).token;
     },
-    async ops(token, ops) {
-      const r = await pedir("/api/ops", { method: "POST", headers: conToken(token), body: JSON.stringify({ ops }) });
+    opsCrudo: (token, ops, base) => pedir("/api/ops", { method: "POST", headers: conToken(token), body: JSON.stringify({ ops, base }) }),
+    async ops(token, ops, base) {
+      const r = await s.opsCrudo(token, ops, base);
       if (!r.ok) throw new Error(`ops: ${r.status}`);
       return r.json() as never;
     },
+    pedir: (token, ruta, init = {}) => pedir(ruta, { ...init, headers: { ...conToken(token), ...(init.headers as Record<string, string> | undefined) } }),
     async foto(token) {
       const r = await pedir("/api/foto", { headers: conToken(token) });
       if (!r.ok) throw new Error(`foto: ${r.status}`);

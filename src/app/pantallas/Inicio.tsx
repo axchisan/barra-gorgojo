@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { jornada, situacion, total, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
+import { Apartados } from "../componentes/Apartados";
 import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
 import type { Nav } from "../navegacion";
@@ -30,6 +31,7 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
         </div>
       )}
 
+      <Apartados />
       {pestana === "cuentas" && <ListaCuentas nav={nav} cuentas={cuentas} />}
       {pestana === "cocina" && <Cocina nav={nav} cuentas={enCocina} />}
       {pestana === "dia" && <ElDia nav={nav} cuentas={cuentas} />}

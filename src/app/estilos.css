@@ -118,6 +118,8 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .tarjeta .valor { font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: auto; }
 .tarjeta .meta { font-size: 0.85rem; color: var(--neutro-600); }
 .alerta { display: block; background: #fbe3e0; color: var(--rojo); font-weight: 700; font-size: 0.9rem; padding: 6px 10px; border-radius: 8px; margin-top: 4px; }
+.apartados { margin: 8px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.apartados p { margin: 0; }
 .cerradas { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
 .fila { display: flex; justify-content: space-between; gap: 8px; padding: 14px; border-radius: var(--radio); background: var(--papel); border: 1px solid var(--neutro-200); text-align: left; }
 .fila span:last-child { color: var(--neutro-600); white-space: nowrap; }

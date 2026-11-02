@@ -2,13 +2,17 @@
 // Lo visible = lo confirmado por el servidor + lo pendiente de este celular.
 // `aplicar` es idempotente, así que reaplicar un pendiente ya confirmado no duplica nada.
 
+import { BASE_ORIGINAL } from "../dominio/base";
 import { aplicar, estadoVacio, recortar, type Estado, type Operacion } from "../dominio/estado";
 
 type DistribuirOp<T> = T extends unknown ? Omit<T, "id" | "persona" | "en" | "seq"> : never;
 export type NuevaOperacion = DistribuirOp<Operacion>;
 export type Conexion = "conectado" | "conectando" | "sin-senal";
 
-const K = { sesion: "bg.sesion", clave: "bg.clave", confirmado: "bg.confirmado", pendientes: "bg.pendientes" };
+const K = {
+  sesion: "bg.sesion", clave: "bg.clave", confirmado: "bg.confirmado", pendientes: "bg.pendientes",
+  base: "bg.base", apartados: "bg.pendientes-base-anterior",
+};
 
 function leer<T>(k: string, porDefecto: T): T {
   try {
@@ -31,6 +35,13 @@ class Sincronizador {
   sesion: Sesion | null = leer(K.sesion, null);
   private confirmado: { estado: Estado; seq: number } = leer(K.confirmado, { estado: estadoVacio(), seq: 0 });
   pendientes: Operacion[] = leer(K.pendientes, []);
+  /**
+   * Base de datos a la que pertenece lo confirmado y lo pendiente. Un celular de la
+   * versión 0.1 no la guardaba: entonces es la original. Ver src/dominio/base.ts.
+   */
+  base: string = leer(K.base, BASE_ORIGINAL);
+  /** Pendientes de una base anterior: no se envían nunca a la nueva. Se avisa en pantalla. */
+  apartados: (Operacion & { base: string })[] = leer(K.apartados, []);
   conexion: Conexion = "conectando";
   visible: Estado = estadoVacio();
   version = 0;
@@ -88,8 +99,9 @@ class Sincronizador {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ persona, clave }),
       });
-      const d = (await r.json()) as { token?: string; persona?: string; error?: string };
+      const d = (await r.json()) as { token?: string; persona?: string; base?: string; error?: string };
       if (!r.ok || !d.token) return d.error ?? "No se pudo entrar.";
+      if (d.base) this.cambiarDeBase(d.base);
       this.sesion = { token: d.token, persona: d.persona! };
       escribir(K.sesion, this.sesion);
       escribir(K.clave, clave); // este celular ya quedó autorizado: cambiar de persona no vuelve a pedirla
@@ -127,7 +139,7 @@ class Sincronizador {
     if (this.ws?.readyState === WebSocket.OPEN) {
       if (Date.now() - this.enVuelo < 8000) return;
       this.enVuelo = Date.now();
-      this.ws.send(JSON.stringify({ tipo: "ops", ops: this.pendientes.slice(0, 100) }));
+      this.ws.send(JSON.stringify({ tipo: "ops", base: this.base, ops: this.pendientes.slice(0, 100) }));
     }
   }
 
@@ -140,7 +152,34 @@ class Sincronizador {
     return antes !== this.pendientes.length;
   }
 
-  private recibirFoto(estado: Estado, seq: number) {
+  /**
+   * El servidor está en otra base (se migró, o se volvió atrás): lo confirmado ya no
+   * sirve y lo pendiente se aparta, porque aplicarlo en la otra base podría revivir
+   * cuentas descartadas.
+   */
+  private cambiarDeBase(base: string) {
+    if (base === this.base) return;
+    if (this.pendientes.length) {
+      this.apartados = [...this.apartados, ...this.pendientes.map((op) => ({ ...op, base: this.base }))];
+      escribir(K.apartados, this.apartados);
+      this.pendientes = [];
+    }
+    this.confirmado = { estado: estadoVacio(), seq: 0 };
+    this.base = base;
+    escribir(K.base, base);
+    this.guardar();
+    this.recalcular();
+  }
+
+  /** Descarta los apartados, después de que el administrador los descargó y revisó. */
+  olvidarApartados() {
+    this.apartados = [];
+    escribir(K.apartados, null);
+    this.avisar();
+  }
+
+  private recibirFoto(estado: Estado, seq: number, base?: string) {
+    if (base) this.cambiarDeBase(base);
     this.confirmado = { estado, seq };
     this.guardar();
     this.recalcular();
@@ -151,7 +190,7 @@ class Sincronizador {
     if (texto === "pong") return;
     const m = JSON.parse(texto);
     if (m.tipo === "foto") {
-      this.recibirFoto(m.estado, m.seq);
+      this.recibirFoto(m.estado, m.seq, m.base);
       this.enVuelo = 0;
       this.enviar();
     } else if (m.tipo === "op") {
@@ -236,13 +275,13 @@ class Sincronizador {
       const r = await fetch("/api/ops", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${this.sesion.token}` },
-        body: JSON.stringify({ ops: this.pendientes.slice(0, 100) }),
+        body: JSON.stringify({ base: this.base, ops: this.pendientes.slice(0, 100) }),
       });
       if (r.status === 401) return this.salir();
-      if (!r.ok) throw new Error();
-      const d = (await r.json()) as { ok: string[]; estado: Estado; seq: number };
+      if (!r.ok && r.status !== 409) throw new Error(); // 409: otra base; llega su foto
+      const d = (await r.json()) as { ok: string[]; estado: Estado; seq: number; base?: string };
       this.quitarPendientes(d.ok);
-      this.recibirFoto(d.estado, d.seq);
+      this.recibirFoto(d.estado, d.seq, d.base);
       this.ponerConexion("conectado");
     } catch {
       this.ponerConexion("sin-senal");

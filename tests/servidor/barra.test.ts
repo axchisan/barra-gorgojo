@@ -202,3 +202,110 @@ describe("recalcular el registro al arrancar", () => {
     }
   });
 });
+
+describe("cambio de base (migración)", () => {
+  const LLAVE = "llave-de-migracion-de-prueba";
+  let s: Servidor;
+  let admin: string;
+  let ana: string;
+
+  beforeAll(async () => {
+    s = await arrancar({ base: "barra-v2", migracion: LLAVE });
+    admin = await s.token("Administrador");
+    ana = await s.token("Ana");
+  });
+  afterAll(() => s?.apagar());
+
+  const importar = (operaciones: unknown[], llave = LLAVE, token = admin) =>
+    s.pedir(token, "/api/admin/importar", { method: "POST", headers: { "x-migracion": llave }, body: JSON.stringify({ operaciones }) });
+
+  it("la entrada y la foto dicen la base", async () => {
+    expect(((await (await s.entrar("Ana")).json()) as { base: string }).base).toBe("barra-v2");
+    expect((await s.foto(ana)).base).toBe("barra-v2");
+  });
+
+  it("no aplica operaciones de otra base, ni las que no dicen base (son de la original)", async () => {
+    const abrir = op({ t: "abrir", cuenta: "vieja", nombre: "De la base vieja", tipo: "grupo" });
+    for (const base of ["reten-del-gorgojo", undefined]) {
+      const r = await s.opsCrudo(ana, [abrir], base);
+      expect(r.status).toBe(409);
+      const d = (await r.json()) as { ok: string[]; base: string; seq: number; estado: any };
+      expect(d.ok).toEqual([]); // siguen pendientes en el celular, que las aparta al ver la base
+      expect(d.base).toBe("barra-v2");
+      expect(d.estado.cuentas.vieja).toBeUndefined();
+    }
+  });
+
+  it("por WebSocket, a un envío de otra base responde con la foto de la base actual", async () => {
+    const ws = await s.conectar(ana);
+    const crudo = new WebSocket(new URL(`/api/ws?t=${encodeURIComponent(ana)}`, s.dir.href.replace(/^http/, "ws")));
+    const recibidos: any[] = [];
+    crudo.addEventListener("message", (e) => recibidos.push(JSON.parse(String(e.data))));
+    await new Promise((r) => crudo.addEventListener("open", r));
+    crudo.send(JSON.stringify({ tipo: "ops", ops: [op({ t: "abrir", cuenta: "vieja-ws", nombre: "X", tipo: "grupo" })] }));
+    await esperar(() => recibidos.length > 0);
+    crudo.close();
+    ws.cerrar();
+    expect(recibidos[0]).toMatchObject({ tipo: "foto", base: "barra-v2" });
+    expect(recibidos[0].estado.cuentas["vieja-ws"]).toBeUndefined();
+  });
+
+  it("solo el administrador pide el respaldo y usa las rutas de administración", async () => {
+    expect((await s.pedir(ana, "/api/admin/respaldo")).status).toBe(403);
+    expect((await importar([], LLAVE, ana)).status).toBe(403);
+    const r = await s.pedir(admin, "/api/admin/respaldo");
+    expect(r.status).toBe(200);
+    const d = (await r.json()) as { base: string; seq: number; operaciones: unknown[] };
+    expect(d).toMatchObject({ base: "barra-v2", seq: 0, operaciones: [] });
+  });
+
+  it("importar exige la llave de migración", async () => {
+    expect((await importar([op({ t: "abrir", cuenta: "x", nombre: "X", tipo: "grupo" })], "otra")).status).toBe(403);
+  });
+
+  it("rechaza un registro con operaciones inválidas o ids repetidos, sin guardar nada", async () => {
+    const a = op({ t: "abrir", cuenta: "x", nombre: "X", tipo: "grupo" });
+    expect((await importar([a, { t: "abrir" }])).status).toBe(400);
+    expect((await importar([a, a])).status).toBe(400);
+    expect((await s.foto(admin)).seq).toBe(0);
+  });
+
+  it("importa en una base vacía conservando id, persona, hora y precio fijado; después, 409", async () => {
+    const ws = await s.conectar(ana);
+    const hace = Date.now() - 3 * 3600_000;
+    const registro = [
+      { id: "mig-abrir-0001", t: "abrir", cuenta: "lalo", nombre: "Lalo", tipo: "grupo", persona: "Beto", en: hace, seq: 77, recibida_en: hace },
+      { id: "mig-anotar-0001", t: "anotar", cuenta: "lalo", ronda: "r1", persona: "Beto", en: hace + 1000, lineas: [{ id: "l1", producto: "rubia", cantidad: 3, precioFijado: 3900 }] },
+      { id: "mig-cobrar-0001", t: "cobrar", cuenta: "lalo", pago: "p1", medio: "efectivo", persona: "Ana", en: hace + 2000 },
+    ];
+    const r = await importar(registro);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ base: "barra-v2", seq: 3, cuentas: 1, total: 3 * 3900 });
+
+    const foto = await s.foto(ana);
+    const c = foto.estado.cuentas.lalo;
+    expect(c.abiertaPor).toBe("Beto");
+    expect(c.abiertaEn).toBe(hace);
+    expect(c.lineas[0].precio).toBe(3900);
+    expect(c.pagos[0]).toMatchObject({ medio: "efectivo", monto: 11700, persona: "Ana" });
+    // Los celulares conectados reciben la foto nueva enseguida.
+    await esperar(() => ws.mensajes.some((m) => m.tipo === "foto" && m.seq === 3));
+    ws.cerrar();
+
+    expect((await importar([op({ t: "abrir", cuenta: "otra", nombre: "Otra", tipo: "grupo" })])).status).toBe(409);
+    // Reenviar el mismo id por la vía normal no duplica nada.
+    const reenvio = await s.ops(ana, [registro[1]], "barra-v2");
+    expect(reenvio.seq).toBe(3);
+  });
+
+  it("sin la variable MIGRACION, importar está apagado", async () => {
+    const otro = await arrancar();
+    try {
+      const t = await otro.token("Administrador");
+      const r = await otro.pedir(t, "/api/admin/importar", { method: "POST", headers: { "x-migracion": "" }, body: "{}" });
+      expect(r.status).toBe(403);
+    } finally {
+      await otro.apagar();
+    }
+  });
+});
