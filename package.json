@@ -12,11 +12,13 @@
     "preparar": "node scripts/preparar.mjs",
     "postinstall": "node scripts/preparar.mjs",
     "dev": "pnpm preparar && vite build && wrangler dev",
+    "dev:pruebas": "pnpm preparar && vite build && wrangler dev --env pruebas",
     "build": "pnpm preparar && vite build",
     "tipos": "pnpm preparar && tsc --noEmit",
     "test": "vitest run",
     "verificar": "pnpm tipos && pnpm test",
-    "desplegar": "pnpm build && wrangler deploy"
+    "desplegar": "pnpm build && wrangler deploy",
+    "desplegar:pruebas": "pnpm build && wrangler deploy --env pruebas"
   },
   "packageManager": "pnpm@11.25.0",
   "dependencies": {

@@ -43,12 +43,23 @@ cuesta 5 dólares al mes y sobra por mucho.
 | Entorno | Worker | Datos | Uso |
 |---|---|---|---|
 | Local | `wrangler dev` | SQLite local, se borra cuando se quiera | Desarrollo |
-| Pruebas | `barra-gorgojo-pruebas` | Durable Object propio, datos de juguete | Probar en celulares reales antes de pasar al local, y capacitar |
+| Pruebas | `barra-gorgojo-pruebas` (`--env pruebas`) | Durable Object propio, datos de juguete. Respaldos en `barra-gorgojo-pruebas-respaldos`, **sin Cron** | Probar en celulares reales antes de pasar al local, ensayar migraciones y capacitar |
 | Producción | `barra-gorgojo` | El real | El negocio |
 
 Los dos entornos remotos tienen **Durable Objects separados**: imposible que una prueba
 anote en la caja real. Las personas y dispositivos también son por entorno (la misma
 lección de las cuentas por rama del sitio).
+
+Cada entorno tiene sus secretos (`CLAVE`, `FIRMA`). Los de pruebas se guardan en
+`.dev.vars.pruebas` (ignorado por git), que también usa `pnpm dev:pruebas` en local:
+
+```bash
+wrangler secret put CLAVE --env pruebas
+wrangler secret put FIRMA --env pruebas
+```
+
+Las direcciones de cada entorno están en el repositorio privado del negocio
+(`negocio/README.md`).
 
 ## Despliegue
 

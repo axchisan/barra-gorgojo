@@ -22,7 +22,8 @@ celulares y trabajo sin señal. Lo que se simplificó para salir rápido está e
 pnpm install
 pnpm dev          # compila y levanta en http://localhost:8787 (clave local: prueba)
 pnpm verificar    # tipos + pruebas
-pnpm desplegar    # compila y publica en Cloudflare
+pnpm desplegar:pruebas   # compila y publica en el entorno de pruebas
+pnpm desplegar    # compila y publica en producción (ver reglas en docs/12)
 ```
 
 La clave del negocio vive en el secreto `CLAVE` del Worker (`wrangler secret put CLAVE`).
