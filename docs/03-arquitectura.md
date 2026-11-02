@@ -63,7 +63,7 @@ Una sola pieza de servidor, un solo despliegue, cero servidores que mantener.
 | Tiempo real | **WebSocket con hibernación** | Empuja los cambios al instante y no cobra mientras nadie anota |
 | Validación | **Zod** | Mismo esquema en celular y servidor |
 | Respaldos | **Cloudflare R2** | Sin costo de salida, ya usado en el sitio |
-| Pruebas | **Vitest** (+ `@cloudflare/vitest-pool-workers`) y **Playwright** | Playwright simula pérdida de red y varios celulares a la vez |
+| Pruebas | **Vitest** (el Worker real con `unstable_startWorker` de Wrangler) y **Playwright** | Playwright simula pérdida de red y varios celulares a la vez. Ver ADR-09 |
 | Paquetes | **pnpm 11** | |
 
 ## El núcleo: reglas compartidas
@@ -258,3 +258,30 @@ operaciones por segundo, y en el peor día la barra hace unas pocas por minuto. 
 solo hace que todos los celulares vean exactamente el mismo orden de los hechos. Si
 algún día hubiera una segunda sede, sería un segundo objeto con otro nombre, sin cambiar
 código.
+
+### ADR-08 · Repositorio público, datos del negocio aparte (2026-11-02)
+
+El código es público para que sirva a otros negocios como registro de barra
+personalizable. Nada del negocio vive en él: el catálogo base y las personas se importan
+como `#negocio` (`imports` de `package.json`) desde `negocio/catalogo.ts`, que es un
+repositorio privado aparte clonado en esa carpeta e ignorado por git. El público lleva
+un catálogo de ejemplo inventado en `negocio.ejemplo/`, que es también el catálogo fijo
+de todas las pruebas, y `pnpm preparar` lo copia a `negocio/` en un clon nuevo.
+
+Por qué no se sacó el catálogo del código del todo: el Durable Object rearma el estado
+aplicando el registro con el catálogo base (regla 0), así que mientras exista la base
+vieja ese catálogo tiene que dar exactamente los mismos precios. Con la base limpia
+(paso B9 de [12](12-plan-de-trabajo.md)) el catálogo entra como operaciones del registro
+y el del código puede quedar vacío; con D, las personas pasan al Durable Object.
+
+### ADR-09 · Pruebas del servidor con `unstable_startWorker`, no `vitest-pool-workers` (2026-11-02)
+
+El plan era `@cloudflare/vitest-pool-workers`, pero su versión vigente (0.23) exige
+Vitest 4 y el proyecto usa Vitest 5. En su lugar, `tests/servidor/arrancar.ts` levanta el
+Worker real con `unstable_startWorker` de Wrangler (workerd, Durable Object con SQLite,
+en memoria o en una carpeta temporal) y las pruebas le hablan por HTTP y WebSocket, como
+un celular. Ventaja: prueba el protocolo de verdad y permite reiniciar el objeto con
+otro catálogo para comprobar que recalcular el registro no cambia lo anotado. Costo:
+no se puede leer el SQLite por dentro ni mover el reloj del servidor (lo de «más de 36
+horas» se prueba en el dominio). Revisar cuando `vitest-pool-workers` soporte Vitest 5;
+la API `unstable_` puede cambiar al actualizar Wrangler.

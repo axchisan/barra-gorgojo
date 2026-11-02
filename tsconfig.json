@@ -11,5 +11,6 @@
     "noEmit": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src", "tests", "negocio/*.ts", "negocio.ejemplo", "scripts"]
+  "include": ["src", "tests", "negocio/*.ts", "negocio.ejemplo"],
+  "exclude": ["tests/servidor", "tests/e2e"]
 }

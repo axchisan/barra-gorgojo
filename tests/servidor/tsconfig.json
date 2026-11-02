@@ -1,0 +1,8 @@
+{
+  // Pruebas del servidor: corren en Node y hablan con workerd por HTTP y WebSocket.
+  // Aparte del tsconfig raíz porque los tipos de Node chocan con los de Workers.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["."],
+  "exclude": []
+}

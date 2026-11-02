@@ -212,7 +212,7 @@ Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 | A1 Git | ✅ | 2026-11-02 | Repo público `axchisan/barra-gorgojo` sin datos del negocio; privado `axchisan/barra-gorgojo-negocio` en `negocio/`. Paquete de producción comprobado igual al de antes de separar |
 | A2 Entorno de pruebas | ✅ | 2026-11-02 | Worker `barra-gorgojo-pruebas` con DO y bucket propios, sin Cron; secretos en `.dev.vars.pruebas`. URL en `negocio/README.md` |
 | A3 Partir App.tsx | ✅ | 2026-11-02 | 1.301 líneas → 9 pantallas, 8 componentes y 6 módulos de apoyo. `scripts/recorrido.mjs` (30 pantallas × teléfono y tablet, hora fija): HTML y PNG idénticos byte a byte antes y después |
-| A4 Pruebas servidor y e2e mínimas | ⬜ | | |
+| A4 Pruebas servidor y e2e mínimas | ✅ | 2026-11-02 | 14 pruebas del Worker real (`tests/servidor`, ADR-09: `unstable_startWorker` porque `vitest-pool-workers` no soporta Vitest 5), incluida «recalcular con otro catálogo no cambia lo anotado»; comprobado que fallan si se rompe cada regla. 3 e2e en `tests/e2e` (cobrar, dos celulares, sin señal) |
 | B1–B6 Preparar migración | ⬜ | | |
 | B9 Catálogo fuera del código | ⬜ | | |
 | B7 Migrar producción | ⬜ | | |

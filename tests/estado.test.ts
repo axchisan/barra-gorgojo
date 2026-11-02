@@ -231,4 +231,17 @@ describe("reglas de la barra", () => {
     const e = correr([abrir("a"), op({ t: "anotar", cuenta: "a", ronda: "r1", lineas: [{ id: "x1", producto: "rubia", cantidad: 1, precioFijado: 2800 }] })]);
     expect(total(e.cuentas.a)).toBe(2800);
   });
+
+  it("la foto deja fuera lo cerrado de hace más de 36 horas y conserva lo pendiente", () => {
+    const e = correr([
+      abrir("cobrada"), anotar("cobrada", "r1", [["rubia", 1]]), op({ t: "cobrar", cuenta: "cobrada", pago: "p1", medio: "efectivo" }),
+      abrir("vacia"),
+      abrir("debe"), anotar("debe", "r2", [["rubia", 1]]),
+      abrir("m", "mesa"), anotar("m", "r3", [["agua", 1]]), op({ t: "cobrar", cuenta: "m", pago: "p2", medio: "comida" }),
+    ]);
+    const ultima = Math.max(...Object.values(e.cuentas).map((c) => c.ultima));
+    expect(Object.keys(recortar(e, ultima + 35 * 3600_000).cuentas).sort()).toEqual(["cobrada", "debe", "m", "vacia"]);
+    // Pasadas 36 horas: sigue lo que tiene saldo y lo pasado a comida sin cobrar allá.
+    expect(Object.keys(recortar(e, ultima + 37 * 3600_000).cuentas).sort()).toEqual(["debe", "m"]);
+  });
 });

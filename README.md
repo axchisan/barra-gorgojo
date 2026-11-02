@@ -21,7 +21,9 @@ celulares y trabajo sin señal. Lo que se simplificó para salir rápido está e
 ```bash
 pnpm install
 pnpm dev          # compila y levanta en http://localhost:8787 (clave local: prueba)
-pnpm verificar    # tipos + pruebas
+pnpm verificar    # tipos + pruebas del dominio y del servidor (Worker real)
+pnpm test:e2e     # Playwright: varios celulares y sin señal, con el catálogo de ejemplo
+pnpm recorrido <carpeta>   # captura y HTML de todas las pantallas (con pnpm dev corriendo)
 pnpm desplegar:pruebas   # compila y publica en el entorno de pruebas
 pnpm desplegar    # compila y publica en producción (ver reglas en docs/12)
 ```
