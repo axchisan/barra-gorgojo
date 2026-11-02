@@ -118,6 +118,27 @@ BarraGorgojo/
 └── vite.config.ts
 ```
 
+**Así está hoy** (2026-11-02, después de partir `App.tsx` en el paso A3 de
+[12](12-plan-de-trabajo.md)); lo que falta frente al plan de arriba lo cierra la fase E:
+
+```
+src/
+├── dominio/            # catalogo.ts (tipos; el catálogo viene de #negocio), estado.ts, formato.ts
+├── app/
+│   ├── App.tsx         # solo sesión y qué pantalla se ve
+│   ├── navegacion.ts   # useNavegacion: cada pantalla es una entrada del historial
+│   ├── avisos.tsx      # aviso con «Deshacer»
+│   ├── paquetes.ts     # petacos: agrupar, describir, contar
+│   ├── cuentas.ts      # resumen por producto, color, ícono del tipo
+│   ├── colores.ts · vibrar.ts · sincronizacion.ts (localStorage, cola, WebSocket)
+│   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Productos, EditarProducto
+│   └── componentes/    # TarjetaCuenta, TarjetasProducto, EditarLinea, Desglose, NoExiste,
+│                       # EstadoConexion, HojaLibre (mecato y «Otro»), HojaMixto
+└── servidor/worker.ts  # Worker y Durable Object en un solo archivo
+negocio.ejemplo/        # catálogo de ejemplo (el real, en negocio/, privado)
+scripts/                # preparar.mjs, recorrido.mjs (capturas y HTML de todas las pantallas)
+```
+
 ## Acceso y seguridad
 
 El problema de seguridad aquí no es un atacante sofisticado: es **que cualquiera con el
