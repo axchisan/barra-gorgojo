@@ -209,7 +209,7 @@ Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 
 | Paso | Estado | Fecha | Nota |
 |---|---|---|---|
-| A1 Git | ⬜ | | |
+| A1 Git | ✅ | 2026-11-02 | Repo público `axchisan/barra-gorgojo` sin datos del negocio; privado `axchisan/barra-gorgojo-negocio` en `negocio/`. Paquete de producción comprobado igual al de antes de separar |
 | A2 Entorno de pruebas | ⬜ | | |
 | A3 Partir App.tsx | ⬜ | | |
 | A4 Pruebas servidor y e2e mínimas | ⬜ | | |
