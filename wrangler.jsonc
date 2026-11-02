@@ -31,7 +31,7 @@
       },
       "r2_buckets": [{ "binding": "RESPALDOS", "bucket_name": "barra-gorgojo-pruebas-respaldos" }],
       "triggers": { "crons": [] },
-      "vars": { "BASE": "reten-del-gorgojo" }
+      "vars": { "BASE": "reten-del-gorgojo-v2" }
     }
   }
 }

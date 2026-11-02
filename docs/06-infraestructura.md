@@ -43,7 +43,7 @@ cuesta 5 dólares al mes y sobra por mucho.
 | Entorno | Worker | Datos | Uso |
 |---|---|---|---|
 | Local | `wrangler dev` | SQLite local, se borra cuando se quiera | Desarrollo |
-| Pruebas | `barra-gorgojo-pruebas` (`--env pruebas`) | Durable Object propio, datos de juguete. Respaldos en `barra-gorgojo-pruebas-respaldos`, **sin Cron** | Probar en celulares reales antes de pasar al local, ensayar migraciones y capacitar |
+| Pruebas | `barra-gorgojo-pruebas` (`--env pruebas`) | Durable Object propio (desde el ensayo de migración, base `reten-del-gorgojo-v2` con copia de los datos reales). Respaldos en `barra-gorgojo-pruebas-respaldos`, **sin Cron** | Probar en celulares reales antes de pasar al local, ensayar migraciones y capacitar |
 | Producción | `barra-gorgojo` | El real | El negocio |
 
 Los dos entornos remotos tienen **Durable Objects separados**: imposible que una prueba
