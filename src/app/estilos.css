@@ -53,6 +53,8 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .secundario.chico { flex: 0 0 auto; padding: 14px 12px; font-weight: 600; }
 .pie-fijo .secundario { flex: 0 1 auto; padding: 12px 10px; font-size: 0.95rem; white-space: nowrap; }
 .pie-fijo .grande { flex: 1 1 60%; }
+/* «Abrir y anotar» arriba y «15 · $ 67.500» abajo: dos renglones ordenados */
+.detalle-boton { display: block; font-size: 0.85em; font-weight: 600; opacity: 0.9; white-space: nowrap; }
 
 /* Barra superior */
 .barra-superior {
@@ -66,7 +68,8 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 }
 .barra-superior .quien { font-size: 1rem; font-weight: 600; }
 .valor-chico { font-weight: 800; color: var(--amarillo); font-variant-numeric: tabular-nums; }
-.conexion { font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.conexion { font-size: 0.85rem; font-weight: 600; white-space: nowrap; background: none; border: 0; padding: 0 4px; min-height: 44px; }
+.conexion .corto { display: none; }
 .conexion.ok { color: #9be38a; }
 .conexion.sin { color: var(--amarillo); }
 
@@ -132,8 +135,9 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .chip.activo { background: var(--marron); color: var(--crema); border-color: var(--marron); }
 .numero { font-size: 1.4rem; font-weight: 700; }
 .repetir {
-  width: 100%; text-align: left; padding: 14px; border-radius: var(--radio); margin-bottom: 8px;
-  background: var(--amarillo); border: 0; font-weight: 700; min-height: 56px;
+  width: 100%; text-align: left; padding: 10px 14px; border-radius: var(--radio); margin-bottom: 8px;
+  background: var(--amarillo); border: 0; font-weight: 700; min-height: 44px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .seccion { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--neutro-600); margin: 14px 0 8px; }
 .productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
@@ -159,6 +163,7 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .hoja { position: fixed; inset: 0; background: rgb(36 18 6 / 0.45); z-index: 20; display: flex; align-items: flex-end; }
 .hoja-cuerpo {
   width: 100%; max-width: 820px; margin: 0 auto; background: var(--crema); border-radius: 20px 20px 0 0;
+  max-height: 100dvh; overflow-y: auto;
   padding: 18px 12px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px;
 }
 .hoja-cuerpo form { display: flex; gap: 8px; }
@@ -282,24 +287,64 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .cifra.grande strong { font-size: 2.2rem; color: var(--amarillo); }
 .cifra.en-comida { border-color: var(--azul-comida); }
 .cifra.pendiente { border-color: var(--rojo); grid-column: 1 / -1; }
-@media (min-width: 700px) { .cifras { grid-template-columns: repeat(3, 1fr); } .cifra.pendiente { grid-column: auto; } }
+@media (min-width: 420px) { .cifras { grid-template-columns: repeat(3, 1fr); } .cifra.pendiente { grid-column: auto; } }
+.dia > .cifra.grande { margin-bottom: 12px; }
+details.por-producto { display: block; }
+.por-producto summary { list-style: none; cursor: pointer; display: flex; align-items: center; min-height: 44px; }
+.por-producto summary::-webkit-details-marker { display: none; }
+.por-producto summary h2::before { content: "▸ "; }
+.por-producto[open] summary h2::before { content: "▾ "; }
+.por-producto[open] summary { margin-bottom: 8px; }
 
 /* Cobrar: medios de pago y billetes como cuadros grandes */
 .opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; margin: 12px 0; }
 .opciones .chip { border-radius: var(--radio); min-height: 64px; font-size: 1.05rem; font-weight: 700; }
 .cobrar .recibido p { margin-top: 8px; }
+/* Billetes: la cifra nunca se parte (C9) */
+.recibido .opciones { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.recibido .opciones .chip { white-space: nowrap; padding: 8px 4px; font-size: clamp(0.9rem, 4.2vw, 1.05rem); min-height: 56px; }
 
-/* Petacos */
-.petacos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-.petacos .chip { white-space: nowrap; border-radius: 12px; padding: 10px 6px; }
-@media (min-width: 700px) { .petacos { grid-template-columns: repeat(4, 1fr); } }
-.petacos .chip.mixto { border-style: dashed; border-color: var(--marron); }
+/* Controles segmentados: una fila, 44 px (fase C) */
+.segmentos { display: flex; border: 2px solid var(--neutro-200); border-radius: 12px; overflow: hidden; background: var(--papel); }
+.segmentos button {
+  flex: 1; min-height: 44px; border: 0; border-left: 2px solid var(--neutro-200); background: none;
+  font-weight: 700; padding: 0 8px; white-space: nowrap;
+}
+.segmentos button:first-child { border-left: 0; }
+.segmentos button.activo { background: var(--marron); color: var(--crema); }
+.segmentos button.activo.comida-chip { background: var(--azul-comida); }
+.segmentos button small { font-size: 0.75rem; font-weight: 600; opacity: 0.85; }
+
+/* Nueva cuenta: tipo y lo que pide en una fila */
+.fila-nueva { display: flex; gap: 8px; align-items: stretch; }
+.fila-nueva > input, .fila-nueva > .segmentos { flex: 1; min-width: 0; }
+.fila-nueva > .segmentos.tipos { flex: 0 0 auto; }
+.segmentos.tipos button { width: 44px; padding: 0; font-size: 1.2rem; }
+.nueva input { padding: 9px 12px; }
+.nueva .numero { font-size: 1.2rem; }
+
+/* Petacos: una fila, y la cuadrícula de cervezas marcada mientras no esté en «Unidad» */
+.segmentos.petacos { margin-bottom: 8px; }
+.segmentos.petacos button { min-height: 40px; padding: 0 4px; }
+.segmentos.petacos .mixto { border-left-style: dashed; border-left-color: var(--marron); }
+.productos.modo-paquete { outline: 3px solid var(--amarillo); outline-offset: 4px; border-radius: 8px; background: rgb(242 176 31 / 0.14); }
+
+/* Petaco mixto: el +5 dentro de la tarjeta y el conteo fijo arriba */
 .mas-cinco {
-  position: absolute; left: -6px; top: -12px; min-width: 40px; height: 40px; border-radius: 20px;
+  width: 100%; height: 36px; margin-top: 6px; border-radius: 10px;
   background: var(--papel); border: 2px solid var(--marron); font-weight: 800; font-size: 0.9rem;
 }
-.hoja-cuerpo { max-height: 92dvh; overflow-y: auto; }
-.hoja-cuerpo .productos { padding-top: 14px; row-gap: 22px; }
+.estado-mezcla { position: sticky; top: -18px; z-index: 2; background: var(--crema); margin: 0; padding: 6px 0; }
+.estado-mezcla.cambio { font-size: 1.3rem; }
+.hoja-cuerpo .productos { padding-top: 14px; row-gap: 18px; }
+
+/* Mecato y «Otro»: nombre y barra/comida en una fila; valores en 3 columnas */
+.fila-otro { display: flex; gap: 8px; }
+.fila-otro input { flex: 1; min-width: 0; padding: 9px 12px; }
+.fila-otro .segmentos { flex: 0 0 auto; }
+.fila-otro .segmentos button { padding: 0 10px; font-size: 0.9rem; }
+.hoja .productos.valores { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-top: 0; row-gap: 8px; }
+.productos.valores .producto { min-height: 48px; padding: 6px; }
 .fila-botones { display: flex; gap: 8px; position: sticky; bottom: 0; background: var(--crema); padding-top: 8px; }
 
 /* Productos (administrador) */
@@ -362,3 +407,39 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 /* Precio de cancha en la administración */
 .precio-cancha { font-size: 0.78rem; font-weight: 700; opacity: 0.9; }
 .campo small { font-weight: 400; }
+
+/* Teléfono: aprovechar el espacio (fase C, negocio/docs/11). La tablet no cambia. */
+@media (max-width: 699px) {
+  .barra-superior { padding: calc(4px + env(safe-area-inset-top)) 12px 4px; margin-bottom: 8px; gap: 6px; }
+  .barra-superior strong { font-size: 1.05rem; }
+  .buscar { padding: 9px 14px; margin-bottom: 10px; }
+  .tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .tarjeta { min-height: 88px; padding: 10px 12px; gap: 0; }
+  .tarjeta .nombre, .tarjeta .tipo, .tarjeta .meta { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+  .tarjeta .valor { font-size: 1.3rem; }
+  .productos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .producto { min-height: 64px; padding: 12px 3px 4px; gap: 2px; }
+  /* Contador más bajo y más afuera: con 3 columnas no debe tapar el nombre */
+  .contador { top: -17px; right: -4px; height: 32px; min-width: 34px; font-size: 0.95rem; padding: 0 6px; border-width: 2px; }
+  .pie-fijo .grande { padding: 6px 8px; font-size: 1rem; }
+  .pie-fijo .grande > span { white-space: nowrap; }
+  .pie-fijo .secundario { font-size: 0.9rem; padding: 8px; }
+  .producto .corto { font-size: 0.9rem; }
+  .producto .precio { font-size: 0.8rem; }
+  .seccion { margin: 10px 0 6px; }
+  .pie-fijo { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .cifras { gap: 8px; }
+  .cifra { padding: 10px; }
+  .cifra strong { font-size: 1.1rem; }
+}
+@media (min-width: 600px) and (max-width: 699px) {
+  .tarjetas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .productos { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* Muy angosto: la conexión como punto de color y pendientes; al tocarla, el texto */
+@media (max-width: 379px) {
+  .conexion .largo { display: none; }
+  .conexion .corto { display: inline; }
+  .conexion.abierta .largo { display: inline; }
+  .conexion.abierta .corto { display: none; }
+}

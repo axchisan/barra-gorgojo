@@ -21,7 +21,7 @@ export function HojaMixto({ mixto, setMixto, mezcla, setMezcla, cervezas, setPaq
           <button className={mixto === MEDIO_PETACO ? "chip activo" : "chip"} onClick={() => setMixto(MEDIO_PETACO)}>Medio · {MEDIO_PETACO}</button>
           <button className={mixto === PETACO ? "chip activo" : "chip"} onClick={() => setMixto(PETACO)}>Petaco · {PETACO}</button>
         </div>
-        <p className={enMezcla === mixto ? "cambio" : enMezcla > mixto ? "cambio falta" : "nota centrada"}>
+        <p className={`estado-mezcla ${enMezcla === mixto ? "cambio" : enMezcla > mixto ? "cambio falta" : "nota centrada"}`}>
           {enMezcla === mixto ? `Completo: ${enMezcla} cervezas` : enMezcla > mixto ? `Sobran ${enMezcla - mixto}` : `Lleva ${enMezcla} · faltan ${mixto - enMezcla}`}
         </p>
         <div className="productos">
@@ -36,7 +36,7 @@ export function HojaMixto({ mixto, setMixto, mezcla, setMezcla, cervezas, setPaq
                   {mezcla[p.id]}<small>−</small>
                 </button>
               )}
-              <button className="mas-cinco" onClick={() => { vibrar(); setMezcla((m) => ({ ...m, [p.id]: (m[p.id] ?? 0) + 5 })); }}>+5</button>
+              <button className="mas-cinco" aria-label={`Cinco ${p.nombre} más`} onClick={() => { vibrar(); setMezcla((m) => ({ ...m, [p.id]: (m[p.id] ?? 0) + 5 })); }}>+5</button>
             </div>
           ))}
         </div>

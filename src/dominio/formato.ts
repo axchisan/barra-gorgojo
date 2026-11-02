@@ -2,7 +2,8 @@ import type { Cuenta } from "./estado";
 
 const miles = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
 
-export const pesos = (n: number) => `$ ${miles.format(n)}`;
+/** «$ 42.500», con espacio duro: el signo y la cifra nunca quedan en renglones distintos. */
+export const pesos = (n: number) => `$\u00A0${miles.format(n)}`;
 
 const hora = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" });
 export const horaDe = (en: number) => hora.format(en);

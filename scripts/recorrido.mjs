@@ -67,7 +67,7 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
 
   // Mesa
   await toca("＋ Nueva cuenta");
-  await toca("🍽 Mesa");
+  await toca("Mesa");
   await p.locator("input.numero").fill("4");
   await producto(2);
   await foto("nueva-mesa");
@@ -75,9 +75,9 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
 
   // Cancha, por petaco
   await toca("＋ Nueva cuenta");
-  await toca("🎯 Cancha");
+  await toca("Cancha");
   await toca("Cancha 1");
-  await toca("Medio petaco · 15");
+  await toca("Medio petaco: 15");
   await producto(0);
   await foto("nueva-cancha-petaco");
   await p.locator(".pie-fijo .principal").click();
@@ -98,7 +98,7 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
   await p.locator(".producto.otro").first().click();
   await foto("hoja-otro");
   await p.locator(".hoja input").first().fill("Picada");
-  await toca("🍽 Es comida");
+  await toca("🍽 Comida");
   await p.locator(".hoja .producto.neutro").nth(2).click();
   await toca("Petaco mixto");
   await foto("hoja-mixto");
@@ -113,7 +113,7 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
   // Cobrar
   await p.locator(".pie-fijo").getByRole("button", { name: "Cobrar", exact: true }).click();
   await foto("cobrar");
-  await p.locator(".recibido input").fill("120000");
+  await p.getByRole("button", { name: "Exacto" }).click();
   await foto("cobrar-cambio");
   await p.locator(".pie-fijo .principal").click();
   await foto("inicio-tras-cobro");

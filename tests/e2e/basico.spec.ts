@@ -22,7 +22,7 @@ async function celular(browser: Browser, persona = "Administrador"): Promise<Pag
 /** Abre una cuenta con nombre y le anota `veces` toques del primer producto. Devuelve el valor. */
 async function abrirYAnotar(p: Page, nombre: string, veces: number): Promise<number> {
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
-  await p.getByPlaceholder(/Nombre \(opcional\)/).fill(nombre);
+  await p.getByPlaceholder("Nombre", { exact: true }).fill(nombre);
   const primero = p.locator("main > section .producto").first();
   const precio = soloDigitos(await primero.locator(".precio").innerText());
   for (let i = 0; i < veces; i++) await primero.click();

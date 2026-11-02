@@ -14,6 +14,8 @@ import { describir, nombrePaquete, type PaqueteEnArmado } from "../paquetes";
 import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
 
+const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mesa", "🍽", "Mesa"], ["cancha", "🎯", "Cancha"]] as const;
+
 export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string; repetir?: boolean }) {
   const cuenta = cuentaId ? sinc.visible.cuentas[cuentaId] : undefined;
   const ultima = useMemo(() => {
@@ -167,29 +169,40 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
 
       {!cuenta && (
         <section className="nueva">
-          <input placeholder="Nombre (opcional): Grupo de Juan" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          <div className="chips">
-            {(["grupo", "persona", "mesa", "cancha"] as const).map((t) => (
-              <button key={t} className={tipo === t ? "chip activo" : "chip"} onClick={() => { setTipo(t); setError(""); }}>
-                {t === "grupo" ? "Grupo" : t === "persona" ? "Persona" : t === "mesa" ? "🍽 Mesa" : "🎯 Cancha"}
-              </button>
-            ))}
-          </div>
-          {tipo === "mesa" && (
-            <input className="numero" inputMode="numeric" placeholder="N.º de mesa" value={mesa} onChange={(e) => setMesa(e.target.value.replace(/\D/g, ""))} autoFocus />
-          )}
-          {tipo === "cancha" && (
-            <div className="chips">
-              {(["1", "2", "pequena"] as const).map((k) => (
-                <button key={k} className={cancha === k ? "chip activo" : "chip"} onClick={() => setCancha(k)}>Cancha {nombreCancha(k)}</button>
+          {/* Tipo y lo que el tipo pide, en una sola fila (C3 de la revisión en teléfono). */}
+          <div className="fila-nueva">
+            <div className="segmentos tipos" role="group" aria-label="Tipo de cuenta">
+              {TIPOS.map(([t, icono, texto]) => (
+                <button key={t} className={tipo === t ? "activo" : ""} aria-pressed={tipo === t} aria-label={texto} title={texto}
+                  onClick={() => { setTipo(t); setError(""); }}>
+                  {icono}
+                </button>
               ))}
             </div>
+            {(tipo === "grupo" || tipo === "persona") && (
+              <input placeholder="Nombre" aria-label={tipo === "grupo" ? "Nombre de la cuenta (opcional)" : "Nombre de la persona (opcional)"} value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            )}
+            {tipo === "mesa" && (
+              <input className="numero" inputMode="numeric" enterKeyHint="done" placeholder="N.º de mesa" aria-label="Número de mesa" value={mesa} onChange={(e) => setMesa(e.target.value.replace(/\D/g, ""))} autoFocus />
+            )}
+            {tipo === "cancha" && (
+              <div className="segmentos canchas" role="group" aria-label="Cancha">
+                {(["1", "2", "pequena"] as const).map((k) => (
+                  <button key={k} className={cancha === k ? "activo" : ""} aria-pressed={cancha === k} aria-label={`Cancha ${nombreCancha(k)}`} onClick={() => setCancha(k)}>
+                    {k === "pequena" ? "Peq." : k}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {(tipo === "mesa" || tipo === "cancha") && (
+            <input placeholder="Nombre (opcional): los de rojo" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           )}
         </section>
       )}
 
       {ultima && (
-        <button className="repetir" onClick={cargarUltima}>
+        <button className="repetir" onClick={cargarUltima} title={describir(ultima)}>
           ↻ Repetir {palabra}: {describir(ultima)}
         </button>
       )}
@@ -198,14 +211,15 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         <section key={s.titulo}>
           <h2 className="seccion">{s.titulo}</h2>
           {s.categorias.includes("cerveza") && (
-            <div className="petacos">
-              <button className={paso === 1 ? "chip activo" : "chip"} onClick={() => setPaso(1)}>Por unidad</button>
-              <button className={paso === MEDIO_PETACO ? "chip activo" : "chip"} onClick={() => setPaso(MEDIO_PETACO)}>Medio petaco · {MEDIO_PETACO}</button>
-              <button className={paso === PETACO ? "chip activo" : "chip"} onClick={() => setPaso(PETACO)}>Petaco · {PETACO}</button>
-              <button className="chip mixto" onClick={() => { setMezcla({}); setMixto(PETACO); setError(""); }}>Petaco mixto</button>
+            <div className="segmentos petacos" role="group" aria-label="Cómo se anotan las cervezas">
+              <button className={paso === 1 ? "activo" : ""} aria-pressed={paso === 1} onClick={() => setPaso(1)}>Unidad</button>
+              <button className={paso === MEDIO_PETACO ? "activo" : ""} aria-pressed={paso === MEDIO_PETACO} aria-label={`Medio petaco: ${MEDIO_PETACO}`} onClick={() => setPaso(MEDIO_PETACO)}>Medio <small>{MEDIO_PETACO}</small></button>
+              <button className={paso === PETACO ? "activo" : ""} aria-pressed={paso === PETACO} aria-label={`Petaco: ${PETACO}`} onClick={() => setPaso(PETACO)}>Petaco <small>{PETACO}</small></button>
+              <button className="mixto" aria-label="Petaco mixto" onClick={() => { setMezcla({}); setMixto(PETACO); setError(""); }}>Mixto</button>
             </div>
           )}
-          <div className="productos">
+          {/* En modo petaco un toque suma 15 o 30: la cuadrícula de cervezas se marca (C4). */}
+          <div className={s.categorias.includes("cerveza") && paso > 1 ? "productos modo-paquete" : "productos"}>
             {productos.filter((p) => p.activo && s.categorias.includes(p.categoria)).map((p) => {
               const k = p.libre ? libres.filter((x) => x.producto === p.id).length : (cant[p.id] ?? 0) + enPaquetes(p.id);
               return (
@@ -271,7 +285,8 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         )}
         {n > 0 && <button className="secundario chico" onClick={() => { setCant({}); setLibres([]); setPaquetes([]); }}>Limpiar</button>}
         <button className="principal grande" onClick={() => confirmar(false)} disabled={n === 0}>
-          {cuenta ? `Anotar ${palabra}` : "Abrir y anotar"} {n > 0 && `· ${n} · ${pesos(valor)}`}
+          <span>{cuenta ? `Anotar ${palabra}` : "Abrir y anotar"}</span>
+          {n > 0 && <small className="detalle-boton">{n} · {pesos(valor)}</small>}
         </button>
       </div>
     </main>

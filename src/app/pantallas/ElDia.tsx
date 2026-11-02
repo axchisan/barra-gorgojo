@@ -6,6 +6,8 @@ import type { Renglon } from "../cuentas";
 import type { Nav } from "../navegacion";
 import { contarPaquetes, textoPaquetes } from "../paquetes";
 
+const enTablet = () => typeof matchMedia === "function" && matchMedia("(min-width: 700px)").matches;
+
 export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const hoy = jornada(Date.now());
   const [contado, setContado] = useState("");
@@ -46,8 +48,24 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
 
   return (
     <section className="dia">
+      {/* Lo que se hace al cerrar va arriba: vendido y cuadre de caja (C10). */}
+      <div className="cifra grande"><span>Vendido hoy</span><strong>{pesos(vendido)}</strong></div>
+
+      <article className="caja">
+        <h2>Cuadre de caja</h2>
+        <p className="tenue">El efectivo que debería haber por ventas de hoy (sin contar la base): <strong>{pesos(recibidoEfectivo)}</strong></p>
+        <input inputMode="numeric" enterKeyHint="done" placeholder="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
+        {diferencia != null && (
+          <p className={diferencia === 0 ? "cambio" : "cambio falta"}>
+            {diferencia === 0 ? "Cuadra exacto" : diferencia > 0 ? `Sobran ${pesos(diferencia)}` : `Faltan ${pesos(-diferencia)}`}
+          </p>
+        )}
+        {abiertas.length > 0 && (
+          <p className="alerta">{abiertas.length === 1 ? "Queda 1 cuenta abierta" : `Quedan ${abiertas.length} cuentas abiertas`}: {abiertas.map((c) => c.nombre).join(", ")}</p>
+        )}
+      </article>
+
       <div className="cifras">
-        <div className="cifra grande"><span>Vendido hoy</span><strong>{pesos(vendido)}</strong></div>
         <div className="cifra"><span>Efectivo</span><strong>{pesos(porMedio.efectivo)}</strong></div>
         <div className="cifra"><span>Nequi</span><strong>{pesos(porMedio.nequi)}</strong></div>
         <div className="cifra"><span>Breve</span><strong>{pesos(porMedio.breve)}</strong></div>
@@ -64,24 +82,11 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
         <div className="cifra pendiente"><span>Por cobrar · {abiertas.length} {abiertas.length === 1 ? "cuenta" : "cuentas"}</span><strong>{pesos(porCobrar)}</strong></div>
       </div>
 
-      <article className="caja">
-        <h2>Cuadre de caja</h2>
-        <p className="tenue">El efectivo que debería haber por ventas de hoy (sin contar la base): <strong>{pesos(recibidoEfectivo)}</strong></p>
-        <input inputMode="numeric" placeholder="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
-        {diferencia != null && (
-          <p className={diferencia === 0 ? "cambio" : "cambio falta"}>
-            {diferencia === 0 ? "Cuadra exacto" : diferencia > 0 ? `Sobran ${pesos(diferencia)}` : `Faltan ${pesos(-diferencia)}`}
-          </p>
-        )}
-        {abiertas.length > 0 && (
-          <p className="alerta">Quedan {abiertas.length} cuentas abiertas: {abiertas.map((c) => c.nombre).join(", ")}</p>
-        )}
-      </article>
-
-      <article className="caja">
-        <h2>Por producto</h2>
+      {/* Plegable: cerrado en teléfono, abierto en la tablet. */}
+      <details className="caja por-producto" open={enTablet()}>
+        <summary><h2>Por producto</h2></summary>
         <TarjetasProducto items={[...porProducto.values()].sort((a, b) => b.cantidad - a.cantidad)} />
-      </article>
+      </details>
       <button className="enlace" onClick={() => nav.ir({ v: "inicio", pestana: "cuentas" }, true)}>Ver cuentas</button>
     </section>
   );

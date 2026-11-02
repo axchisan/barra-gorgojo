@@ -107,17 +107,25 @@ el código y en los documentos técnicos se llama *ronda*. Los botones cambian s
 Es **la misma pantalla de anotar pedida**, con un campo arriba:
 
 ```
-│ Nombre (opcional)  [Grupo de Juan_ ] │
-│ [Grupo] [Persona] [🍽 Mesa…] [🎯 Cancha]│
+│ [👥|👤|🍽|🎯] [Nombre_____________] │   grupo o persona
+│ [👥|👤|🍽|🎯] [N.º de mesa________] │   mesa
+│ [👥|👤|🍽|🎯] [ 1 | 2 | Peq. ]      │   cancha
+│ [Nombre (opcional): los de rojo   ] │   mesa y cancha: nombre debajo
 ```
 
+Desde la fase C (2026-11-02) el tipo y lo que el tipo pide van en **una sola fila**, para
+que los productos empiecen arriba en un teléfono pequeño. Los toques son los mismos.
+
 - Si no escribe nombre, la cuenta queda como «Cuenta 12» y se puede renombrar.
-- Al tocar «Mesa» aparece un teclado numérico grande para el número.
-- Al tocar «Cancha» aparecen tres botones: **1**, **2** y **Pequeña**. Si ya hay una
+- Al tocar «Mesa» aparece en la misma fila el campo numérico para el número.
+- Al tocar «Cancha» aparecen en la misma fila tres botones: **1**, **2** y **Peq.** Si ya hay una
   cuenta abierta en esa cancha, se ofrece abrirla en vez de crear otra; si el grupo paga
   por separado, se crea igual una segunda («Cancha 2 · los de rojo»).
 - El tipo por defecto es «Grupo».
-- El botón de abajo dice **«Abrir y anotar 3 · $ 12.000»**.
+- El botón de abajo dice **«Abrir y anotar»** y, debajo, **«3 · $ 12.000»**.
+- Las cervezas se anotan por **Unidad · Medio · Petaco** (una fila); **Mixto** abre la
+  hoja del petaco mixto. Fuera de «Unidad», la cuadrícula de cervezas se marca en amarillo,
+  porque un toque suma 15 o 30.
 - Abajo a la izquierda: **«Cobrar ya»**, para la venta rápida (RF-25).
 
 ### 4 · Detalle de la cuenta

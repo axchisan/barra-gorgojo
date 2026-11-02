@@ -217,7 +217,7 @@ Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 | B9 Catálogo fuera del código | ✅ | 2026-11-02 | Mecato y «Otro» libres por su id (`ESPECIALES`), compatible con el registro viejo; prueba del servidor con catálogo base vacío. Catálogo base de producción vacío y desplegado: foto igual antes y después, sin productos del negocio en el paquete del navegador |
 | B7 Migrar producción | ✅ | 2026-11-02 | Autorizada por el negocio (sin uso ese día: excepción a la regla 14). Código nuevo sin cambiar de base, después base `reten-del-gorgojo-v2` verificada cuenta por cuenta contra el corte; importar apagado. Cifras en `negocio/docs/09` |
 | B8 Clave, retención, registro | ✅ | 2026-11-02 | `CLAVE` y `FIRMA` rotadas; regla `respaldos-365-dias` en el bucket; corte anotado en `negocio/docs/09` |
-| C Teléfono | ⬜ | | |
+| C Teléfono | 🟨 | 2026-11-02 | C1–C5 y C7–C11 hechos; `tests/e2e/espacio-movil.spec.ts` en verde en los cinco tamaños y la tablet sin empeorar. En pruebas. Falta: probar «＋ Otro» con teclado en un Android real (C7) y publicar. C6 y C12 no hicieron falta (ver `negocio/docs/11` «Resultado») |
 | D Acceso por persona | ⬜ | | |
 | E1 Cerrar el día | ⬜ | | |
 | E2 IndexedDB | ⬜ | | |

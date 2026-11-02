@@ -31,20 +31,23 @@ export function HojaLibre(props: {
         <h2>{hoja === "otro" ? "Otro producto" : "Mecato · escoja el valor"}</h2>
         {error && <p className="error">{error}</p>}
         {hoja === "otro" && (
-          <>
+          // Nombre y barra/comida en una fila: con el teclado abierto se siguen viendo (C7).
+          <div className="fila-otro">
             <input
-              placeholder="¿Qué es? Ej.: Agua con gas, Picada, Almuerzo"
+              placeholder="¿Qué es?"
+              aria-label="Qué producto es"
+              enterKeyHint="next"
               value={otroNombre}
               onChange={(e) => setOtroNombre(e.target.value)}
               autoFocus
             />
-            <div className="opciones">
-              <button className={esComida ? "chip" : "chip activo"} onClick={() => setEsComida(false)}>🍺 Barra</button>
-              <button className={esComida ? "chip activo comida-chip" : "chip"} onClick={() => setEsComida(true)}>🍽 Es comida</button>
+            <div className="segmentos" role="group" aria-label="Barra o comida">
+              <button className={esComida ? "" : "activo"} aria-pressed={!esComida} onClick={() => setEsComida(false)}>🍺 Barra</button>
+              <button className={esComida ? "activo comida-chip" : ""} aria-pressed={esComida} onClick={() => setEsComida(true)}>🍽 Comida</button>
             </div>
-          </>
+          </div>
         )}
-        <div className="productos">
+        <div className="productos valores">
           {VALORES_MECATO.map((v) => (
             <button key={v} className="producto neutro" onClick={() => {
               if (hoja === "otro" && !otroNombre.trim()) return setError("Escriba qué producto es.");
@@ -70,7 +73,7 @@ export function HojaLibre(props: {
             setError("");
           }
         }}>
-          <input inputMode="numeric" placeholder="Otro valor" value={otroValor} onChange={(e) => setOtroValor(e.target.value.replace(/\D/g, ""))} />
+          <input inputMode="numeric" enterKeyHint="done" placeholder="Otro valor" value={otroValor} onChange={(e) => setOtroValor(e.target.value.replace(/\D/g, ""))} />
           <button className="principal">Agregar</button>
         </form>
         {libres.length > 0 && (
