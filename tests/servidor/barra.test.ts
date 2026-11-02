@@ -309,3 +309,49 @@ describe("cambio de base (migración)", () => {
     }
   });
 });
+
+describe("base con el catálogo entero en el registro (B9)", () => {
+  it("con el catálogo base del código vacío, el registro migrado da las mismas cuentas y el mismo catálogo", async () => {
+    // Registro «viejo», sobre el catálogo de ejemplo.
+    const en = Date.now() - 3600_000;
+    const viejo = [
+      { id: "v-0001-xxxx", t: "producto", persona: "Administrador", en, producto: { id: "light", nombre: "Light", corto: "LIGHT", categoria: "cerveza", precio: 4500, precioCancha: 5000, activo: true, fondo: "#9CC9EC", texto: "#241206" } },
+      { id: "v-0002-xxxx", t: "abrir", cuenta: "k", nombre: "Cancha 1", tipo: "cancha", cancha: "1", persona: "Ana", en: en + 1 },
+      { id: "v-0003-xxxx", t: "anotar", cuenta: "k", ronda: "r1", persona: "Ana", en: en + 2, lineas: [
+        { id: "k1", producto: "rubia", cantidad: 2 }, { id: "k2", producto: "light", cantidad: 1 },
+        { id: "k3", producto: "mecato", cantidad: 1, precio: 2000 }, { id: "k4", producto: "otro", cantidad: 1, precio: 50000, nombre: "Almuerzo", comida: true },
+      ] },
+      { id: "v-0004-xxxx", t: "cobrar", cuenta: "k", pago: "p1", medio: "nequi", persona: "Ana", en: en + 3 },
+      { id: "v-0005-xxxx", t: "orden", ids: ["light", "rubia"], persona: "Administrador", en: en + 4 },
+    ].map((o, i) => ({ ...o, seq: i + 1 }));
+    const { depurar } = await import("../../scripts/migracion");
+    const { catalogo } = await import("../../src/dominio/estado");
+    const r = depurar(viejo as never, { jornadas: [new Date(en - 10 * 3600_000).toISOString().slice(0, 10)], situaciones: ["cobrada"] });
+    expect(r.errores).toEqual([]);
+
+    const s = await arrancar({ catalogo: "./tests/servidor/catalogo-vacio.ts", migracion: "llave" });
+    try {
+      const admin = await s.token("Administrador");
+      const imp = await s.pedir(admin, "/api/admin/importar", { method: "POST", headers: { "x-migracion": "llave" }, body: JSON.stringify({ operaciones: r.registro }) });
+      expect(imp.status).toBe(200);
+      const foto = await s.foto(admin);
+      expect(foto.estado.cuentas.k).toEqual(r.nuevo.cuentas.k);
+      // El catálogo que arma el celular con la foto (sin catálogo base) es el de antes.
+      const deLaFoto = Object.values(foto.estado.productos as Record<string, { id: string }>);
+      const orden = new Map((foto.estado.orden as string[]).map((id, i) => [id, i]));
+      expect(deLaFoto.sort((a, b) => orden.get(a.id)! - orden.get(b.id)!).map((p) => p.id)).toEqual(catalogo(r.original).map((p) => p.id));
+
+      // Y se sigue anotando igual: precios del registro, mecato y «Otro» de valor libre.
+      const r2 = await s.ops(admin, [
+        op({ t: "abrir", cuenta: "g", nombre: "Grupo", tipo: "grupo" }),
+        op({ t: "anotar", cuenta: "g", ronda: "r1", lineas: [
+          { id: "g1", producto: "rubia", cantidad: 1 }, { id: "g2", producto: "mecato", cantidad: 1, precio: 1500 },
+          { id: "g3", producto: "otro", cantidad: 1, precio: 9000, nombre: "Picada" },
+        ] }),
+      ]);
+      expect(r2.estado.cuentas.g.lineas.map((l: any) => [l.nombre, l.precio])).toEqual([["Rubia", 4000], ["Mecato", 1500], ["Picada", 9000]]);
+    } finally {
+      await s.apagar();
+    }
+  });
+});

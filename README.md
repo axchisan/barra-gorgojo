@@ -51,9 +51,11 @@ En un clon nuevo, `pnpm install` (o `pnpm preparar`) copia el ejemplo a
 `negocio/catalogo.ts` si no existe. Después, los precios se cambian **desde la app**, no
 en el archivo: el registro se recalcula con el catálogo base (regla 0 de `AGENTS.md`).
 
-El plan es que el catálogo y las personas vivan solo en la base de datos del servidor y
-lleguen al celular después de entrar; ver [12 · Plan de trabajo](docs/12-plan-de-trabajo.md),
-pasos B y D.
+El catálogo de `negocio/catalogo.ts` es solo la semilla de una base nueva: en cuanto el
+administrador cambia algo desde la app, queda en el registro. En el Retén del Gorgojo
+está vacío: todo el catálogo vive en la base de datos y llega al celular después de
+entrar (ADR-08). Las personas salen del código con la fase D de
+[12 · Plan de trabajo](docs/12-plan-de-trabajo.md).
 
 ## En una línea por tema
 

@@ -268,11 +268,15 @@ repositorio privado aparte clonado en esa carpeta e ignorado por git. El públic
 un catálogo de ejemplo inventado en `negocio.ejemplo/`, que es también el catálogo fijo
 de todas las pruebas, y `pnpm preparar` lo copia a `negocio/` en un clon nuevo.
 
-Por qué no se sacó el catálogo del código del todo: el Durable Object rearma el estado
-aplicando el registro con el catálogo base (regla 0), así que mientras exista la base
-vieja ese catálogo tiene que dar exactamente los mismos precios. Con la base limpia
-(paso B9 de [12](12-plan-de-trabajo.md)) el catálogo entra como operaciones del registro
-y el del código puede quedar vacío; con D, las personas pasan al Durable Object.
+El catálogo base del código es solo una **semilla** para una base nueva. El Durable
+Object rearma el estado aplicando el registro con ese catálogo (regla 0), así que una
+base escrita con él lo necesita igual para siempre. Por eso la migración a base limpia
+(fase B de [12](12-plan-de-trabajo.md)) metió **todo** el catálogo en el registro como
+operaciones `producto` y `orden`: desde el 2026-11-02 el catálogo base de producción
+está vacío, el paquete del navegador no lleva productos ni precios del negocio y el
+celular los recibe en la foto, después de entrar. Mecato y «Otro» son de valor libre por
+su id (`ESPECIALES` en `src/dominio/catalogo.ts`), no por el catálogo base. Con la fase D
+las personas también salen del código.
 
 ### ADR-09 · Pruebas del servidor con `unstable_startWorker`, no `vitest-pool-workers` (2026-11-02)
 

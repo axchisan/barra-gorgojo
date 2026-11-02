@@ -232,6 +232,17 @@ describe("reglas de la barra", () => {
     expect(total(e.cuentas.a)).toBe(2800);
   });
 
+  it("mecato y «Otro» editados por el administrador siguen siendo de valor libre (su comportamiento lo da el id)", () => {
+    const otro = { id: "otro", nombre: "Otra cosa", corto: "＋ OTRA", categoria: "otro", precio: null, activo: true, fondo: "#FFFDF8", texto: "#241206" };
+    const mecato = { id: "mecato", nombre: "Mecato", corto: "MECATO", categoria: "otro", precio: null, activo: true, fondo: "#8A4F2E", texto: "#FFFFFF" };
+    const e = correr([op({ t: "producto", producto: otro }), op({ t: "producto", producto: mecato }), abrir("a"),
+      op({ t: "anotar", cuenta: "a", ronda: "r1", lineas: [{ id: "x1", producto: "otro", cantidad: 1, precio: 7000, nombre: "Picada" }, { id: "x2", producto: "mecato", cantidad: 2, precio: 1500 }] })]);
+    expect([e.productos?.otro?.libre, e.productos?.otro?.conNombre, e.productos?.otro?.activo]).toEqual([true, true, true]);
+    expect([e.productos?.mecato?.libre, e.productos?.mecato?.conNombre]).toEqual([true, undefined]);
+    expect(total(e.cuentas.a)).toBe(7000 + 3000);
+    expect(e.cuentas.a.lineas[0].nombre).toBe("Picada");
+  });
+
   it("la foto deja fuera lo cerrado de hace más de 36 horas y conserva lo pendiente", () => {
     const e = correr([
       abrir("cobrada"), anotar("cobrada", "r1", [["rubia", 1]]), op({ t: "cobrar", cuenta: "cobrada", pago: "p1", medio: "efectivo" }),

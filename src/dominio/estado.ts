@@ -2,7 +2,7 @@
 // el total que se ve en pantalla es el mismo que calcula el servidor.
 // Ver docs/04-sincronizacion-y-fuera-de-linea.md.
 
-import { CATALOGO, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "./catalogo";
+import { CATALOGO, ESPECIALES, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "./catalogo";
 
 export type TipoCuenta = "grupo" | "persona" | "mesa" | "cancha" | "rapida";
 export type Medio = "efectivo" | "nequi" | "breve" | "comida";
@@ -304,7 +304,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       const precioCancha = pc != null && pc > 0 && pc <= TOPE_VALOR_LIBRE ? pc : null;
       const nombre = String(p.nombre ?? "").trim().slice(0, 40);
       if (!nombre) return estado;
-      const base = PRODUCTOS.get(p.id);
+      // Mecato y «Otro» conservan su comportamiento aunque no estén en el catálogo base.
+      const base = ESPECIALES[p.id] ?? PRODUCTOS.get(p.id);
       estado.productos ??= {};
       estado.productos[p.id] = {
         id: p.id,

@@ -25,7 +25,9 @@ Antes de tocar producción, leer las «Reglas para trabajar en producción» de 
 
 0. **Nunca cambiar en el código el precio de un producto del catálogo base ya usado**, y
    todo cambio en `src/dominio/estado.ts` debe dar el mismo estado al aplicar el registro
-   viejo. Ver `docs/04` «Precio fijado por el servidor».
+   viejo. Ver `docs/04` «Precio fijado por el servidor». En producción el catálogo base
+   está vacío desde el 2026-11-02 (todo el catálogo vive en el registro, ADR-08); la regla
+   sigue valiendo para cualquier negocio que siembre su catálogo en el código.
 
 1. **Más rápido que el cuaderno o no sirve.** Anotar una ronda: 3 toques en el caso
    común. Cualquier cambio que agregue un toque al flujo principal se justifica por

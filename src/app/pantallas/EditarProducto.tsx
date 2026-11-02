@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CATEGORIAS, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "../../dominio/catalogo";
+import { CATEGORIAS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "../../dominio/catalogo";
 import { producto as productoDe } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
@@ -96,7 +96,7 @@ export function EditarProducto({ nav, id }: { nav: Nav; id?: string }) {
         <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
         {activo ? "Visible para anotar" : "Oculto (no aparece al anotar)"}
       </label>
-      {actual && PRODUCTOS.has(actual.id) && !libre && (
+      {actual && !libre && (
         <p className="nota">Cambiar el precio solo afecta lo que se anote de ahora en adelante. Lo ya anotado conserva su precio.</p>
       )}
       {error && <p className="error">{error}</p>}

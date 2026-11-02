@@ -29,6 +29,16 @@ export interface Producto {
 
 export const PRODUCTOS = new Map(CATALOGO.map((p) => [p.id, p]));
 
+/**
+ * Productos de valor libre. Su comportamiento lo da el id, no el catálogo base: así
+ * funcionan igual en una base cuyo catálogo vive entero en el registro (docs/12, B9).
+ * La pantalla de anotar los reconoce por estos mismos ids.
+ */
+export const ESPECIALES: Readonly<Record<string, Pick<Producto, "libre" | "conNombre">>> = {
+  mecato: { libre: true },
+  otro: { libre: true, conNombre: true },
+};
+
 export const SECCIONES: { titulo: string; categorias: Categoria[] }[] = [
   { titulo: "Cervezas", categorias: ["cerveza"] },
   { titulo: "Gaseosas, jugos y agua", categorias: ["gaseosa"] },
