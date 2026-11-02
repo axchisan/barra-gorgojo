@@ -5,6 +5,7 @@ import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
 import { NoExiste } from "../componentes/NoExiste";
 import type { Nav } from "../navegacion";
+import { cerrarConEnter } from "../teclado";
 import { sinc } from "../sincronizacion";
 
 export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
@@ -52,7 +53,7 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
               <button key={b} className={recibido === b ? "chip activo" : "chip"} onClick={() => { setRecibido(b); setOtro(""); }}>{pesos(b)}</button>
             ))}
           </div>
-          <input inputMode="numeric" placeholder="Otro valor" value={otro} onChange={(e) => {
+          <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Otro valor" value={otro} onChange={(e) => {
             const v = e.target.value.replace(/\D/g, "");
             setOtro(v);
             setRecibido(v ? Number(v) : null);

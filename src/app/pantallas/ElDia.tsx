@@ -4,6 +4,7 @@ import { pesos } from "../../dominio/formato";
 import { TarjetasProducto } from "../componentes/TarjetasProducto";
 import type { Renglon } from "../cuentas";
 import type { Nav } from "../navegacion";
+import { cerrarConEnter } from "../teclado";
 import { contarPaquetes, textoPaquetes } from "../paquetes";
 
 const enTablet = () => typeof matchMedia === "function" && matchMedia("(min-width: 700px)").matches;
@@ -54,7 +55,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
       <article className="caja">
         <h2>Cuadre de caja</h2>
         <p className="tenue">El efectivo que debería haber por ventas de hoy (sin contar la base): <strong>{pesos(recibidoEfectivo)}</strong></p>
-        <input inputMode="numeric" enterKeyHint="done" placeholder="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
+        <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
         {diferencia != null && (
           <p className={diferencia === 0 ? "cambio" : "cambio falta"}>
             {diferencia === 0 ? "Cuadra exacto" : diferencia > 0 ? `Sobran ${pesos(diferencia)}` : `Faltan ${pesos(-diferencia)}`}

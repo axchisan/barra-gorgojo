@@ -146,8 +146,8 @@ test.describe("espacio en teléfono", () => {
         if (!mas || !nombre) return true;
         return mas.right <= nombre.left || mas.left >= nombre.right || mas.bottom <= nombre.top || mas.top >= nombre.bottom;
       }));
-      await p.keyboard.press("Escape");
-      await p.locator(".hoja").click({ position: { x: 5, y: 5 } });
+      await p.getByRole("button", { name: "Cerrar" }).click();
+      await expect(p.locator(".hoja")).toHaveCount(0);
       await p.goBack();
 
       // Cuenta abierta: todas las cervezas y gaseosas sin desplazar

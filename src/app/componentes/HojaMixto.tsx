@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { MEDIO_PETACO, PETACO, type Producto } from "../../dominio/catalogo";
 import type { PaqueteEnArmado } from "../paquetes";
+import { useAtrasCierra } from "../navegacion";
 import { vibrar } from "../vibrar";
 
 /** Armar un petaco o medio petaco con cervezas de varias marcas. */
@@ -13,10 +14,14 @@ export function HojaMixto({ mixto, setMixto, mezcla, setMezcla, cervezas, setPaq
   setPaquetes: Dispatch<SetStateAction<PaqueteEnArmado[]>>;
 }) {
   const enMezcla = Object.values(mezcla).reduce((a, b) => a + b, 0);
+  useAtrasCierra(true, () => setMixto(null));
   return (
     <div className="hoja" onClick={() => setMixto(null)}>
       <div className="hoja-cuerpo" onClick={(e) => e.stopPropagation()}>
-        <h2>Petaco mixto</h2>
+        <header className="cabeza-hoja">
+          <h2>Petaco mixto</h2>
+          <button className="cerrar-hoja" aria-label="Cerrar" onClick={() => setMixto(null)}>✕</button>
+        </header>
         <div className="opciones">
           <button className={mixto === MEDIO_PETACO ? "chip activo" : "chip"} onClick={() => setMixto(MEDIO_PETACO)}>Medio · {MEDIO_PETACO}</button>
           <button className={mixto === PETACO ? "chip activo" : "chip"} onClick={() => setMixto(PETACO)}>Petaco · {PETACO}</button>

@@ -10,7 +10,7 @@ import { EditarLinea } from "../componentes/EditarLinea";
 import { NoExiste } from "../componentes/NoExiste";
 import { TarjetasProducto } from "../componentes/TarjetasProducto";
 import { colorDe, iconoTipo, resumen } from "../cuentas";
-import type { Nav } from "../navegacion";
+import { useAtrasCierra, type Nav } from "../navegacion";
 import { contarPaquetes, nombrePaquete, porPaquete, textoPaquetes } from "../paquetes";
 import { sinc } from "../sincronizacion";
 
@@ -19,8 +19,10 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const [modo, setModo] = useState<"resumen" | "rondas">("resumen");
   const [anulando, setAnulando] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  useAtrasCierra(menu, () => setMenu(false));
   const [renombrar, setRenombrar] = useState<string | null>(null);
   const [cliente, setCliente] = useState(false);
+  useAtrasCierra(cliente, () => setCliente(false));
   if (!c) return <NoExiste nav={nav} />;
 
   const s = situacion(c);

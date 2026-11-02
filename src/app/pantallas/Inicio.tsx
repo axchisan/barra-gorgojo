@@ -4,7 +4,8 @@ import { horaDe, pesos } from "../../dominio/formato";
 import { Apartados } from "../componentes/Apartados";
 import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
-import type { Nav } from "../navegacion";
+import { useAtrasCierra, type Nav } from "../navegacion";
+import { cerrarConEnter } from "../teclado";
 import { sinc } from "../sincronizacion";
 import { Cocina } from "./Cocina";
 import { ElDia } from "./ElDia";
@@ -13,6 +14,7 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
   const cuentas = Object.values(sinc.visible.cuentas);
   const enCocina = cuentas.filter((c) => situacion(c) === "comida" && !c.comidaCobrada);
   const [cambiar, setCambiar] = useState(false);
+  useAtrasCierra(cambiar, () => setCambiar(false));
 
   return (
     <main className="inicio">
@@ -65,7 +67,8 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
 
   return (
     <>
-      <input className="buscar" type="search" placeholder="Buscar cuenta, mesa o cancha" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
+      <input className="buscar" type="search" enterKeyHint="search" autoCapitalize="off" autoCorrect="off" spellCheck={false} onKeyDown={cerrarConEnter}
+        placeholder="Buscar cuenta, mesa o cancha" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
       {abiertas.length === 0 && <p className="vacio">No hay cuentas abiertas.</p>}
       <div className="tarjetas">
         {abiertas.map((c) => <TarjetaCuenta key={c.id} c={c} nav={nav} />)}

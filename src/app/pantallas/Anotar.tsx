@@ -12,6 +12,7 @@ import { NoExiste } from "../componentes/NoExiste";
 import type { Nav } from "../navegacion";
 import { describir, nombrePaquete, type PaqueteEnArmado } from "../paquetes";
 import { sinc } from "../sincronizacion";
+import { cerrarConEnter } from "../teclado";
 import { vibrar } from "../vibrar";
 
 const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mesa", "🍽", "Mesa"], ["cancha", "🎯", "Cancha"]] as const;
@@ -187,10 +188,10 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
               ))}
             </div>
             {(tipo === "grupo" || tipo === "persona") && (
-              <input placeholder="Nombre" aria-label={tipo === "grupo" ? "Nombre de la cuenta (opcional)" : "Nombre de la persona (opcional)"} value={nombre} onChange={(e) => setNombre(e.target.value)} />
+              <input placeholder="Nombre" enterKeyHint="done" autoCapitalize="sentences" onKeyDown={cerrarConEnter} aria-label={tipo === "grupo" ? "Nombre de la cuenta (opcional)" : "Nombre de la persona (opcional)"} value={nombre} onChange={(e) => setNombre(e.target.value)} />
             )}
             {tipo === "mesa" && (
-              <input className="numero" inputMode="numeric" enterKeyHint="done" placeholder="N.º de mesa" aria-label="Número de mesa" value={mesa} onChange={(e) => setMesa(e.target.value.replace(/\D/g, ""))} autoFocus />
+              <input className="numero" inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="N.º de mesa" aria-label="Número de mesa" value={mesa} onChange={(e) => setMesa(e.target.value.replace(/\D/g, ""))} autoFocus />
             )}
             {tipo === "cancha" && (
               <div className="segmentos canchas" role="group" aria-label="Cancha">
@@ -203,7 +204,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
             )}
           </div>
           {(tipo === "mesa" || tipo === "cancha") && (
-            <input placeholder="Nombre (opcional): los de rojo" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <input placeholder="Nombre (opcional): los de rojo" enterKeyHint="done" autoCapitalize="sentences" onKeyDown={cerrarConEnter} value={nombre} onChange={(e) => setNombre(e.target.value)} />
           )}
         </section>
       )}
