@@ -215,8 +215,8 @@ Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 | A4 Pruebas servidor y e2e mínimas | ✅ | 2026-11-02 | 14 pruebas del Worker real (`tests/servidor`, ADR-09: `unstable_startWorker` porque `vitest-pool-workers` no soporta Vitest 5), incluida «recalcular con otro catálogo no cambia lo anotado»; comprobado que fallan si se rompe cada regla. 3 e2e en `tests/e2e` (cobrar, dos celulares, sin señal) |
 | B1–B6 Preparar migración | ✅ | 2026-11-02 | Base en `vars.BASE` y en la foto; envíos con base y pendientes apartados; respaldo a demanda; `pnpm migrar` con verificación; importar con secreto `MIGRACION`. Ensayo completo en pruebas, con restauración, celular sin señal y vuelta atrás: ver `negocio/docs/10` «Ensayo» |
 | B9 Catálogo fuera del código | 🟨 | 2026-11-02 | La migración ya lleva todo el catálogo como operaciones. Falta: mecato y «Otro» toman `libre`/`conNombre` del catálogo base (`estado.ts`, caso `producto`); cambiarlo con prueba de compatibilidad antes de vaciar el catálogo del código |
-| B7 Migrar producción | ⬜ | | Antes: llevar el código nuevo a producción sin cambiar de base (ver `negocio/docs/10` «Procedimiento»). Pedir confirmación |
-| B8 Clave, retención, registro | ⬜ | | |
+| B7 Migrar producción | ✅ | 2026-11-02 | Autorizada por el negocio (sin uso ese día: excepción a la regla 14). Código nuevo sin cambiar de base, después base `reten-del-gorgojo-v2` verificada cuenta por cuenta contra el corte; importar apagado. Cifras en `negocio/docs/09` |
+| B8 Clave, retención, registro | ✅ | 2026-11-02 | `CLAVE` y `FIRMA` rotadas; regla `respaldos-365-dias` en el bucket; corte anotado en `negocio/docs/09` |
 | C Teléfono | ⬜ | | |
 | D Acceso por persona | ⬜ | | |
 | E1 Cerrar el día | ⬜ | | |

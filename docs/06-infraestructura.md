@@ -103,7 +103,8 @@ Tres capas, de la más inmediata a la más lejana:
    permite devolver el objeto a cualquier momento de los últimos 30 días.
 2. **Exportación diaria a R2** a las 5:30 a. m. (después del corte de jornada): el
    registro de operaciones del día y una foto de las proyecciones, en JSON comprimido.
-   Se conservan 365 días con una regla de ciclo de vida del bucket.
+   Se conservan 365 días con una regla de ciclo de vida del bucket (`respaldos-365-dias`,
+   activa desde el 2026-11-02). El respaldo es de la base vigente (`vars.BASE`).
 3. **Exportación manual a CSV** desde la app (fase 2), que el negocio puede guardar
    donde quiera.
 

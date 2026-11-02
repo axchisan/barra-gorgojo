@@ -18,7 +18,7 @@
   "observability": { "enabled": true },
   // Nombre de la base (instancia del Durable Object). Cambiarlo es pasar a otra base:
   // ver negocio/docs/10. Volver atrás = volver a poner el nombre anterior y desplegar.
-  "vars": { "BASE": "reten-del-gorgojo" },
+  "vars": { "BASE": "reten-del-gorgojo-v2" },
 
   // Entorno de pruebas: `pnpm desplegar:pruebas`. Otro Worker, así que su Durable
   // Object y sus datos no tienen nada que ver con producción. Sin Cron; respaldos a
