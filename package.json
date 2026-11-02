@@ -7,7 +7,7 @@
     "#negocio": "./negocio/catalogo.ts"
   },
   "description": "Cuentas de la barra del Retén del Gorgojo",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "preparar": "node scripts/preparar.mjs",
     "postinstall": "node scripts/preparar.mjs",

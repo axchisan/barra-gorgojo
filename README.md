@@ -91,3 +91,7 @@ Los datos generales del negocio (dirección, horarios, formas de pago) salen de
 `../ElrentendelGorgojo/docs/11-ficha-del-negocio.md`. **El catálogo y los precios de las
 bebidas salen de `negocio/docs/08-datos-pendientes.md`** hasta que el sistema exista;
 desde entonces, del propio sistema.
+
+## Licencia
+
+[MIT](LICENSE). El código es libre; los datos de cada negocio (`negocio/`) no hacen parte del repositorio.
