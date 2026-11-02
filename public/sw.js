@@ -1,5 +1,10 @@
 // Service Worker: la app abre sin señal. La API nunca se cachea.
+// El nombre del caché lo cambia la compilación (vite.config.ts, «versionar-sw») con el
+// hash del paquete: cada despliegue estrena caché y borra el anterior.
 const CACHE = "barra-v1";
+// Lo que puede cambiar sin cambiar de nombre va primero a la red. El manifiesto también:
+// servido viejo desde el caché, una app reinstalada quedaba bloqueada en vertical.
+const PRIMERO_LA_RED = ["/manifest.webmanifest"];
 const BASE = ["/", "/manifest.webmanifest", "/icono-192.png", "/icono-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -32,6 +37,14 @@ self.addEventListener("fetch", (e) => {
       fetch(e.request)
         .then((r) => { const copia = r.clone(); caches.open(CACHE).then((c) => c.put("/", copia)); return r; })
         .catch(() => caches.match("/")),
+    );
+    return;
+  }
+  if (PRIMERO_LA_RED.includes(url.pathname)) {
+    e.respondWith(
+      fetch(e.request)
+        .then((r) => { if (r.ok) { const copia = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copia)); } return r; })
+        .catch(() => caches.match(e.request)),
     );
     return;
   }
