@@ -1,0 +1,36 @@
+{
+  "name": "barra-gorgojo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#negocio": "./negocio/catalogo.ts"
+  },
+  "description": "Cuentas de la barra del Retén del Gorgojo",
+  "license": "UNLICENSED",
+  "scripts": {
+    "preparar": "node scripts/preparar.mjs",
+    "postinstall": "node scripts/preparar.mjs",
+    "dev": "pnpm preparar && vite build && wrangler dev",
+    "build": "pnpm preparar && vite build",
+    "tipos": "pnpm preparar && tsc --noEmit",
+    "test": "vitest run",
+    "verificar": "pnpm tipos && pnpm test",
+    "desplegar": "pnpm build && wrangler deploy"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261003.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.147.0"
+  }
+}

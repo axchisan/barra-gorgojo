@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env*
+.DS_Store
+test-results/
+playwright-report/
+.idea/
+.playwright-mcp/
+# Datos de clientes de la migración (docs/10): nunca al repositorio
+migracion/
+# Datos del negocio (catálogo real, personas, docs con cifras): repositorio privado aparte
+negocio/
