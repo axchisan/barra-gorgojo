@@ -274,16 +274,16 @@ describe("cambio de base (migración)", () => {
     const ws = await s.conectar(ana);
     const hace = Date.now() - 3 * 3600_000;
     const registro = [
-      { id: "mig-abrir-0001", t: "abrir", cuenta: "lalo", nombre: "Lalo", tipo: "grupo", persona: "Beto", en: hace, seq: 77, recibida_en: hace },
-      { id: "mig-anotar-0001", t: "anotar", cuenta: "lalo", ronda: "r1", persona: "Beto", en: hace + 1000, lineas: [{ id: "l1", producto: "rubia", cantidad: 3, precioFijado: 3900 }] },
-      { id: "mig-cobrar-0001", t: "cobrar", cuenta: "lalo", pago: "p1", medio: "efectivo", persona: "Ana", en: hace + 2000 },
+      { id: "mig-abrir-0001", t: "abrir", cuenta: "grupo-a", nombre: "Grupo A", tipo: "grupo", persona: "Beto", en: hace, seq: 77, recibida_en: hace },
+      { id: "mig-anotar-0001", t: "anotar", cuenta: "grupo-a", ronda: "r1", persona: "Beto", en: hace + 1000, lineas: [{ id: "l1", producto: "rubia", cantidad: 3, precioFijado: 3900 }] },
+      { id: "mig-cobrar-0001", t: "cobrar", cuenta: "grupo-a", pago: "p1", medio: "efectivo", persona: "Ana", en: hace + 2000 },
     ];
     const r = await importar(registro);
     expect(r.status).toBe(200);
     expect(await r.json()).toMatchObject({ base: "barra-v2", seq: 3, cuentas: 1, total: 3 * 3900 });
 
     const foto = await s.foto(ana);
-    const c = foto.estado.cuentas.lalo;
+    const c = foto.estado.cuentas["grupo-a"];
     expect(c.abiertaPor).toBe("Beto");
     expect(c.abiertaEn).toBe(hace);
     expect(c.lineas[0].precio).toBe(3900);
