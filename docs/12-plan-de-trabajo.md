@@ -217,7 +217,7 @@ Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 | B9 Catálogo fuera del código | ✅ | 2026-11-02 | Mecato y «Otro» libres por su id (`ESPECIALES`), compatible con el registro viejo; prueba del servidor con catálogo base vacío. Catálogo base de producción vacío y desplegado: foto igual antes y después, sin productos del negocio en el paquete del navegador |
 | B7 Migrar producción | ✅ | 2026-11-02 | Autorizada por el negocio (sin uso ese día: excepción a la regla 14). Código nuevo sin cambiar de base, después base `reten-del-gorgojo-v2` verificada cuenta por cuenta contra el corte; importar apagado. Cifras en `negocio/docs/09` |
 | B8 Clave, retención, registro | ✅ | 2026-11-02 | `CLAVE` y `FIRMA` rotadas; regla `respaldos-365-dias` en el bucket; corte anotado en `negocio/docs/09` |
-| C Teléfono | 🟨 | 2026-11-02 | C1–C5, C7–C12 hechos y en pruebas. C12 (horizontal: panel de la pedida a la derecha, «Nueva cuenta» junto a las pestañas) porque la tablet se usa sobre todo girada. Medido en 10 tamaños, incluidos los reales de la tablet; C7 probado con teclado en la tablet real. Falta: publicar y revisar en la app instalada y en un celular real |
+| C Teléfono | ✅ | 2026-11-02 | C1–C5 y C7–C12 en producción. Revisado en la tablet y el celular reales, en las apps instaladas: teclado (✓/Enter, barras escondidas al escribir, nada tapado), gesto «atrás» que cierra hojas y menús, y el diseño no salta al abrir el teclado. Pendiente menor: el celular girado en la app, cuando Android instale la app actualizada (manifiesto con `orientation: any`) |
 | D Acceso por persona | ⬜ | | |
 | E1 Cerrar el día | ⬜ | | |
 | E2 IndexedDB | ⬜ | | |

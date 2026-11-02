@@ -12,6 +12,8 @@ async function celular(browser: Browser): Promise<Page> {
   await p.locator("input[type=password]").fill("prueba");
   await p.getByRole("button", { name: "Entrar" }).click();
   await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
+  // Al entrar desaparece el campo de la clave: las barras no pueden quedar escondidas.
+  await expect(p.locator(".pestanas")).toBeVisible();
   return p;
 }
 const foco = (p: Page) => p.evaluate(() => document.activeElement?.getAttribute("placeholder") ?? document.activeElement?.tagName);
@@ -40,6 +42,8 @@ test("en «Otro», ✓ pasa del nombre al valor y el valor agrega; la hoja se ci
   await p.keyboard.press("Enter");
   await expect(p.locator(".hoja")).toHaveCount(0);
   await expect(p.locator(".pie-fijo .principal")).toContainText("12.000");
+  // El campo desapareció con la hoja: el pie tiene que volver a verse.
+  await expect(p.locator(".pie-fijo .principal")).toBeVisible();
   // La hoja cerrada desde la pantalla no deja una entrada de más: «atrás» vuelve al inicio.
   await p.goBack();
   await expect(p.locator(".inicio")).toBeVisible();
@@ -85,4 +89,38 @@ test("mientras se escribe no hay barras fijas encima del teclado; ✓ las devuel
   await expect(p.locator(".pie-fijo")).toBeHidden();
   await p.keyboard.press("Enter");
   await expect(p.locator(".pie-fijo")).toBeVisible();
+});
+
+test("en la tablet vertical, abrir el teclado no cambia el diseño; girarla sí", async ({ browser }) => {
+  // Tablet de la barra en vertical, app instalada: 686 × 1030.
+  const contexto = await browser.newContext({ viewport: { width: 686, height: 1030 }, hasTouch: true, isMobile: true });
+  const p = await contexto.newPage();
+  await p.goto("/");
+  await p.getByRole("button", { name: "Administrador", exact: true }).click();
+  await p.locator("input[type=password]").fill("prueba");
+  await p.getByRole("button", { name: "Entrar" }).click();
+  await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
+  const clases = () => p.evaluate(() => document.documentElement.className);
+
+  await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+  expect(await clases()).not.toContain("apaisada");
+  await p.getByPlaceholder("Nombre", { exact: true }).focus();
+  // El teclado encoge el área visible: queda más ancha que alta.
+  await p.setViewportSize({ width: 686, height: 681 });
+  await p.waitForTimeout(200);
+  expect(await clases(), "con el teclado abierto el diseño no cambia").not.toContain("apaisada");
+  await expect(p.locator(".resumen-pedida")).toBeHidden();
+
+  // Se cierra el teclado: vuelve el tamaño y sigue igual.
+  await p.keyboard.press("Enter");
+  await p.setViewportSize({ width: 686, height: 1030 });
+  await p.waitForTimeout(600);
+  expect(await clases()).not.toContain("apaisada");
+
+  // Girar de verdad sí cambia al diseño horizontal.
+  await p.setViewportSize({ width: 1097, height: 654 });
+  await p.waitForTimeout(200);
+  expect(await clases()).toContain("apaisada");
+  await expect(p.locator(".resumen-pedida")).toBeVisible();
+  await contexto.close();
 });

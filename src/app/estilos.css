@@ -448,71 +448,63 @@ details.por-producto { display: block; }
 .resumen-pedida { display: none; }
 
 /* Tablet o celular girado: cabecera y botones más compactos */
-@media (min-width: 700px) and (max-height: 820px) {
-  .barra-superior { padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; margin-bottom: 8px; }
-  .producto { min-height: 76px; padding: 12px 4px 6px; }
-  .tarjeta { min-height: 104px; padding: 12px; }
-  .seccion { margin: 10px 0 6px; }
-  .buscar { padding: 10px 14px; margin-bottom: 10px; }
-}
+/* (antes @media (min-width: 700px) and (max-height: 820px): ahora la clase html.baja, que no cambia con el teclado abierto) */
+html.baja .barra-superior { padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; margin-bottom: 8px; }
+html.baja .producto { min-height: 76px; padding: 12px 4px 6px; }
+html.baja .tarjeta { min-height: 104px; padding: 12px; }
+html.baja .seccion { margin: 10px 0 6px; }
+html.baja .buscar { padding: 10px 14px; margin-bottom: 10px; }
 /* Celular girado: muy poco alto */
-@media (min-width: 640px) and (max-height: 500px) {
-  :root { font-size: 16px; }
-  .producto { min-height: 60px; padding: 10px 3px 4px; gap: 2px; }
-  .producto .corto { font-size: 0.9rem; }
-  .producto .precio { font-size: 0.8rem; }
-  .productos { gap: 8px; }
-  .tarjetas { gap: 8px; }
-  .tarjeta { min-height: 84px; padding: 8px 10px; gap: 0; }
-  .tarjeta .valor { font-size: 1.25rem; }
-  .tarjeta .nombre, .tarjeta .tipo, .tarjeta .meta { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
-  .contador { top: -14px; height: 30px; min-width: 32px; font-size: 0.9rem; border-width: 2px; }
-}
+/* (antes @media (min-width: 640px) and (max-height: 500px): ahora la clase html.muy-baja, que no cambia con el teclado abierto) */
+html.muy-baja { font-size: 16px; }
+html.muy-baja .producto { min-height: 60px; padding: 10px 3px 4px; gap: 2px; }
+html.muy-baja .producto .corto { font-size: 0.9rem; }
+html.muy-baja .producto .precio { font-size: 0.8rem; }
+html.muy-baja .productos { gap: 8px; }
+html.muy-baja .tarjetas { gap: 8px; }
+html.muy-baja .tarjeta { min-height: 84px; padding: 8px 10px; gap: 0; }
+html.muy-baja .tarjeta .valor { font-size: 1.25rem; }
+html.muy-baja .tarjeta .nombre, html.muy-baja .tarjeta .tipo, html.muy-baja .tarjeta .meta { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+html.muy-baja .contador { top: -14px; height: 30px; min-width: 32px; font-size: 0.9rem; border-width: 2px; }
 /* Horizontal: «Nueva cuenta» junto a las pestañas y, al anotar, un panel a la derecha */
-@media (orientation: landscape) and (min-width: 640px) and (max-height: 820px) {
-  :root { --panel: clamp(220px, 24vw, 300px); }
-
-  .pestanas { right: var(--panel); margin: 0; max-width: none; }
-  .inicio .pie-fijo {
+/* (antes @media (orientation: landscape) and (min-width: 640px) and (max-height: 820px): ahora la clase html.apaisada, que no cambia con el teclado abierto) */
+html.apaisada { --panel: clamp(220px, 24vw, 300px); }
+html.apaisada .pestanas { right: var(--panel); margin: 0; max-width: none; }
+html.apaisada .inicio .pie-fijo {
     bottom: 0; left: auto; right: 0; width: var(--panel); max-width: none; margin: 0; z-index: 8;
     padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); background: var(--marron);
   }
-  .inicio .pie-fijo .principal { min-height: 46px; padding: 8px 12px; }
-  .inicio { padding-bottom: 82px; }
-
-  .anotar { max-width: none; padding-right: calc(var(--panel) + 16px); padding-bottom: 24px; }
-  .anotar .barra-superior { margin-right: calc(-1 * (var(--panel) + 16px)); }
-  .anotar .pie-fijo {
+html.apaisada .inicio .pie-fijo .principal { min-height: 46px; padding: 8px 12px; }
+html.apaisada .inicio { padding-bottom: 82px; }
+html.apaisada .anotar { max-width: none; padding-right: calc(var(--panel) + 16px); padding-bottom: 24px; }
+html.apaisada .anotar .barra-superior { margin-right: calc(-1 * (var(--panel) + 16px)); }
+html.apaisada .anotar .pie-fijo {
     top: calc(52px + env(safe-area-inset-top)); left: auto; right: 0; width: var(--panel); max-width: none; margin: 0;
     flex-direction: column; justify-content: flex-end; gap: 8px;
     background: var(--papel); border-left: 2px solid var(--neutro-200);
     padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   }
-  .anotar .pie-fijo > button { flex: 0 0 auto; width: 100%; }
-  .anotar .resumen-pedida { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-  .resumen-pedida .seccion { margin-top: 0; }
-  .resumen-pedida ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
-  .resumen-pedida li { padding: 6px 8px; border-radius: 8px; background: var(--neutro-100); }
-  .anotar .error.flotante { right: calc(var(--panel) + 12px); }
-  /* Más columnas, porque falta alto: en la tablet de la barra cabe todo el catálogo */
-  .productos { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
-  .producto .corto { font-size: 0.85rem; }
-}
+html.apaisada .anotar .pie-fijo > button { flex: 0 0 auto; width: 100%; }
+html.apaisada .anotar .resumen-pedida { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+html.apaisada .resumen-pedida .seccion { margin-top: 0; }
+html.apaisada .resumen-pedida ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+html.apaisada .resumen-pedida li { padding: 6px 8px; border-radius: 8px; background: var(--neutro-100); }
+html.apaisada .anotar .error.flotante { right: calc(var(--panel) + 12px); }
+
+/* Más columnas, porque falta alto: en la tablet de la barra cabe todo el catálogo */
+html.apaisada .productos { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+html.apaisada .producto .corto { font-size: 0.85rem; }
 /* Celular girado: los títulos de sección no caben; el selector de petacos ya marca las cervezas */
-@media (orientation: landscape) and (max-height: 500px) {
-  .anotar > section > .seccion { display: none; }
-  .anotar > section + section { margin-top: 10px; }
-}
+/* (antes @media (orientation: landscape) and (max-height: 500px): ahora la clase html.apaisada-baja, que no cambia con el teclado abierto) */
+html.apaisada-baja .anotar > section > .seccion { display: none; }
+html.apaisada-baja .anotar > section + section { margin-top: 10px; }
 
 /* ── Teclado en pantalla ── */
 /* Mientras se escribe, las barras fijas no se montan sobre el teclado: vuelven al cerrarlo
    (✓ o «atrás»). En horizontal el panel lateral de anotar se queda: no quita alto. */
-body:has(main input:focus:not([type="checkbox"]):not([type="color"])) .pie-fijo,
-body:has(main input:focus:not([type="checkbox"]):not([type="color"])) .pestanas,
-body:has(main input:focus:not([type="checkbox"]):not([type="color"])) .aviso { display: none; }
-@media (orientation: landscape) and (min-width: 640px) and (max-height: 820px) {
-  body:has(main input:focus:not([type="checkbox"]):not([type="color"])) .anotar .pie-fijo { display: flex; }
-}
+body.escribiendo .pie-fijo, body.escribiendo .pestanas, body.escribiendo .aviso { display: none; }
+/* (antes @media (orientation: landscape) and (min-width: 640px) and (max-height: 820px): ahora la clase html.apaisada, que no cambia con el teclado abierto) */
+html.apaisada body.escribiendo .anotar .pie-fijo { display: flex; }
 /* Las hojas se cierran con ✕ (en el celular girado ocupan toda la pantalla), tocando afuera o con «atrás» */
 .cabeza-hoja { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cerrar-hoja { min-width: 44px; min-height: 44px; border-radius: 22px; border: 0; background: var(--neutro-100); font-size: 1.1rem; font-weight: 800; }

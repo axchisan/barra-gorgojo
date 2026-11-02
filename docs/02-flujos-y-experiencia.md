@@ -236,3 +236,22 @@ que entra desde la primera versión.
 - Vibración corta en cada toque de producto (si el celular lo permite).
 - Sin animaciones decorativas. Las transiciones existen solo para que se entienda a
   dónde se fue algo, y duran menos de 150 ms.
+
+## Teclado y gestos (2026-11-02)
+
+Revisado con el teclado real en la tablet y en un celular, en las apps instaladas:
+
+- **✓ / Enter hace lo esperable.** En «＋ Otro», del nombre pasa al valor (el teclado
+  cambia solo a números) y del valor agrega y cierra la hoja. En los demás campos
+  (nombre de la cuenta, mesa, buscar, «Otro valor» al cobrar, efectivo contado) baja el
+  teclado.
+- **Mientras se escribe no hay barras fijas** (pie y pestañas) encima del teclado:
+  vuelven al bajarlo. En horizontal el panel lateral de anotar se queda.
+- **«Atrás»** primero baja el teclado (lo hace Android), después cierra la hoja o el
+  menú abierto, y después sí vuelve a la pantalla anterior. Las hojas también tienen ✕.
+- **El diseño no salta al abrir el teclado.** La forma de la pantalla (vertical,
+  horizontal, baja) se decide sin teclado; en la tablet vertical el teclado deja el área
+  más ancha que alta y antes eso cambiaba al diseño horizontal mientras se escribía.
+- El campo que recibe el foco se desplaza a la vista si el teclado lo tapa.
+
+Pruebas: `tests/e2e/teclado.spec.ts`.
