@@ -124,3 +124,34 @@ test("en la tablet vertical, abrir el teclado no cambia el diseño; girarla sí"
   await expect(p.locator(".resumen-pedida")).toBeVisible();
   await contexto.close();
 });
+
+test("celular girado: la lista de la pedida se desliza dentro del panel y no tapa la cabecera", async ({ browser }) => {
+  // El celular del negocio girado, en la app: 768 × 301.
+  const contexto = await browser.newContext({ viewport: { width: 768, height: 301 }, hasTouch: true, isMobile: true });
+  const p = await contexto.newPage();
+  await p.goto("/");
+  await p.getByRole("button", { name: "Administrador", exact: true }).click();
+  await p.locator("input[type=password]").fill("prueba");
+  await p.getByRole("button", { name: "Entrar" }).click();
+  await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
+  await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+  const productos = p.locator("main > section .producto:not(.otro)");
+  for (let i = 0; i < 10; i++) await productos.nth(i).click();
+
+  const m = await p.evaluate(() => {
+    const cab = document.querySelector(".barra-superior")!.getBoundingClientRect();
+    const lista = document.querySelector<HTMLElement>(".resumen-pedida")!;
+    const r = lista.getBoundingClientRect();
+    const boton = document.querySelector(".pie-fijo .principal")!.getBoundingClientRect();
+    return { cabecera: cab.height, cabAbajo: cab.bottom, listaArriba: r.top, listaAbajo: r.bottom, botonArriba: boton.top,
+      seDesliza: lista.scrollHeight > lista.clientHeight && getComputedStyle(lista).overflowY === "auto", alto: innerHeight };
+  });
+  expect(m.cabecera, "cabecera baja en el celular girado").toBeLessThanOrEqual(44);
+  expect(m.listaArriba, "la lista no se sube sobre la cabecera").toBeGreaterThanOrEqual(m.cabAbajo - 1);
+  expect(m.listaAbajo, "la lista no se mete debajo de los botones").toBeLessThanOrEqual(m.botonArriba + 1);
+  expect(m.seDesliza, "con muchos productos la lista se desliza").toBe(true);
+  // Y deslizarla funciona.
+  await p.locator(".resumen-pedida").evaluate((e) => e.scrollTo(0, e.scrollHeight));
+  expect(await p.locator(".resumen-pedida").evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+  await contexto.close();
+});
