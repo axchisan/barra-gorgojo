@@ -516,3 +516,9 @@ html.apaisada body.escribiendo .anotar .pie-fijo { display: flex; }
   .entrada .personas { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
   .persona { padding: 10px; }
 }
+/* Celular girado: en el panel, «Cobrar ya» y «Limpiar» lado a lado y más bajos, para que
+   se vea la lista de la pedida (con 300 px de alto, apilados no dejaban espacio). */
+html.apaisada-baja .anotar .pie-fijo { flex-direction: row; flex-wrap: wrap; align-content: flex-end; }
+html.apaisada-baja .anotar .resumen-pedida { flex: 1 1 100%; }
+html.apaisada-baja .anotar .pie-fijo > .secundario { flex: 1 1 40%; width: auto; min-height: 44px; padding: 6px; }
+html.apaisada-baja .anotar .pie-fijo > .principal { flex: 1 1 100%; min-height: 52px; }
