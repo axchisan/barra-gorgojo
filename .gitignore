@@ -13,3 +13,5 @@ playwright-report/
 migracion/
 # Datos del negocio (catálogo real, personas, docs con cifras): repositorio privado aparte
 negocio/
+# Herramientas de una sesión (pruebas en aparatos reales)
+*.tmp.mjs

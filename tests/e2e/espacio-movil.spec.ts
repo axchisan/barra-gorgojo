@@ -11,6 +11,13 @@ const TAMANOS = {
   grande: { width: 412, height: 915 },
   tabletVertical: { width: 800, height: 1280 },
   tabletHorizontal: { width: 1280, height: 800 },
+  // Los aparatos del negocio (2026-11-02): tablet HONOR, app instalada y en Chrome.
+  tabletAppHorizontal: { width: 1097, height: 654 },
+  tabletChromeHorizontal: { width: 1097, height: 558 },
+  tabletAppVertical: { width: 686, height: 1030 },
+  // Celular girado.
+  telefonoHorizontal: { width: 740, height: 360 },
+  telefonoHorizontalGrande: { width: 915, height: 412 },
 } as const;
 type Tamano = keyof typeof TAMANOS;
 
@@ -69,7 +76,8 @@ async function sembrar(request: APIRequestContext) {
 /** Zona útil: debajo de la cabecera fija y encima del pie fijo. */
 const medir = (p: Page, selector: string) =>
   p.evaluate((sel) => {
-    const fijos = [...document.querySelectorAll(".pie-fijo, .pestanas")].map((e) => e.getBoundingClientRect().top);
+    // Barras fijas de abajo; el panel lateral de horizontal no tapa la cuadrícula.
+    const fijos = [...document.querySelectorAll(".pie-fijo, .pestanas")].map((e) => e.getBoundingClientRect()).filter((r) => r.top > innerHeight * 0.4).map((r) => r.top);
     const abajo = Math.min(innerHeight, ...fijos);
     const cab = document.querySelector(".barra-superior");
     const arriba = cab ? cab.getBoundingClientRect().bottom : 0;
@@ -125,6 +133,8 @@ test.describe("espacio en teléfono", () => {
       m.nuevaPrimero = nueva.primeroArriba;
       m.nuevaVisibles = nueva.visibles;
       m.productosColumnas = nueva.columnas;
+      // Ningún nombre se sale de su botón (en la tablet real pasó con letra más ancha).
+      m.nombresCaben = await p.evaluate(() => [...document.querySelectorAll("main > section .producto")].every((b) => b.scrollWidth <= b.clientWidth + 1));
       m.petacosEnUnaFila = await p.evaluate(() => new Set([...document.querySelectorAll(".petacos button")].map((b) => Math.round(b.getBoundingClientRect().top))).size === 1);
       expect(nueva.sinScrollHorizontal, "nueva cuenta sin desplazamiento horizontal").toBe(true);
 
@@ -144,14 +154,17 @@ test.describe("espacio en teléfono", () => {
       await p.locator(".tarjeta", { hasText: "Grupo de Juan" }).click();
       await p.getByRole("button", { name: /＋ Pedida/ }).click();
       const secciones = await p.evaluate(() => {
-        const fijos = [...document.querySelectorAll(".pie-fijo")].map((e) => e.getBoundingClientRect().top);
+        const fijos = [...document.querySelectorAll(".pie-fijo")].map((e) => e.getBoundingClientRect()).filter((r) => r.top > innerHeight * 0.4).map((r) => r.top);
         const abajo = Math.min(innerHeight, ...fijos);
+        const todos = [...document.querySelectorAll("main > section .producto")].map((e) => e.getBoundingClientRect());
         const sec = [...document.querySelectorAll("main > section")].slice(0, 2);
         const prods = sec.flatMap((s) => [...s.querySelectorAll(".producto")]).map((e) => e.getBoundingClientRect());
-        return { total: prods.length, visibles: prods.filter((r) => r.bottom <= abajo + 1 && r.top >= 0).length, abajo: Math.round(abajo), ultimo: Math.round(Math.max(...prods.map((r) => r.bottom))), alto: Math.round(prods[0]?.height ?? 0) };
+        return { total: prods.length, visibles: prods.filter((r) => r.bottom <= abajo + 1 && r.top >= 0).length, abajo: Math.round(abajo), ultimo: Math.round(Math.max(...prods.map((r) => r.bottom))), alto: Math.round(prods[0]?.height ?? 0),
+        todosVisibles: todos.filter((r) => r.bottom <= abajo + 1 && r.top >= 0).length, todos: todos.length };
       });
       m.abiertaCervezasYGaseosas = `${secciones.visibles}/${secciones.total} (último ${secciones.ultimo}, pie ${secciones.abajo}, alto ${secciones.alto})`;
       m.abiertaTodas = secciones.visibles === secciones.total;
+      m.abiertaConOtro = `${secciones.todosVisibles}/${secciones.todos}`;
       m.repetirAlto = Math.round((await p.locator(".repetir").boundingBox())!.height);
       await p.goBack();
       await p.goBack();
@@ -177,6 +190,7 @@ test.describe("espacio en teléfono", () => {
 
       // Metas
       expect(m.billetesEnUnaLinea, "C9: billetes en una línea").toBe(true);
+      expect(m.nombresCaben, "los nombres caben en sus botones").toBe(true);
       expect(m.mixtoSinTapar, "C8: el +5 no tapa el nombre").toBe(true);
       if (nombre === "pequeno") {
         expect(m.inicioColumnas, "C1: 2 columnas de cuentas").toBe(2);
@@ -197,6 +211,19 @@ test.describe("espacio en teléfono", () => {
         expect(m.productosColumnas as number, "tablet: columnas de productos").toBeGreaterThanOrEqual(base.productos);
         expect(m.nuevaVisibles as number, "tablet: productos visibles en nueva cuenta").toBeGreaterThanOrEqual(19);
         expect(m.abiertaTodas, "tablet: cervezas y gaseosas visibles").toBe(true);
+      }
+      if (nombre === "tabletAppHorizontal" || nombre === "tabletAppVertical") {
+        // La tablet de la barra, en la app instalada: todo el catálogo sin desplazar.
+        expect(m.abiertaConOtro, "tablet de la barra: todos los productos visibles al anotar").toBe("19/19");
+        expect(m.inicioVisibles as number, "tablet de la barra: las 11 cuentas visibles").toBeGreaterThanOrEqual(11);
+      }
+      if (nombre === "tabletChromeHorizontal") {
+        expect(m.abiertaTodas, "tablet en Chrome: cervezas y gaseosas visibles").toBe(true);
+      }
+      if (nombre === "telefonoHorizontal" || nombre === "telefonoHorizontalGrande") {
+        // Celular girado: muy poco alto. Que se puedan anotar las cervezas sin desplazar.
+        expect(m.nuevaPrimero as number, "celular girado: primer producto arriba").toBeLessThan(180);
+        expect(m.cabecera as number, "celular girado: cabecera compacta").toBeLessThanOrEqual(52);
       }
       await contexto.close();
     });
