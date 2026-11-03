@@ -89,9 +89,15 @@ instala una vez en la pantalla de inicio de cada celular y nadie la vuelve a esc
 
 **Revisión del 2026-11-03** ([13](13-revision-tecnica.md) «Hosting y dominio»): la
 dirección es la identidad de la app en cada celular (instalación, memoria y vinculación),
-así que la definitiva debe quedar **antes de la fase G**. Recomendado: comprar
-`elretendelgorgojo.com` (sigue libre) en el registrador de Cloudflare, a nombre del
-negocio, y usar `barra.elretendelgorgojo.com`.
+así que la definitiva debe quedar **antes de la fase G**.
+
+**Decisión del 2026-11-03:** por ahora, un subdominio del dominio del desarrollador (el
+del negocio se decide junto con su sitio). El DNS de ese dominio pasó a Cloudflare con
+todos sus registros idénticos y en «solo DNS», y el Worker usa el subdominio como dominio
+propio. Los dominios no van en este repositorio (regla 16): están en
+`negocio/despliegue.json` y `pnpm desplegar` los pasa con `--domain`
+(`scripts/dominios.mjs`); sin ese archivo se despliega solo en `workers.dev`.
+`workers.dev` sigue encendido hasta la fase G, para no cortar a los celulares de hoy.
 
 Cuando se compre `elretendelgorgojo.com`, hay dos caminos para `barra.`:
 

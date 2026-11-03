@@ -208,6 +208,14 @@ compromete, se pierde todo junto. Conviene una copia fuera de Cloudflare (por ej
 administrador baja el respaldo completo cada semana, o un envío automático a otro
 almacenamiento). Va con E5 (ensayo de restauración).
 
+### Decisión (2026-11-03)
+
+Por ahora, un subdominio del dominio del desarrollador, con su DNS movido a Cloudflare
+(registros idénticos, solo DNS; el dominio sigue registrado donde estaba). El dominio del
+negocio se decide junto con su sitio; cambiar después de dirección obligará a reinstalar
+y volver a vincular los celulares, así que conviene hacerlo antes de G si se va a hacer.
+Cuenta: la personal del desarrollador. Plan: gratuito, con E3 hecho.
+
 ### Orden propuesto para la infraestructura
 
 1. Decidir cuenta (personal o del negocio) y comprar el dominio a nombre del negocio.

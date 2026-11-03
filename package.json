@@ -23,8 +23,8 @@
     "recorrido": "node scripts/recorrido.mjs",
     "resumen": "esbuild scripts/resumen-estado.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/resumen-estado.mjs --log-level=warning && node node_modules/.cache/resumen-estado.mjs",
     "migrar": "esbuild scripts/migrar.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/migrar.mjs --log-level=warning && node node_modules/.cache/migrar.mjs",
-    "desplegar": "pnpm build && wrangler deploy",
-    "desplegar:pruebas": "pnpm build && wrangler deploy --env pruebas"
+    "desplegar": "pnpm build && wrangler deploy $(node scripts/dominios.mjs produccion)",
+    "desplegar:pruebas": "pnpm build && wrangler deploy --env pruebas $(node scripts/dominios.mjs pruebas)"
   },
   "packageManager": "pnpm@11.25.0",
   "dependencies": {
