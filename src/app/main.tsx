@@ -2,10 +2,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./estilos.css";
+import { vigilarNombres } from "./ajustarNombres";
 import { vigilarForma, vigilarTeclado } from "./teclado";
 
 vigilarTeclado();
 vigilarForma();
+vigilarNombres();
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>

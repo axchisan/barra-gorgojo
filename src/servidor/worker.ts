@@ -275,6 +275,15 @@ export class Barra extends DurableObject<Env> {
       }
       return json(await this.acceso.crearCodigo("instalación"));
     }
+    if ((ruta === "/api/instalacion/respaldo" || ruta === "/api/instalacion/foto") && req.method === "GET") {
+      // Solo lectura desde la terminal, para comparar antes y después de un despliegue (regla 2).
+      if (!this.env.CLAVE || !igualesEnTiempoConstante(req.headers.get("x-llave") ?? "", this.env.CLAVE)) {
+        await new Promise((r) => setTimeout(r, 800));
+        return json({ error: "Llave equivocada." }, 403);
+      }
+      if (ruta === "/api/instalacion/foto") return json(this.foto());
+      return new Response(this.respaldo().texto, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+    }
     if (ruta === "/api/vincular" && req.method === "POST") {
       const { codigo, nombre } = await cuerpo<{ codigo?: string; nombre?: string }>();
       const r = await this.acceso.vincular(String(codigo ?? ""), String(nombre ?? ""));

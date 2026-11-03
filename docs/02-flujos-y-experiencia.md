@@ -272,3 +272,10 @@ Pruebas: `tests/e2e/teclado.spec.ts`.
   administrador; el «Deshacer» del aviso sigue sirviendo 5 minutos a quien cobró.
 - Si el servidor no acepta algo (por ejemplo, un cambio de precio de quien no es
   administrador), se avisa «No se hizo: …» y no queda pendiente.
+
+## Todo a la vista (2026-11-02)
+
+En las vistas de venta lo necesario para terminar la acción se ve sin deslizar, en el
+celular y la tablet, en vertical y girados (`tests/e2e/a-la-vista.spec.ts`). En el
+celular girado, anotar, detalle y cobrar usan dos columnas: lo que se elige a la
+izquierda y el total con los botones a la derecha. «Cambiar cantidad» se abre como hoja.

@@ -41,6 +41,14 @@ describe("acceso por persona", () => {
       expect((await vincular("000000")).status).toBe(400);
     });
 
+    it("la llave de instalación lee la foto y el respaldo (solo lectura); sin ella, no", async () => {
+      expect((await sinCookie("/api/instalacion/foto", { headers: { "x-llave": CLAVE } })).status).toBe(200);
+      const r = await sinCookie("/api/instalacion/respaldo", { headers: { "x-llave": CLAVE } });
+      expect(((await r.json()) as { operaciones: unknown[] }).operaciones).toBeInstanceOf(Array);
+      expect((await sinCookie("/api/instalacion/respaldo", { headers: { "x-llave": "otra" } })).status).toBe(403);
+      expect((await sinCookie("/api/instalacion/foto")).status).toBe(403);
+    });
+
     it("el administrador saca códigos desde la app; un operador no", async () => {
       expect((await s.pedir(admin, "/api/admin/codigo", { method: "POST" })).status).toBe(200);
       expect((await s.pedir(ana, "/api/admin/codigo", { method: "POST" })).status).toBe(403);

@@ -191,7 +191,8 @@ test.describe("espacio en teléfono", () => {
       if (nombre === "pequeno") {
         expect(m.inicioColumnas, "C1: 2 columnas de cuentas").toBe(2);
         expect(m.inicioVisibles, "C1: al menos 8 cuentas visibles").toBeGreaterThanOrEqual(8);
-        expect(m.productosColumnas, "C2: 3 columnas de productos").toBe(3);
+        // 4 desde la auditoría «todo a la vista» (antes 3): los 19 productos del negocio caben.
+        expect(m.productosColumnas, "C2: 4 columnas de productos").toBe(4);
         expect(m.abiertaTodas, "C2: cervezas y gaseosas visibles en una cuenta abierta").toBe(true);
         expect(m.nuevaPrimero as number, "C3: primer producto a menos de 220 px").toBeLessThan(220);
         expect(m.nuevaVisibles, "C3: al menos 9 productos visibles").toBeGreaterThanOrEqual(9);

@@ -2,16 +2,25 @@ import { useState } from "react";
 import { producto as productoDe, type Cuenta, type Linea } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
+import { useAtrasCierra } from "../navegacion";
 import { nombrePaquete } from "../paquetes";
 import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
 
-/** Cambiar la cantidad de un producto ya anotado, o anularlo. */
+/**
+ * Cambiar la cantidad de un producto ya anotado, o anularlo. Es una hoja, como «Otro»:
+ * siempre a la vista, aunque la pedida esté al final de una lista larga (C2).
+ */
 export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Linea; cerrar: () => void; soloEtiqueta?: boolean }) {
   const [n, setN] = useState(l.cantidad);
+  useAtrasCierra(true, cerrar);
   return (
-    <div className="editar-fila">
-      <span className="titulo">{l.nombre}{l.paquete ? ` · ${nombrePaquete(l.paquete)}` : ""}</span>
+    <div className="hoja" onClick={cerrar}>
+    <div className="hoja-cuerpo editar-fila" onClick={(e) => e.stopPropagation()}>
+      <header className="cabeza-hoja">
+        <span className="titulo">{l.nombre}{l.paquete ? ` · ${nombrePaquete(l.paquete)}` : ""}</span>
+        <button className="cerrar-hoja" aria-label="Cerrar" onClick={cerrar}>✕</button>
+      </header>
       {l.editada && <span className="tenue">Antes eran {l.editada.antes} · cambió {l.editada.por}</span>}
       {productoDe(sinc.visible, l.producto)?.conNombre && (
         <div className="opciones">
@@ -46,6 +55,7 @@ export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Line
         }}>Guardar</button>
       </div>
       </>)}
+    </div>
     </div>
   );
 }

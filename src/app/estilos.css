@@ -569,3 +569,110 @@ html.muy-baja .tecla { min-height: 48px; }
 .codigo-vincular { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; border-radius: var(--radio); background: var(--amarillo); }
 .codigo-vincular strong { font-size: 2.6rem; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
 .anular-fila input { flex: 1 1 100%; }
+
+/* ── «Todo a la vista» (C2): lo necesario para vender se ve sin deslizar ── */
+/* «Cambiar cantidad» es una hoja, como «Otro». */
+.hoja-cuerpo.editar-fila { background: var(--crema); border: 0; border-radius: 20px 20px 0 0; max-width: 520px; }
+
+/* Celular vertical: los 19 productos del negocio caben en 4 columnas. */
+@media (max-width: 599px) {
+  .productos { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .producto { min-height: 58px; padding: 11px 2px 4px; }
+  .producto .corto { font-size: 0.8rem; letter-spacing: -0.01em; }
+  .producto .precio { font-size: 0.74rem; }
+  .contador { height: 28px; min-width: 30px; top: -15px; right: -3px; font-size: 0.88rem; padding: 0 5px; }
+  .seccion { margin: 8px 0 4px; }
+  .hoja .productos.valores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Celular girado (301 px de alto en el del negocio): todo compacto y en columnas. */
+html.apaisada-baja .productos { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; }
+html.apaisada-baja .producto { min-height: 48px; padding: 8px 2px 3px; gap: 0; }
+html.apaisada-baja .producto .corto { font-size: 0.72rem; letter-spacing: -0.01em; }
+html.apaisada-baja .producto .precio { font-size: 0.66rem; }
+html.apaisada-baja .contador { height: 24px; min-width: 26px; top: -12px; right: -3px; font-size: 0.8rem; padding: 0 4px; }
+html.apaisada-baja .segmentos button { min-height: 36px; }
+html.apaisada-baja .fila-nueva input, html.apaisada-baja .repetir { min-height: 36px; padding-top: 4px; padding-bottom: 4px; }
+html.apaisada-baja .nueva { margin-bottom: 6px; gap: 6px; }
+html.apaisada-baja .repetir { margin-bottom: 6px; }
+html.apaisada-baja .segmentos.petacos { margin-bottom: 6px; }
+html.apaisada-baja .anotar > section + section { margin-top: 6px; }
+
+/* Hojas: «Otro» con los 6 valores en una fila; el mixto con las cervezas y su +5 en una. */
+html.apaisada-baja .hoja-cuerpo { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+html.apaisada-baja .hoja-cuerpo h2 { font-size: 1.05rem; }
+html.apaisada-baja .cerrar-hoja { min-width: 36px; min-height: 36px; }
+html.apaisada-baja .hoja .productos.valores { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+html.apaisada-baja .productos.valores .producto { min-height: 40px; }
+html.apaisada-baja .fila-otro input, html.apaisada-baja .hoja form input { padding: 6px 10px; }
+html.apaisada-baja .hoja form .principal { min-height: 40px; padding: 6px 14px; }
+html.apaisada-baja .hoja .opciones { margin: 0; gap: 6px; }
+html.apaisada-baja .hoja .opciones .chip { min-height: 38px; padding: 4px 10px; }
+html.apaisada-baja .estado-mezcla, html.apaisada-baja .estado-mezcla.cambio { font-size: 0.95rem; padding: 2px 0; }
+html.apaisada-baja .hoja-cuerpo .productos { padding-top: 10px; row-gap: 10px; }
+html.apaisada-baja .mas-cinco { height: 28px; margin-top: 4px; }
+html.apaisada-baja .hoja .fila-botones .principal, html.apaisada-baja .hoja .fila-botones .secundario { min-height: 42px; padding: 6px 12px; }
+html.apaisada-baja .editar-fila .cantidad button { width: 48px; height: 48px; }
+html.apaisada-baja .editar-fila .cantidad b { font-size: 1.6rem; }
+
+/* Detalle: el total y los botones en el panel derecho, como al anotar; la lista a la izquierda. */
+html.apaisada-baja .detalle { max-width: none; padding-right: calc(var(--panel) + 16px); padding-bottom: 16px; }
+html.apaisada-baja .detalle .barra-superior { margin-right: calc(-1 * (var(--panel) + 16px)); }
+html.apaisada-baja .detalle .cabeza-total {
+  position: fixed; top: calc(var(--cabecera) + env(safe-area-inset-top)); right: 0; width: var(--panel); z-index: 4;
+  padding: 6px 10px; gap: 2px; background: var(--papel); border-left: 2px solid var(--neutro-200);
+}
+html.apaisada-baja .detalle .cabeza-total .total { font-size: 1.7rem; margin: 0; }
+html.apaisada-baja .detalle .cabeza-total .meta { font-size: 0.85rem; }
+html.apaisada-baja .detalle .desglose span { padding: 2px 8px; font-size: 0.85rem; }
+html.apaisada-baja .detalle .chips.centro { margin: 4px 0 8px; }
+html.apaisada-baja .detalle .chips.centro .chip { min-height: 38px; padding: 4px 14px; }
+html.apaisada-baja .detalle .pie-fijo {
+  left: auto; right: 0; width: var(--panel); max-width: none; margin: 0; z-index: 5;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  background: var(--papel); border-left: 2px solid var(--neutro-200);
+}
+html.apaisada-baja .detalle .pie-fijo > .secundario { min-height: 40px; padding: 4px; width: auto; }
+html.apaisada-baja .detalle .pie-fijo > .principal { grid-column: 1 / -1; min-height: 48px; }
+html.apaisada-baja .detalle .pie-fijo > :only-child { grid-column: 1 / -1; }
+
+/* Cobrar: total y medios a la izquierda; «¿con cuánto paga?» a la derecha. */
+html.apaisada-baja main.cobrar { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; align-content: start; padding-bottom: 80px; }
+html.apaisada-baja .cobrar > .barra-superior { grid-column: 1 / -1; }
+html.apaisada-baja .cobrar > .total { grid-column: 1; font-size: 1.9rem; margin: 0; }
+html.apaisada-baja .cobrar > .desglose { grid-column: 1; margin: 0; }
+html.apaisada-baja .cobrar > .opciones { grid-column: 1; margin: 6px 0; }
+html.apaisada-baja .cobrar > .opciones .chip { min-height: 44px; }
+html.apaisada-baja .cobrar > .recibido { grid-column: 2; grid-row: 2 / span 4; gap: 6px; }
+html.apaisada-baja .cobrar .recibido p { margin: 0; }
+html.apaisada-baja .cobrar .recibido .opciones { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; gap: 6px; }
+html.apaisada-baja .cobrar .recibido .opciones .chip { min-height: 44px; font-size: 0.9rem; }
+html.apaisada-baja .cobrar .recibido input { padding: 8px 12px; }
+html.apaisada-baja .cobrar .cambio { font-size: 1.3rem; margin: 0; }
+html.apaisada-baja .cobrar .pie-fijo .grande { min-height: 48px; }
+
+/* El día: lo vendido y el cuadre de caja lado a lado. */
+html.apaisada-baja .dia { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 10px; align-items: start; }
+html.apaisada-baja .dia > .cifra.grande { margin: 0; padding: 10px; }
+html.apaisada-baja .dia > .cifra.grande strong { font-size: 1.6rem; }
+html.apaisada-baja .dia > .caja { margin: 0; padding: 8px 10px; gap: 4px; }
+html.apaisada-baja .dia > .caja input { padding: 8px 12px; }
+html.apaisada-baja .dia > .cifras, html.apaisada-baja .dia > .por-producto, html.apaisada-baja .dia > .enlace { grid-column: 1 / -1; }
+html.apaisada-baja { --panel: clamp(200px, 30vw, 280px); }
+/* Celular girado: 8 columnas (cervezas, gaseosas y otros, una fila cada uno) */
+html.apaisada-baja { --panel: clamp(196px, 26vw, 260px); }
+html.apaisada-baja .productos { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
+html.apaisada-baja .producto .corto { font-size: 0.68rem; }
+html.apaisada-baja .dia > .cifra.grande { grid-column: auto; }
+html.apaisada-baja .detalle .prod-tarjetas { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+html.apaisada-baja .detalle .prod-tarjeta { padding: 6px 8px; row-gap: 0; }
+html.apaisada-baja .detalle .prod-tarjeta .cant { font-size: 1.3rem; }
+html.apaisada-baja .detalle .prod-tarjeta .nom { font-size: 0.9rem; }
+html.apaisada-baja .detalle .prod-tarjeta .unit { font-size: 0.75rem; }
+html.apaisada-baja .detalle .prod-tarjeta .sub { font-size: 0.95rem; }
+/* Celular girado: panel más angosto para que cada botón quepa palabras de 8 letras sin partirlas */
+html.apaisada-baja { --panel: 180px; }
+html.apaisada-baja .productos { gap: 5px; }
+html.apaisada-baja .producto .corto { font-size: 0.66rem; letter-spacing: -0.02em; }
+html.apaisada-baja main.anotar { padding-left: 8px; }
+html.apaisada-baja main.detalle { --panel: 230px; }
