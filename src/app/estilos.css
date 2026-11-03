@@ -531,3 +531,11 @@ html.apaisada-baja { --cabecera: 40px; }
 html.apaisada-baja .barra-superior { padding-top: calc(2px + env(safe-area-inset-top)); padding-bottom: 2px; margin-bottom: 6px; }
 html.apaisada-baja .barra-superior .atras, html.apaisada-baja .barra-superior .quien, html.apaisada-baja .conexion { min-height: 36px; }
 html.apaisada-baja .barra-superior strong { font-size: 1rem; }
+/* Celular girado, al anotar: la cabecera (volver, cuenta y saldo) sube a la columna del
+   panel; los productos usan todo el alto. */
+html.apaisada-baja .anotar .barra-superior {
+  position: fixed; top: 0; left: auto; right: 0; width: var(--panel); margin: 0; z-index: 7;
+  padding: calc(2px + env(safe-area-inset-top)) 6px 2px; gap: 4px;
+}
+html.apaisada-baja .anotar .barra-superior strong { font-size: 0.95rem; }
+html.apaisada-baja .anotar { padding-top: 8px; }
