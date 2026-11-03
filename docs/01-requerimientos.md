@@ -118,7 +118,7 @@ en la cuenta de comida. El sistema no cambia esa costumbre, pero la deja **escri
 | RF-71 | Un celular nuevo solo entra si un administrador lo **vincula** con un código temporal | M | ✅ |
 | RF-72 | Revocar un celular perdido o de alguien que ya no trabaja ahí | M | ✅ |
 | RF-73 | Dos roles: **administrador** (todo) y **operador** (anotar, cobrar, anular productos de cuentas abiertas, agotados) | M | ✅ |
-| RF-74 | Registro de auditoría consultable: quién anotó, anuló, cobró o reabrió qué | D | ⬜ (E4) |
+| RF-74 | Registro de auditoría consultable: quién anotó, anuló, cobró o reabrió qué | D | ✅ (E4) |
 
 ## No funcionales
 

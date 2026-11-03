@@ -6,6 +6,7 @@ import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
 import { aplicar, esOperacion, esVigente, estadoVacio, jornada, recortar, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
+import { describir, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
 
@@ -70,7 +71,9 @@ export default {
 
 // ── Durable Object ───────────────────────────────────────────────────
 
-type Mensaje = { tipo: "hola"; seq?: unknown; base?: unknown } | { tipo: "ops"; ops: unknown[]; base?: unknown };
+type Mensaje = ({ tipo: "hola"; seq?: unknown; base?: unknown } | { tipo: "ops"; ops: unknown[]; base?: unknown }) & { version?: unknown; pendientes?: unknown };
+/** Lo que cada celular conectado dice de sí (E4): se guarda con su WebSocket. */
+interface DeConexion { version?: string; pendientes?: number; visto?: number }
 
 /**
  * Cómo quedó lo que tocaron unas operaciones, según el servidor (docs/13, punto 4). El
@@ -124,6 +127,8 @@ export class Barra extends DurableObject<Env> {
       sql.exec("CREATE INDEX IF NOT EXISTS cuentas_vigentes ON cuentas (viva, ultima)");
       sql.exec("CREATE TABLE IF NOT EXISTS cuenta_jornadas (fecha TEXT NOT NULL, cuenta TEXT NOT NULL, PRIMARY KEY (fecha, cuenta))");
       sql.exec("CREATE TABLE IF NOT EXISTS proyeccion (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)");
+      // Auditoría (E4): las operaciones de un día por su hora, sin recorrer el registro.
+      sql.exec("CREATE INDEX IF NOT EXISTS operaciones_en ON operaciones (json_extract(datos, '$.en'))");
       this.acceso.preparar(PERSONAS);
       this.cargar();
     });
@@ -270,6 +275,42 @@ export class Barra extends DurableObject<Env> {
       this.cambiosDe(JSON.parse(f.datos) as Operacion, cambios);
     }
     return { tipo: "novedades", base: this.base, seq: this.seq, cambios };
+  }
+
+  /** Una cuenta como está ahora, sin dejarla en memoria si no estaba. */
+  private cuentaGuardada(id: string): Cuenta | undefined {
+    if (this.estado.cuentas[id]) return this.estado.cuentas[id];
+    const f = this.ctx.storage.sql.exec<{ datos: string }>("SELECT datos FROM cuentas WHERE id = ?", id).toArray()[0];
+    return f ? (JSON.parse(f.datos) as Cuenta) : undefined;
+  }
+
+  /**
+   * Auditoría de un día (RF-74, E4): cada operación en una frase, de la más reciente a la
+   * más vieja, y lo que se rechazó ese día.
+   */
+  private auditoria(fecha: string) {
+    const inicio = Date.parse(`${fecha}T10:00:00Z`); // 5:00 a. m. en Colombia (ver `jornada`)
+    const sql = this.ctx.storage.sql;
+    const filas = sql.exec<{ seq: number; persona: string; datos: string }>(
+      "SELECT seq, persona, datos FROM operaciones WHERE json_extract(datos, '$.en') >= ? AND json_extract(datos, '$.en') < ? ORDER BY seq DESC LIMIT 3000",
+      inicio, inicio + DIA,
+    ).toArray();
+    const cuentas = new Map<string, Cuenta | undefined>();
+    const cuentaDe = (id: string) => { if (!cuentas.has(id)) cuentas.set(id, this.cuentaGuardada(id)); return cuentas.get(id); };
+    const eventos: Evento[] = filas.map((f) => {
+      const op = JSON.parse(f.datos) as Operacion;
+      const c = "cuenta" in op ? cuentaDe(op.cuenta) : undefined;
+      const { texto, atencion } = describir(op, c, this.estado);
+      return { seq: f.seq, en: op.en, persona: f.persona, t: op.t, ...("cuenta" in op ? { cuenta: op.cuenta, cuentaNombre: c?.nombre } : {}), texto, atencion };
+    });
+    const rechazadas = sql.exec<{ id: string; persona: string; motivo: string; en: number; datos: string }>(
+      "SELECT id, persona, motivo, en, datos FROM rechazadas WHERE en >= ? AND en < ? ORDER BY en DESC LIMIT 500", inicio, inicio + DIA,
+    ).toArray().map((r) => {
+      let t = "";
+      try { t = String((JSON.parse(r.datos) as { t?: unknown }).t ?? ""); } catch { /* recortado */ }
+      return { id: r.id, persona: r.persona, motivo: r.motivo, en: r.en, t };
+    });
+    return { fecha, eventos, rechazadas, limitado: filas.length === 3000 };
   }
 
   /** Saca de memoria lo que ya no es vigente: está guardado y se trae si hace falta. */
@@ -536,7 +577,15 @@ export class Barra extends DurableObject<Env> {
       return json({ error: "Acción desconocida." }, 400);
     }
     if (ruta === "/api/admin/codigo" && req.method === "POST") return json(await this.acceso.crearCodigo(q.nombre));
-    if (ruta === "/api/admin/dispositivos" && req.method === "GET") return json({ dispositivos: this.acceso.dispositivos(), este: q.dispositivo });
+    if (ruta === "/api/admin/dispositivos" && req.method === "GET") {
+      // Conectados ahora: cada WebSocket abierto con su persona, versión y pendientes (E4).
+      const conexiones = this.ctx.getWebSockets().map((ws) => {
+        const etiquetas = this.ctx.getTags(ws);
+        const a = (ws.deserializeAttachment() ?? {}) as DeConexion;
+        return { dispositivo: etiquetas.find((t) => t.startsWith("d:"))?.slice(2) ?? "", persona: etiquetas[0] ?? "", ...a };
+      });
+      return json({ dispositivos: this.acceso.dispositivos(), este: q.dispositivo, conexiones });
+    }
     if (ruta === "/api/admin/dispositivos" && req.method === "POST") {
       const { revocar } = await cuerpo<{ revocar?: string }>();
       if (!revocar) return json({ error: "Falta el celular." }, 400);
@@ -565,6 +614,11 @@ export class Barra extends DurableObject<Env> {
       return new Response(`\uFEFF${csvJornada(this.cuentasDe(fecha), fecha)}`, {
         headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="barra-${fecha}.csv"`, "cache-control": "no-store" },
       });
+    }
+    if (ruta === "/api/admin/auditoria" && req.method === "GET") {
+      const fecha = url.searchParams.get("fecha") ?? jornada(Date.now());
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Fecha inválida." }, 400);
+      return json(this.auditoria(fecha));
     }
     if (ruta === "/api/admin/rechazadas" && req.method === "GET") {
       return json({ rechazadas: this.ctx.storage.sql.exec("SELECT id, persona, dispositivo, motivo, en, datos FROM rechazadas ORDER BY en DESC LIMIT 200").toArray() });
@@ -621,12 +675,22 @@ export class Barra extends DurableObject<Env> {
       return;
     }
     const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo };
+    // Versión y pendientes que reporta el celular, para «Personas y celulares».
+    const antes = (ws.deserializeAttachment() ?? {}) as DeConexion;
+    ws.serializeAttachment({
+      version: typeof m.version === "string" ? m.version.slice(0, 40) : antes.version,
+      pendientes: typeof m.pendientes === "number" && Number.isInteger(m.pendientes) && m.pendientes >= 0 ? m.pendientes : antes.pendientes,
+      visto: Date.now(),
+    } satisfies DeConexion);
     if (m.tipo === "hola") ws.send(JSON.stringify(this.novedades(m.seq, m.base) ?? this.foto()));
     else if (m.tipo === "ops" && Array.isArray(m.ops)) {
       if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto()));
       else {
         const { aceptadas, rechazadas } = this.recibir(m.ops, quien);
         ws.send(JSON.stringify({ tipo: "ok", ids: aceptadas, rechazadas }));
+        // Lo que reportó el celular incluía este lote: ya no le falta enviarlo.
+        const a = (ws.deserializeAttachment() ?? {}) as DeConexion;
+        if (typeof a.pendientes === "number") ws.serializeAttachment({ ...a, pendientes: Math.max(0, a.pendientes - aceptadas.length - rechazadas.length) } satisfies DeConexion);
       }
     }
   }

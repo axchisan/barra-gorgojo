@@ -717,3 +717,21 @@ html.apaisada-baja .dia .cifra.pendiente { grid-column: 1 / -1; }
 .cierre-hecho.falta { background: #fbe3e0; color: var(--rojo); }
 .dias { padding-bottom: 40px; }
 .dia-pasado header strong:first-child::first-letter { text-transform: uppercase; }
+
+/* Auditoría (E4) */
+.auditoria .fecha-auditoria { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 10px; }
+.auditoria .fecha-auditoria strong { flex: 1; text-align: center; font-size: 1.1rem; text-transform: capitalize; }
+.auditoria .chips { margin-bottom: 8px; }
+.auditoria .eventos { list-style: none; padding: 0; margin: 8px 0 0; }
+.auditoria .evento { display: grid; grid-template-columns: auto auto 1fr; column-gap: 8px; row-gap: 2px; padding: 10px 8px; border-bottom: 1px solid var(--neutro-200); align-items: baseline; }
+.auditoria .evento .hora { color: var(--neutro-600); font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+.auditoria .evento .quien { font-weight: 700; }
+.auditoria .evento .cuenta-evento { color: var(--marron-medio); font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auditoria .evento .texto-evento { grid-column: 1 / -1; }
+.auditoria .evento.revisar { background: #fbeee0; border-left: 4px solid var(--rojo); }
+.auditoria .rechazos-auditoria { border-color: var(--rojo); }
+.auditoria .rechazos-auditoria p { margin: 0; }
+@media (min-width: 700px) { .auditoria .eventos, .auditoria .chips, .auditoria .fecha-auditoria, .auditoria .rechazos-auditoria { max-width: 820px; margin-left: auto; margin-right: auto; } }
+.conexion-celular { flex-basis: 100%; font-size: 0.92rem; }
+.conexion-celular.en-linea { color: var(--verde); font-weight: 600; }
+

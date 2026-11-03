@@ -494,3 +494,82 @@ describe("novedades desde seq", () => {
     expect(conSeq.cambios).toEqual({});
   });
 });
+
+// E4: auditoría por día y celulares conectados.
+describe("auditoría y celulares conectados (E4)", () => {
+  const LLAVE = "llave-auditoria";
+  let s: Servidor;
+  let ana: string;
+  let admin: string;
+  beforeAll(async () => {
+    s = await arrancar({ base: "auditoria", migracion: LLAVE });
+    ana = await s.token("Ana");
+    admin = await s.token("Administrador");
+  });
+  afterAll(() => s?.apagar());
+  const hoy = () => new Date(Date.now() - 10 * 3600_000).toISOString().slice(0, 10);
+  const auditoria = async (token: string, fecha: string) => s.pedir(token, `/api/admin/auditoria?fecha=${fecha}`);
+
+  it("cuenta el día en frases, lo más reciente primero, con lo delicado marcado y lo rechazado", async () => {
+    const cuenta = `aud-${Date.now()}`;
+    await s.ops(admin, [
+      op({ t: "abrir", cuenta, nombre: "Para auditar", tipo: "grupo" }),
+      op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 2]]) }),
+      op({ t: "anular_cuenta", cuenta, motivo: "prueba" }),
+    ], "auditoria");
+    await s.ops(ana, [op({ t: "producto", producto: { id: "colada", nombre: "Colada", corto: "C", categoria: "otro", precio: 1000, activo: true, fondo: "#000000", texto: "#FFFFFF" } })], "auditoria");
+    const r = await auditoria(admin, hoy());
+    expect(r.status).toBe(200);
+    const d = (await r.json()) as { eventos: { texto: string; atencion: boolean; persona: string; cuentaNombre?: string }[]; rechazadas: { persona: string; motivo: string }[] };
+    const mios = d.eventos.filter((e) => e.cuentaNombre === "Para auditar");
+    expect(mios.map((e) => e.texto)).toEqual([
+      `Anuló la cuenta con $ ${(2 * RUBIA).toLocaleString("es-CO")} · motivo: prueba`,
+      `Anotó 2 Rubia · $ ${(2 * RUBIA).toLocaleString("es-CO")}`,
+      "Abrió la cuenta (grupo)",
+    ]);
+    expect(mios.map((e) => e.atencion)).toEqual([true, false, false]);
+    expect(d.rechazadas.some((x) => x.persona === "Ana" && /administrador/i.test(x.motivo))).toBe(true);
+  });
+
+  it("lo importado sale en su día, no en el de la importación", async () => {
+    const ayer = Date.now() - 2 * 24 * 3600_000;
+    const fecha = new Date(ayer - 10 * 3600_000).toISOString().slice(0, 10);
+    // Base nueva y vacía para importar.
+    const otra = await arrancar({ base: "auditoria-importada", migracion: LLAVE });
+    try {
+      const adm = await otra.token("Administrador");
+      const imp = await otra.pedir(adm, "/api/admin/importar", { method: "POST", headers: { "x-migracion": LLAVE }, body: JSON.stringify({ operaciones: [
+        { id: "imp-abrir-xxxxxxxx", t: "abrir", cuenta: "vieja", nombre: "De antier", tipo: "grupo", persona: "Ana", en: ayer },
+      ] }) });
+      expect(imp.status).toBe(200);
+      const enSuDia = (await (await otra.pedir(adm, `/api/admin/auditoria?fecha=${fecha}`)).json()) as { eventos: { cuentaNombre?: string }[] };
+      expect(enSuDia.eventos.map((e) => e.cuentaNombre)).toContain("De antier");
+      const hoyD = (await (await otra.pedir(adm, `/api/admin/auditoria?fecha=${hoy()}`)).json()) as { eventos: unknown[] };
+      expect(hoyD.eventos).toHaveLength(0);
+    } finally {
+      await otra.apagar();
+    }
+  });
+
+  it("solo el administrador la ve, y con fecha válida", async () => {
+    expect((await auditoria(ana, hoy())).status).toBe(403);
+    expect((await auditoria(admin, "ayer")).status).toBe(400);
+  });
+
+  it("los celulares conectados dicen su versión y cuántas anotaciones les faltan", async () => {
+    const ws = s.wsCrudo(ana);
+    const llego = new Promise((listo) => ws.addEventListener("message", listo));
+    await new Promise((listo) => ws.addEventListener("open", listo));
+    ws.send(JSON.stringify({ tipo: "hola", version: "2026-11-03 15:00", pendientes: 3 }));
+    await llego;
+    const d = (await (await s.pedir(admin, "/api/admin/dispositivos")).json()) as { conexiones: { persona: string; version?: string; pendientes?: number }[] };
+    expect(d.conexiones).toEqual(expect.arrayContaining([expect.objectContaining({ persona: "Ana", version: "2026-11-03 15:00", pendientes: 3 })]));
+    // Al enviar un lote de 2 de esas 3, le queda 1.
+    const ok = new Promise((listo) => ws.addEventListener("message", (e) => { if (String(e.data).includes('"ok"')) listo(null); }));
+    ws.send(JSON.stringify({ tipo: "ops", pendientes: 3, ops: [op({ t: "abrir", cuenta: `pend-${Date.now()}`, nombre: "P", tipo: "grupo" }), op({ t: "abrir", cuenta: `pend2-${Date.now()}`, nombre: "P2", tipo: "grupo" })], base: "auditoria" }));
+    await ok;
+    const d2 = (await (await s.pedir(admin, "/api/admin/dispositivos")).json()) as { conexiones: { persona: string; pendientes?: number }[] };
+    expect(d2.conexiones.find((x) => x.persona === "Ana")?.pendientes).toBe(1);
+    ws.close();
+  });
+});

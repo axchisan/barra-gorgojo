@@ -29,6 +29,9 @@ const ejemplo = fileURLToPath(new URL("./negocio.ejemplo/catalogo.ts", import.me
 
 export default defineConfig({
   plugins: [react(), versionarSw()],
+  // Versión de la app: cuándo se compiló, en hora de Colombia. La ve el administrador en
+  // «Personas y celulares» para saber si un celular quedó con una versión vieja (E4).
+  define: { __VERSION__: JSON.stringify(new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 16).replace("T", " ")) },
   // NEGOCIO=ejemplo compila con el catálogo de ejemplo (pruebas de extremo a extremo).
   resolve: { alias: process.env.NEGOCIO === "ejemplo" ? { "#negocio": ejemplo } : {} },
   build: { outDir: "dist", emptyOutDir: true },

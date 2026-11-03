@@ -132,10 +132,12 @@ desde un respaldo de R2. Un respaldo que nunca se restauró no es un respaldo.
 ## Observabilidad
 
 - **Workers Logs** para errores y operaciones rechazadas, y `wrangler tail` en vivo.
-- Hoy: «Personas y celulares» muestra cada celular y su último uso; las operaciones
-  rechazadas se guardan en la tabla `rechazadas` (`/api/admin/rechazadas`).
-- Pendiente (E4): pantalla con celulares conectados, versión de la app, pendientes de
-  cada celular y rechazadas; y que el Cron avise si faltó un respaldo.
+- «Personas y celulares» (E4): cada celular con su último uso y, si está conectado
+  ahora, quién lo usa, su versión de la app y cuánto le falta enviar (lo reporta el
+  celular al saludar y con cada envío; se guarda con su WebSocket).
+- «Auditoría» (E4): el día en frases, lo delicado resaltado y las operaciones rechazadas
+  (`/api/admin/auditoria?fecha=`).
+- Pendiente: que el Cron avise si faltó un respaldo.
 
 ## Lo que cada celular necesita
 

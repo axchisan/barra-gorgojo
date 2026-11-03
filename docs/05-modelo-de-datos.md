@@ -29,6 +29,7 @@ CREATE TABLE operaciones (
   recibida_en INTEGER NOT NULL
 );
 CREATE TABLE rechazadas (id, persona, dispositivo, datos, motivo, en);  -- regla 8
+CREATE INDEX operaciones_en ON operaciones (json_extract(datos, '$.en'));  -- auditoría por día (E4)
 
 -- Proyección (E3): se puede borrar; se reconstruye del registro
 CREATE TABLE cuentas (id PRIMARY KEY, datos, ultima, viva);  -- la Cuenta en JSON; viva = abierta con valor o en cocina

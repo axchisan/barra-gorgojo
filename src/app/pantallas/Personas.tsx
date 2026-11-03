@@ -7,6 +7,8 @@ import { cerrarConEnter } from "../teclado";
 interface PersonaAdmin { id: string; nombre: string; rol: string; color: string; activa: boolean; tienePin: boolean; pin: string | null }
 interface Celular { id: string; nombre: string; creado: number; por: string; ultimo_uso: number | null; revocado: number | null }
 interface Rechazada { id: string; persona: string; motivo: string; en: number }
+/** Un WebSocket abierto ahora (E4): quién lo usa, con qué versión y cuánto le falta enviar. */
+interface Conexion { dispositivo: string; persona: string; version?: string; pendientes?: number; visto?: number }
 
 /** Solo el administrador: personas con su PIN, celulares vinculados y lo que se rechazó. */
 export function Personas({ nav }: { nav: Nav }) {
@@ -14,6 +16,7 @@ export function Personas({ nav }: { nav: Nav }) {
   const [celulares, setCelulares] = useState<Celular[]>([]);
   const [este, setEste] = useState("");
   const [rechazadas, setRechazadas] = useState<Rechazada[]>([]);
+  const [conexiones, setConexiones] = useState<Conexion[]>([]);
   const [verPin, setVerPin] = useState<string | null>(null);
   const [cambiando, setCambiando] = useState<string | null>(null);
   const [pinNuevo, setPinNuevo] = useState("");
@@ -25,13 +28,14 @@ export function Personas({ nav }: { nav: Nav }) {
   const cargar = useCallback(async () => {
     const [p, d, r] = await Promise.all([
       sinc.admin<{ personas: PersonaAdmin[] }>("personas"),
-      sinc.admin<{ dispositivos: Celular[]; este: string }>("dispositivos"),
+      sinc.admin<{ dispositivos: Celular[]; este: string; conexiones?: Conexion[] }>("dispositivos"),
       sinc.admin<{ rechazadas: Rechazada[] }>("rechazadas"),
     ]);
     if (p.error || d.error) return setError(p.error ?? d.error ?? "");
     setPersonas(p.personas);
     setCelulares(d.dispositivos);
     setEste(d.este);
+    setConexiones(d.conexiones ?? []);
     setRechazadas(r.rechazadas ?? []);
   }, []);
   useEffect(() => { void cargar(); }, [cargar]);
@@ -107,6 +111,19 @@ export function Personas({ nav }: { nav: Nav }) {
           <div key={c.id} className="fila-persona">
             <span className="nombre-persona">{c.nombre}{c.id === este ? " · este" : ""}</span>
             <span className="tenue">desde {horaDe(c.creado)} · usado {c.ultimo_uso ? haceCuanto(c.ultimo_uso) : "nunca"}</span>
+            {(() => {
+              const cs = conexiones.filter((x) => x.dispositivo === c.id);
+              if (!cs.length) return <span className="conexion-celular tenue">Sin conexión ahora</span>;
+              const pend = cs.reduce((t, x) => t + (x.pendientes ?? 0), 0);
+              const versiones = [...new Set(cs.map((x) => x.version).filter(Boolean))].join(", ");
+              return (
+                <span className="conexion-celular en-linea">
+                  ● Conectado · {[...new Set(cs.map((x) => x.persona))].join(", ")}
+                  {versiones ? ` · versión ${versiones}` : ""}
+                  {pend ? ` · ${pend} por enviar` : ""}
+                </span>
+              );
+            })()}
             {c.id !== este && (
               <button className="chip peligro-chip" onClick={async () => { const r = await sinc.admin("dispositivos", { revocar: c.id }); if (r.error) setError(r.error); await cargar(); }}>Quitar</button>
             )}

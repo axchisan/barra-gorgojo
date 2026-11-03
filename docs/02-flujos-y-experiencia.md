@@ -245,7 +245,17 @@ Personas con su rol y su PIN (el administrador lo ve, ADR-10): agregar, activar 
 desactivar y quitar el PIN (la persona crea uno nuevo al entrar). Celulares: vincular uno
 con un código de 6 números y quitar uno perdido (RF-72).
 
-### 11 · Entrada
+### 11 · Auditoría (administrador, E4)
+
+Desde el menú de la persona. Un día a la vez (◀ ▶, empieza en hoy): cada operación en una
+frase con hora, quién y cuenta, de la más reciente a la más vieja («Anotó 3 Rubia ·
+$ 12.000», «Anuló la cuenta con $ 8.000 · motivo: …», «Reabrió la cuenta»). Lo que
+conviene revisar sale resaltado y se puede ver solo eso: anulaciones, reaperturas, cambios
+de cantidad o de precio, cierres con diferencia. Filtro por persona. Arriba, lo que el
+servidor no aceptó ese día. En «Personas y celulares», cada celular dice si está conectado
+ahora, quién lo usa, su versión de la app y si le queda algo por enviar.
+
+### 12 · Entrada
 
 - Celular nuevo: pide el **código de vinculación** de 6 dígitos que genera un
   administrador desde su celular. Se hace una vez por aparato.

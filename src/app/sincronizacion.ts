@@ -33,6 +33,8 @@ interface Cambios {
 }
 
 const CANDADO = "barra-gorgojo-conexion";
+/** Versión de esta compilación; en pruebas unitarias (sin Vite) no existe. */
+const VERSION = typeof __VERSION__ === "string" ? __VERSION__ : "desarrollo";
 const CANAL = "barra-gorgojo";
 
 type Respuesta<T> = T & { error?: string };
@@ -339,7 +341,7 @@ class Sincronizador {
     if (this.ws?.readyState === WebSocket.OPEN) {
       if (Date.now() - this.enVuelo < 8000) return;
       this.enVuelo = Date.now();
-      this.ws.send(JSON.stringify({ tipo: "ops", base: this.base, ops: this.pendientes.slice(0, 100) }));
+      this.ws.send(JSON.stringify({ tipo: "ops", base: this.base, ops: this.pendientes.slice(0, 100), version: VERSION, pendientes: this.pendientes.length }));
     }
   }
 
@@ -389,7 +391,7 @@ class Sincronizador {
 
   /** El saludo al servidor: con lo que ya se tiene, para que mande solo lo nuevo. */
   private hola() {
-    return JSON.stringify({ tipo: "hola", ...(this.confirmado.seq > 0 ? { seq: this.confirmado.seq, base: this.base } : {}) });
+    return JSON.stringify({ tipo: "hola", version: VERSION, pendientes: this.pendientes.length, ...(this.confirmado.seq > 0 ? { seq: this.confirmado.seq, base: this.base } : {}) });
   }
 
   /** Toma lo que dice el servidor de lo que cambió: es el total oficial (regla 5). */

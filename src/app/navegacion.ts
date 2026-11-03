@@ -10,7 +10,8 @@ export type Vista =
   | { v: "producto"; id?: string }
   | { v: "personas" }
   | { v: "mipin" }
-  | { v: "dias" };
+  | { v: "dias" }
+  | { v: "auditoria" };
 
 export const INICIO: Vista = { v: "inicio", pestana: "cuentas" };
 

@@ -274,7 +274,7 @@ Contexto útil para esa sesión:
 | 13·2 Validación en el servidor | ✅ | 2026-11-03 | Zod en el Worker; lo dañado se rechaza con motivo sin tumbar el lote |
 | E3 Foto del estado | ✅ | 2026-11-03 | Adelantada por [13](13-revision-tecnica.md) punto 3: proyección por cuenta (ADR-13); al despertar solo lo vigente |
 | 13·4 Novedades desde `seq` | ✅ | 2026-11-03 | Al reconectar y en el respaldo HTTP, solo lo nuevo; cada operación llega con cómo quedó lo que tocó |
-| E4 Auditoría | ⬜ | | |
+| E4 Auditoría | ✅ | 2026-11-03 | Pantalla «Auditoría» del administrador: el día en frases (`src/dominio/auditoria.ts`), lo delicado resaltado, filtro por persona, rechazos del día; índice por hora de la operación. «Personas y celulares» muestra conectados, versión y pendientes. Pruebas de dominio, servidor y e2e |
 | E5 Ensayo de restauración | ⬜ | | |
 | E6 e2e completo | ⬜ | | |
 | E7 Documentación al día | ✅ | 2026-11-03 | Comprobada contra el código. 01: estado de cada requerimiento y RF-30 a RF-36 (petacos, «Otro», precio de cancha, cantidad, comida, sugerencias, a la vista). 02: «Otro», cancha, cambiar cantidad, menú de la persona, productos y personas. 03: árbol real, stack real y ADR-12 (atajos quitados y los que se quedan: sin Zod, Tailwind ni Workbox, estado recalculado). 05: modelo real (registro, tablas, 13 operaciones, `Estado`), el diseño original aparte. 06: secretos, respaldo completo, observabilidad. 07, README y AGENTS.md |

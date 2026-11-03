@@ -29,6 +29,7 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
             <>
               <button onClick={() => { setCambiar(false); nav.ir({ v: "productos" }); }}>Productos y precios</button>
               <button onClick={() => { setCambiar(false); nav.ir({ v: "personas" }); }}>Personas y celulares</button>
+              <button onClick={() => { setCambiar(false); nav.ir({ v: "auditoria" }); }}>Auditoría</button>
             </>
           )}
           <button onClick={() => { setCambiar(false); nav.ir({ v: "mipin" }); }}>Cambiar mi PIN</button>
