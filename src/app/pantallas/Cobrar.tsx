@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { saldo, totalComida, type Medio } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
-import { billetesMayores } from "../../dominio/pago";
+import { sugerirPago } from "../../dominio/pago";
 import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
 import { NoExiste } from "../componentes/NoExiste";
@@ -18,7 +18,7 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   const valor = saldo(c);
   if (valor <= 0) return <NoExiste nav={nav} />;
 
-  const billetes = billetesMayores(valor).slice(0, 3);
+  const billetes = sugerirPago(valor);
   const cambio = medio === "efectivo" && recibido != null ? recibido - valor : null;
 
   const cobrar = (m: Medio) => {

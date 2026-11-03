@@ -170,7 +170,8 @@ que los productos empiecen arriba en un teléfono pequeño. Los toques son los m
 │   [ Efectivo ] [ Nequi ] [ Breve ]   │
 │                                      │
 │ Recibido:                            │
-│ [ Exacto ] [ 50.000 ] [ 100.000 ]    │
+│ [ Exacto ] [ 43.000 ] [ 45.000 ]     │
+│ [ 50.000 ] [ 100.000 ]               │
 │ [ Otro valor ______ ]                │
 │                                      │
 │        Cambio: $ 7.500               │ ← grande
@@ -181,7 +182,12 @@ que los productos empiecen arriba en un teléfono pequeño. Los toques son los m
 └──────────────────────────────────────┘
 ```
 
-- Efectivo viene seleccionado. Los billetes sugeridos son los que superan el total.
+- Efectivo viene seleccionado. Después de «Exacto» salen hasta cuatro valores con que de
+  verdad pagan (`sugerirPago` en `src/dominio/pago.ts`): la cuenta redondeada hacia arriba
+  al mil, a los cinco mil y a los diez mil, el siguiente múltiplo de 50.000 y de 100.000, y
+  los billetes en circulación mayores que la cuenta; sin repetidos y de menor a mayor.
+  Ej.: 37.000 → 40.000, 50.000, 100.000. Tocar uno muestra el cambio al instante; no
+  agrega ningún toque al flujo.
 - En una cuenta de **mesa**, en vez de cobrar directo aparecen dos botones del mismo
   tamaño: **«Cobrar aquí»** y **«Pasar a comida»**. No hay opción por defecto, a
   propósito: obliga a decidir (RF-42).

@@ -265,7 +265,7 @@ Contexto útil para esa sesión:
 | C2 · Auditoría «todo a la vista» | ✅ | 2026-11-02 | Hecha: ver `negocio/docs/11` «C2». `tests/e2e/a-la-vista.spec.ts` exige todo a la vista en los cuatro tamaños reales. Pedido del negocio (2026-11-02), después de D: en cada vista, sobre todo las de venta (anotar, detalle, cobrar, el día), las acciones deben verse sin deslizar y con tamaño adecuado según aparato y orientación; en el celular girado hoy hay que deslizar en cobrar y otros paneles. Auditar, documentar en `negocio/docs/11` y ajustar |
 | E1 Cerrar el día | ✅ | 2026-11-03 | Operación `cerrar_jornada` (cualquiera; se puede repetir), días anteriores y CSV para el administrador. Ver 02 y 05. En producción el 2026-11-03 (autorizado; producción con datos de prueba) |
 | F1 Billetes de Colombia | ✅ | 2026-11-03 | `src/dominio/pago.ts` (`BILLETES`, `billetesMayores`) con pruebas; familia de 2.000 a 100.000 confirmada en banrep.gov.co. Cobrar ya la usa |
-| F2 Sugerir con cuánto pagan | ⬜ | | |
+| F2 Sugerir con cuánto pagan | ✅ | 2026-11-03 | `sugerirPago`: redondeo hacia arriba a 1.000, 5.000 y 10.000, siguiente múltiplo de 50.000 y 100.000 y billetes mayores; máximo 4 después de «Exacto». Pruebas con los ejemplos del negocio y de 100 a 300.000. Cabe a la vista en los cuatro tamaños (`a-la-vista`, `espacio-movil`) |
 | F3 Mostrar al cliente en Cobrar | ⬜ | | |
 | F4 Avisos más cómodos | ⬜ | | |
 | E2 IndexedDB | ⬜ | | |
