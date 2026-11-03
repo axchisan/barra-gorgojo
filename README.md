@@ -91,6 +91,7 @@ archivo son solo la semilla de una base nueva.
 | [06 · Infraestructura](docs/06-infraestructura.md) | Servicios, entornos, respaldos, costos y límites |
 | [07 · Roadmap](docs/07-roadmap.md) | Fases, entregables, adopción y riesgos |
 | [12 · Plan de trabajo](docs/12-plan-de-trabajo.md) | **Fases A–G en orden, seguimiento, reglas para producción y cómo iniciar la sesión** |
+| [13 · Revisión técnica](docs/13-revision-tecnica.md) | El stack planeado contra el que corre, con medidas, y qué cambiar y cuándo |
 
 Los documentos 08 a 11 (datos del negocio, auditoría, migración y revisión en teléfono
 con capturas) tienen datos reales y viven en `negocio/docs/`.
