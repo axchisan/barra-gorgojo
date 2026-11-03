@@ -87,6 +87,12 @@ pnpm desplegar            # wrangler deploy (producción)
 Para empezar, la dirección `barra-gorgojo.<subdominio>.workers.dev` es suficiente: se
 instala una vez en la pantalla de inicio de cada celular y nadie la vuelve a escribir.
 
+**Revisión del 2026-11-03** ([13](13-revision-tecnica.md) «Hosting y dominio»): la
+dirección es la identidad de la app en cada celular (instalación, memoria y vinculación),
+así que la definitiva debe quedar **antes de la fase G**. Recomendado: comprar
+`elretendelgorgojo.com` (sigue libre) en el registrador de Cloudflare, a nombre del
+negocio, y usar `barra.elretendelgorgojo.com`.
+
 Cuando se compre `elretendelgorgojo.com`, hay dos caminos para `barra.`:
 
 1. **Llevar el DNS del dominio a Cloudflare** (gratis) y apuntar el sitio a Vercel

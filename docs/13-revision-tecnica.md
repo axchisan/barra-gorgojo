@@ -139,3 +139,74 @@ el lote sigue, y si `aplicar` fallara el estado se rearma; pruebas en
 
 Los puntos 1 y 2 son cortos (horas). El 3 es el trabajo grande y el más importante para
 el largo plazo. Ninguno cambia lo que se ve en pantalla ni las reglas del negocio.
+
+## Hosting y dominio
+
+### Cómo está
+
+- La app vive en `barra-gorgojo.<cuenta>.workers.dev`: el subdominio gratuito de
+  Cloudflare, con el nombre de la **cuenta personal del desarrollador**.
+- Worker, Durable Object, respaldos en R2 y pruebas están en esa misma cuenta.
+- Plan gratuito de Workers.
+- El sitio del restaurante está en Vercel (`elretendelgorgojo.vercel.app`) y
+  `elretendelgorgojo.com` **sigue libre** (consultado el 2026-11-03).
+
+### Por qué hay que decidirlo ahora y no después
+
+La **dirección de la app es su identidad en cada celular**. La app instalada, la memoria
+en IndexedDB y la cookie que vincula el celular son de esa dirección exacta. Cambiar de
+dirección después obliga a reinstalar la app y volver a vincular cada celular, y lo que
+haya sin enviar en un celular se queda en la dirección vieja. Hoy no hay uso real, y la
+fase G va a crear una base nueva de todos modos: **es el mejor momento**, y G debería
+hacerse ya en la dirección definitiva.
+
+### Opciones
+
+| | Dirección | A favor | En contra |
+|---|---|---|---|
+| A | Seguir en `workers.dev` | Cero costo, cero trabajo | Lleva el nombre de la cuenta personal; no se puede pasar a otra cuenta sin cambiar de dirección |
+| **B** | **`barra.elretendelgorgojo.com`**, con el dominio comprado en el registrador de Cloudflare | Dirección del negocio, que no cambia aunque cambie la cuenta o el hosting; DNS en Cloudflare gratis; el sitio sigue en Vercel con un registro DNS; ~11 dólares al año a precio de costo, con privacidad WHOIS incluida | Hay que comprarlo y renovarlo (activar la renovación automática) |
+| C | Dominio en otro registrador (Hostinger, como `axchisan.com`) y DNS en Cloudflare | Igual que B | Dos lugares que administrar; el DNS de Hostinger no sirve para el dominio propio de un Worker |
+| D | Subdominio de `axchisan.com` | Gratis, ya existe | Es la marca del desarrollador, su DNS está en Hostinger y tiene registros que no se pueden tocar |
+
+**Recomendación: B.** Comprar `elretendelgorgojo.com` por 2 o 3 años, con renovación
+automática; poner la app en `barra.elretendelgorgojo.com` como dominio propio del Worker,
+y apuntar el dominio principal a Vercel para el sitio. Es lo que ya planeaban
+[06](06-infraestructura.md) y el documento 08 del sitio.
+
+### De quién es cada cosa
+
+- **El dominio debe quedar a nombre del negocio** (`retendelgorgojo@gmail.com` o la
+  cuenta que el negocio controle). Perder el dominio es perder la app y el sitio.
+- **La cuenta de Cloudflare**: hoy es la personal del desarrollador (la pregunta de
+  titularidad está en `negocio/docs/08`). Si se quiere una cuenta del negocio con el
+  desarrollador como miembro, también conviene hacerlo **antes de G**: mover un Durable
+  Object de cuenta no se puede; se hace con respaldo, `pnpm migrar` y la ruta de
+  importar, que ya existen y se ensayaron en B. Verificar en Cloudflare qué roles permite
+  el plan gratuito para miembros.
+- **Seguridad de la cuenta**: verificación en dos pasos en Cloudflare y en el correo
+  dueño del dominio.
+
+### Plan gratuito o pago
+
+El plan gratuito alcanza con holgura **si se hace E3**. Sin E3, el límite de filas
+leídas se acerca en menos de un año (punto 3), y al pasarlo la app falla ese día. El plan
+pago de Workers (5 dólares al mes) sube todos los límites (unas 25 mil millones de filas
+leídas al mes) y **cobra en vez de fallar**. Para un sistema del que depende la caja es
+un seguro barato; no reemplaza a E3, pero quita el riesgo mientras se hace.
+
+### Respaldos fuera de la cuenta
+
+Los respaldos en R2 están en la **misma cuenta** que la app: si la cuenta se pierde o se
+compromete, se pierde todo junto. Conviene una copia fuera de Cloudflare (por ejemplo, el
+administrador baja el respaldo completo cada semana, o un envío automático a otro
+almacenamiento). Va con E5 (ensayo de restauración).
+
+### Orden propuesto para la infraestructura
+
+1. Decidir cuenta (personal o del negocio) y comprar el dominio a nombre del negocio.
+2. Dominio propio del Worker en `barra.elretendelgorgojo.com`; pruebas en
+   `barra-pruebas.elretendelgorgojo.com` (o se quedan en `workers.dev`).
+3. Fase G **en la dirección nueva**: base limpia con las ventas reales, celulares
+   instalados y vinculados una sola vez, ya definitiva.
+4. E3 antes de que el registro crezca; plan pago si se quiere el seguro desde ya.
