@@ -115,3 +115,29 @@ test("con dos pestañas, una sola tiene la conexión; la otra anota por ella y l
   await abrirYAnotar(b, "Después del relevo");
   await expect(tarjeta(otro, "Después del relevo")).toBeVisible({ timeout: 15_000 });
 });
+
+test("al volver a abrir la app pide solo lo nuevo (novedades), no la foto completa", async ({ browser }) => {
+  const a = await celular(browser);
+  const b = await celular(browser, "Apoyo");
+  await abrirYAnotar(a, "Antes de cerrar");
+  await expect(tarjeta(b, "Antes de cerrar")).toBeVisible({ timeout: 15_000 });
+  await expect(b.locator(".conexion")).toHaveText(/Todo al día/);
+  const contexto = b.context();
+  await b.close();
+
+  // Mientras la app está cerrada, el otro celular anota.
+  await abrirYAnotar(a, "Con la app cerrada");
+  await abrirYAnotar(a, "También cerrada");
+
+  const b2 = await contexto.newPage();
+  const recibidos: string[] = [];
+  b2.on("websocket", (ws) => ws.on("framereceived", (f) => { const t = String(f.payload); if (t.startsWith("{")) recibidos.push(JSON.parse(t).tipo); }));
+  b2.on("response", async (r) => { if (r.url().endsWith("/api/ops")) recibidos.push(((await r.json().catch(() => ({}))) as { tipo?: string }).tipo ?? "foto"); });
+  await b2.goto("/");
+  await expect(tarjeta(b2, "Con la app cerrada")).toBeVisible({ timeout: 15_000 });
+  await expect(tarjeta(b2, "También cerrada")).toBeVisible();
+  await expect(tarjeta(b2, "Antes de cerrar")).toBeVisible();
+  await expect(b2.locator(".conexion")).toHaveText(/Todo al día/);
+  expect(recibidos).toContain("novedades");
+  expect(recibidos).not.toContain("foto");
+});

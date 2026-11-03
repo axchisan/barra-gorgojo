@@ -4,7 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esOperacion, estadoVacio, recortar, situacion, total, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, esOperacion, esVigente, estadoVacio, jornada, recortar, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
 import { validar } from "./esquema";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
@@ -29,6 +29,13 @@ const nombreBase = (env: Env) => env.BASE || BASE_ORIGINAL;
 const barraDe = (env: Env) => env.BARRA.get(env.BARRA.idFromName(nombreBase(env)));
 
 const DIA = 24 * 3600_000;
+/**
+ * Versión de la proyección guardada (E3). Subirla cuando un cambio en `aplicar` haga que
+ * lo guardado deje de coincidir con recalcular el registro: al despertar se reconstruye.
+ */
+const VERSION_PROYECCION = 1;
+/** Lo que el celular ve además de lo vivo (ver `esVigente`). */
+const VENTANA_VIGENTE = 36 * 3600_000;
 /** Ventana en que quien cobró o anuló puede deshacerlo sin ser administrador. */
 const VENTANA_DESHACER = 5 * 60_000;
 const COOKIE = "bg_disp";
@@ -63,7 +70,21 @@ export default {
 
 // ── Durable Object ───────────────────────────────────────────────────
 
-type Mensaje = { tipo: "hola" } | { tipo: "ops"; ops: unknown[]; base?: unknown };
+type Mensaje = { tipo: "hola"; seq?: unknown; base?: unknown } | { tipo: "ops"; ops: unknown[]; base?: unknown };
+
+/**
+ * Cómo quedó lo que tocaron unas operaciones, según el servidor (docs/13, punto 4). El
+ * celular lo toma tal cual: no necesita tener la cuenta para que le llegue bien, aunque
+ * sea una vieja que ya no estaba en su foto.
+ */
+interface Cambios {
+  cuentas?: Record<string, Cuenta>;
+  productos?: Estado["productos"];
+  orden?: Estado["orden"];
+  jornadas?: Estado["jornadas"];
+}
+/** Hasta cuántas operaciones atrás se mandan novedades al reconectar; más, la foto completa. */
+const MAX_NOVEDADES = 500;
 interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string }
 interface Rechazo { id: string; motivo: string }
 
@@ -93,9 +114,18 @@ export class Barra extends DurableObject<Env> {
         id TEXT NOT NULL, persona TEXT NOT NULL, dispositivo TEXT NOT NULL,
         datos TEXT NOT NULL, motivo TEXT NOT NULL, en INTEGER NOT NULL
       )`);
+      // Proyección (E3, docs/13 punto 3): cada cuenta como quedó, los días en que tuvo
+      // movimiento y lo general (catálogo, orden, cierres, seq). Se escribe en la misma
+      // transacción que la operación; al despertar se cargan solo las cuentas vigentes en
+      // vez de recalcular todo el registro.
+      sql.exec(`CREATE TABLE IF NOT EXISTS cuentas (
+        id TEXT PRIMARY KEY, datos TEXT NOT NULL, ultima INTEGER NOT NULL, viva INTEGER NOT NULL
+      )`);
+      sql.exec("CREATE INDEX IF NOT EXISTS cuentas_vigentes ON cuentas (viva, ultima)");
+      sql.exec("CREATE TABLE IF NOT EXISTS cuenta_jornadas (fecha TEXT NOT NULL, cuenta TEXT NOT NULL, PRIMARY KEY (fecha, cuenta))");
+      sql.exec("CREATE TABLE IF NOT EXISTS proyeccion (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)");
       this.acceso.preparar(PERSONAS);
-      // El estado es el resultado de aplicar el registro en orden.
-      this.rearmar();
+      this.cargar();
     });
   }
 
@@ -113,10 +143,142 @@ export class Barra extends DurableObject<Env> {
   }
 
   private foto() {
+    this.podar();
     return { tipo: "foto" as const, base: this.base, estado: recortar(this.estado, Date.now()), seq: this.seq };
   }
 
-  /** Rearma el estado aplicando el registro guardado, en orden. */
+  // ── Proyección (E3) ──────────────────────────────────────────────────
+
+  /**
+   * Al despertar: lo general y las cuentas vigentes, desde la proyección. Si la proyección
+   * no corresponde al registro (otra versión, o un `seq` distinto), se reconstruye.
+   */
+  private cargar() {
+    const sql = this.ctx.storage.sql;
+    const meta = new Map(sql.exec<{ clave: string; valor: string }>("SELECT clave, valor FROM proyeccion").toArray().map((f) => [f.clave, f.valor]));
+    const ultimo = sql.exec<{ s: number }>("SELECT COALESCE(MAX(seq), 0) AS s FROM operaciones").one().s;
+    if (Number(meta.get("version")) !== VERSION_PROYECCION || Number(meta.get("seq")) !== ultimo) return this.reconstruir();
+    const estado = estadoVacio();
+    estado.productos = JSON.parse(meta.get("productos") ?? "{}");
+    if (meta.has("orden")) estado.orden = JSON.parse(meta.get("orden")!);
+    if (meta.has("jornadas")) estado.jornadas = JSON.parse(meta.get("jornadas")!);
+    for (const f of sql.exec<{ datos: string }>("SELECT datos FROM cuentas WHERE viva = 1 OR ultima >= ?", Date.now() - VENTANA_VIGENTE)) {
+      const c = JSON.parse(f.datos) as Cuenta;
+      estado.cuentas[c.id] = c;
+    }
+    this.estado = estado;
+    this.seq = ultimo;
+  }
+
+  /** Recalcula todo el registro y vuelve a escribir la proyección. Una sola vez, no en cada despertar. */
+  private reconstruir() {
+    this.rearmar();
+    const sql = this.ctx.storage.sql;
+    this.ctx.storage.transactionSync(() => {
+      sql.exec("DELETE FROM cuentas");
+      sql.exec("DELETE FROM cuenta_jornadas");
+      sql.exec("DELETE FROM proyeccion");
+      for (const c of Object.values(this.estado.cuentas)) this.guardarCuenta(c);
+      this.guardarGeneral(["productos", "orden", "jornadas"]);
+    });
+    console.log(JSON.stringify({ aviso: "proyeccion-reconstruida", seq: this.seq, cuentas: Object.keys(this.estado.cuentas).length }));
+  }
+
+  /** Días en que una cuenta tuvo algo: abrirla, pedidas y cobros. */
+  private static diasDe(c: Cuenta): Set<string> {
+    const dias = new Set([jornada(c.abiertaEn)]);
+    for (const r of c.rondas) dias.add(jornada(r.en));
+    for (const p of c.pagos) dias.add(jornada(p.en));
+    return dias;
+  }
+
+  private guardarCuenta(c: Cuenta) {
+    const sql = this.ctx.storage.sql;
+    // «Viva»: abierta con valor, o pasada a comida sin cobrar (lo que no se recorta por tiempo).
+    const viva = esVigente(c, Number.MAX_SAFE_INTEGER) ? 1 : 0;
+    sql.exec(
+      "INSERT INTO cuentas (id, datos, ultima, viva) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET datos = excluded.datos, ultima = excluded.ultima, viva = excluded.viva",
+      c.id, JSON.stringify(c), c.ultima, viva,
+    );
+    for (const fecha of Barra.diasDe(c)) sql.exec("INSERT OR IGNORE INTO cuenta_jornadas (fecha, cuenta) VALUES (?, ?)", fecha, c.id);
+  }
+
+  /** Lo general de la proyección: siempre la versión y el seq; lo demás, lo que cambió. */
+  private guardarGeneral(claves: ("productos" | "orden" | "jornadas")[] = []) {
+    const sql = this.ctx.storage.sql;
+    const poner = (clave: string, valor: string) =>
+      sql.exec("INSERT INTO proyeccion (clave, valor) VALUES (?, ?) ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor", clave, valor);
+    poner("version", String(VERSION_PROYECCION));
+    poner("seq", String(this.seq));
+    for (const k of claves) {
+      const v = this.estado[k];
+      if (v === undefined) sql.exec("DELETE FROM proyeccion WHERE clave = ?", k);
+      else poner(k, JSON.stringify(v));
+    }
+  }
+
+  /** Trae a memoria una cuenta que ya no estaba (vieja, fuera de la ventana). */
+  private traerCuenta(id: string) {
+    if (this.estado.cuentas[id]) return;
+    const f = this.ctx.storage.sql.exec<{ datos: string }>("SELECT datos FROM cuentas WHERE id = ?", id).toArray()[0];
+    if (f) this.estado.cuentas[id] = JSON.parse(f.datos) as Cuenta;
+  }
+
+  /**
+   * Las cuentas con movimiento en un día, como están ahora (de memoria si están, si no de
+   * la proyección), en orden de apertura: el mismo orden que tenían en el estado completo.
+   */
+  private cuentasDe(fecha: string): Cuenta[] {
+    return this.ctx.storage.sql
+      .exec<{ id: string; datos: string }>("SELECT c.id, c.datos FROM cuenta_jornadas j JOIN cuentas c ON c.id = j.cuenta WHERE j.fecha = ?", fecha)
+      .toArray()
+      .map((f) => this.estado.cuentas[f.id] ?? (JSON.parse(f.datos) as Cuenta))
+      .sort((a, b) => a.abiertaEn - b.abiertaEn || (a.id < b.id ? -1 : 1));
+  }
+
+  /** Lo que una operación necesita en memoria para aplicarse igual que con el registro completo. */
+  private traerPara(op: Operacion) {
+    if ("cuenta" in op) this.traerCuenta(op.cuenta);
+    // El efectivo esperado de un cierre suma todas las cuentas de ese día.
+    if (op.t === "cerrar_jornada" && /^\d{4}-\d{2}-\d{2}$/.test(op.fecha)) {
+      for (const c of this.cuentasDe(op.fecha)) this.estado.cuentas[c.id] ??= c;
+    }
+  }
+
+  /** Agrega a `cambios` cómo quedó lo que tocó una operación ya aplicada. */
+  private cambiosDe(op: Operacion, cambios: Cambios = {}): Cambios {
+    if ("cuenta" in op) {
+      this.traerCuenta(op.cuenta);
+      const c = this.estado.cuentas[op.cuenta];
+      if (c) (cambios.cuentas ??= {})[c.id] = c;
+    }
+    if (op.t === "producto") cambios.productos = this.estado.productos ?? {};
+    if (op.t === "orden") cambios.orden = this.estado.orden ?? [];
+    if (op.t === "cerrar_jornada") cambios.jornadas = this.estado.jornadas ?? {};
+    return cambios;
+  }
+
+  /**
+   * Lo que cambió después de `desde`, si el celular es de esta base y no se quedó muy
+   * atrás; si no, null (y se le manda la foto completa).
+   */
+  private novedades(desde: unknown, base: unknown): { tipo: "novedades"; base: string; seq: number; cambios: Cambios } | null {
+    if (typeof desde !== "number" || !Number.isInteger(desde) || desde <= 0 || desde > this.seq) return null;
+    if (baseDelEnvio(base) !== this.base || this.seq - desde > MAX_NOVEDADES) return null;
+    const cambios: Cambios = {};
+    for (const f of this.ctx.storage.sql.exec<{ datos: string }>("SELECT datos FROM operaciones WHERE seq > ? ORDER BY seq", desde)) {
+      this.cambiosDe(JSON.parse(f.datos) as Operacion, cambios);
+    }
+    return { tipo: "novedades", base: this.base, seq: this.seq, cambios };
+  }
+
+  /** Saca de memoria lo que ya no es vigente: está guardado y se trae si hace falta. */
+  private podar() {
+    const ahora = Date.now();
+    for (const [id, c] of Object.entries(this.estado.cuentas)) if (!esVigente(c, ahora)) delete this.estado.cuentas[id];
+  }
+
+  /** Rearma el estado aplicando el registro guardado, en orden (solo para reconstruir). */
   private rearmar() {
     this.estado = estadoVacio();
     this.seq = 0;
@@ -170,9 +332,9 @@ export class Barra extends DurableObject<Env> {
         );
       }
     });
-    this.rearmar();
-    this.avisarATodos(this.foto());
+    this.reconstruir();
     const cuentas = Object.values(this.estado.cuentas);
+    this.avisarATodos(this.foto());
     return json({ base: this.base, seq: this.seq, cuentas: cuentas.length, total: cuentas.reduce((t, c) => t + c.lineas.reduce((s, l) => s + (l.anulada ? 0 : l.precio * l.cantidad), 0), 0) });
   }
 
@@ -233,6 +395,7 @@ export class Barra extends DurableObject<Env> {
       // Quién la hizo lo dice la sesión, no el celular. La hora se acota.
       const op = { ...v.op, persona: quien.nombre, en: Math.min(ahora, Math.max(ahora - DIA, v.op.en)) } as Operacion;
       delete op.seq;
+      this.traerPara(op);
       const motivo = this.permiso(op, quien, ahora);
       if (motivo) { rechazar(op.id, op.t, crudo, motivo); continue; }
       // El precio fijado solo lo pone el servidor: lo que mande el celular se descarta.
@@ -242,7 +405,7 @@ export class Barra extends DurableObject<Env> {
       } catch (e) {
         // Una regla que falla a medias pudo dejar el estado tocado: se rearma del registro.
         console.error(JSON.stringify({ aviso: "aplicar-fallo", id: op.id, t: op.t, error: String(e) }));
-        this.rearmar();
+        this.cargar();
         rechazar(op.id, op.t, crudo, "No se pudo anotar. Avise al administrador.");
         continue;
       }
@@ -252,16 +415,22 @@ export class Barra extends DurableObject<Env> {
         const cobradas = new Map((this.estado.cuentas[op.cuenta]?.lineas ?? []).filter((l) => l.ronda === op.ronda).map((l) => [l.id, l.precio]));
         op.lineas = op.lineas.map((l) => (cobradas.has(l.id) ? { ...l, precioFijado: cobradas.get(l.id) } : l));
       }
-      const { seq } = this.ctx.storage.sql
-        .exec<{ seq: number }>(
-          "INSERT INTO operaciones (id, persona, datos, recibida_en) VALUES (?, ?, ?, ?) RETURNING seq",
-          op.id, quien.nombre, JSON.stringify(op), ahora,
-        )
-        .one();
-      op.seq = seq;
-      this.seq = seq;
+      // La operación y la proyección, juntas: o quedan las dos o ninguna.
+      this.ctx.storage.transactionSync(() => {
+        const { seq } = this.ctx.storage.sql
+          .exec<{ seq: number }>(
+            "INSERT INTO operaciones (id, persona, datos, recibida_en) VALUES (?, ?, ?, ?) RETURNING seq",
+            op.id, quien.nombre, JSON.stringify(op), ahora,
+          )
+          .one();
+        op.seq = seq;
+        this.seq = seq;
+        const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
+        if (c) this.guardarCuenta(c);
+        this.guardarGeneral(op.t === "producto" ? ["productos"] : op.t === "orden" ? ["orden"] : op.t === "cerrar_jornada" ? ["jornadas"] : []);
+      });
       aceptadas.push(op.id);
-      this.avisarATodos({ tipo: "op", op });
+      this.avisarATodos({ tipo: "op", op, cambios: this.cambiosDe(op) });
     }
     return { aceptadas, rechazadas };
   }
@@ -325,11 +494,12 @@ export class Barra extends DurableObject<Env> {
       return new Response(null, { status: 101, webSocket: cliente });
     }
     if (ruta === "/api/ops" && req.method === "POST") {
-      const { ops, base } = await cuerpo<{ ops?: unknown[]; base?: unknown }>();
+      const { ops, base, seq } = await cuerpo<{ ops?: unknown[]; base?: unknown; seq?: unknown }>();
       const lista = Array.isArray(ops) ? ops : [];
       if (lista.length && this.esDeOtraBase(base, q.nombre, lista.length)) return json({ error: "base", ok: [], rechazadas: [], ...this.foto() }, 409);
       const { aceptadas, rechazadas } = this.recibir(lista, q);
-      return json({ ok: aceptadas, rechazadas, ...this.foto() });
+      // Con `seq`, solo lo nuevo (el respaldo HTTP pregunta cada 5 s); sin él, la foto.
+      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()) });
     }
     if (ruta === "/api/foto") return json(this.foto());
     if (ruta === "/api/mi-pin" && req.method === "POST") {
@@ -376,19 +546,23 @@ export class Barra extends DurableObject<Env> {
       return json({ ok: true });
     }
     if (ruta === "/api/admin/jornadas" && req.method === "GET") {
-      // Días anteriores (RF-52): con el estado completo, que el celular no guarda.
-      const cuentas = Object.values(this.estado.cuentas);
-      const dias = jornadasConMovimiento(cuentas).slice(0, 120).map((fecha) => {
+      // Días anteriores (RF-52): de la proyección, día por día (el celular no los guarda).
+      const fechas = this.ctx.storage.sql.exec<{ fecha: string }>("SELECT DISTINCT fecha FROM cuenta_jornadas ORDER BY fecha DESC LIMIT 200").toArray().map((f) => f.fecha);
+      const dias = [];
+      for (const fecha of fechas) {
+        const cuentas = this.cuentasDe(fecha);
+        if (!jornadasConMovimiento(cuentas).includes(fecha)) continue; // solo abrió, sin pedidas ni cobros
         const { porProducto: _, ...r } = resumenJornada(cuentas, fecha);
-        return { ...r, cierres: this.estado.jornadas?.[fecha] ?? [] };
-      });
+        dias.push({ ...r, cierres: this.estado.jornadas?.[fecha] ?? [] });
+        if (dias.length === 120) break;
+      }
       return json({ dias });
     }
     if (ruta === "/api/admin/jornadas/csv" && req.method === "GET") {
       const fecha = url.searchParams.get("fecha") ?? "";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Falta la fecha." }, 400);
       // Con BOM: así Excel reconoce las tildes.
-      return new Response(`\uFEFF${csvJornada(Object.values(this.estado.cuentas), fecha)}`, {
+      return new Response(`\uFEFF${csvJornada(this.cuentasDe(fecha), fecha)}`, {
         headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="barra-${fecha}.csv"`, "cache-control": "no-store" },
       });
     }
@@ -447,7 +621,7 @@ export class Barra extends DurableObject<Env> {
       return;
     }
     const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo };
-    if (m.tipo === "hola") ws.send(JSON.stringify(this.foto()));
+    if (m.tipo === "hola") ws.send(JSON.stringify(this.novedades(m.seq, m.base) ?? this.foto()));
     else if (m.tipo === "ops" && Array.isArray(m.ops)) {
       if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto()));
       else {

@@ -25,8 +25,8 @@ afectan el uso diario ya**:
 |---|---|---|---|
 | 1 ✅ | **El Service Worker abre la app esperando la red sin límite** | Con Wi-Fi «conectado sin internet» la app no abre (visto el 2026-11-03 en el celular: más de 30 s). Incumple RNF-04 | **Ya** |
 | 2 ✅ | **Validar en el servidor con un esquema** (Zod u otro), solo del lado del Worker | Hoy pasan operaciones con medio de pago o tipo de cuenta inventados, y una pedida con `lineas: null` hace fallar el lote: el celular que la tenga deja de enviar todo lo demás | **Ya** |
-| 3 | **Foto del estado guardada (E3) y no recalcular el registro al despertar** | El Durable Object relee el registro completo cada vez que despierta (medido: 30 a 40 veces el primer día de uso). Con el registro de un año eso se acerca al límite gratuito de filas leídas, y el estado de todos los días vive en memoria (límite 128 MB) | En los próximos meses, **antes de ~100.000 operaciones**; el plan decía 5.000 por precaución |
-| 4 | **Novedades desde `seq`** en vez de la foto completa al reconectar, y el respaldo HTTP sin repetir la foto cada 5 s | Cada reconexión baja la foto entera (hoy unos 300 KB sin comprimir con un día movido); sin WebSocket, el respaldo HTTP la baja cada 5 s | Junto con 3 |
+| 3 ✅ | **Foto del estado guardada (E3) y no recalcular el registro al despertar** | El Durable Object relee el registro completo cada vez que despierta (medido: 30 a 40 veces el primer día de uso). Con el registro de un año eso se acerca al límite gratuito de filas leídas, y el estado de todos los días vive en memoria (límite 128 MB) | En los próximos meses, **antes de ~100.000 operaciones**; el plan decía 5.000 por precaución |
+| 4 ✅ | **Novedades desde `seq`** en vez de la foto completa al reconectar, y el respaldo HTTP sin repetir la foto cada 5 s | Cada reconexión baja la foto entera (hoy unos 300 KB sin comprimir con un día movido); sin WebSocket, el respaldo HTTP la baja cada 5 s | Junto con 3 |
 | 5 | **Dexie**: decidir si se queda | Es el 27 % del paquete (33 de 123 KB comprimidos) y se usa una mínima parte | Opcional |
 
 ## Pieza por pieza
@@ -136,6 +136,12 @@ con sus archivos; `tests/e2e/abrir-sin-red.spec.ts`, que falla con el Service Wo
 anterior) y 2 (`src/servidor/esquema.ts` con Zod; lo dañado va a `rechazadas` con motivo,
 el lote sigue, y si `aplicar` fallara el estado se rearma; pruebas en
 `tests/servidor/barra.test.ts` «forma de las operaciones»).
+
+**Hechos el 2026-11-03:** 3 (proyección por cuenta, ADR-13; `tests/servidor/proyeccion.test.ts`
+compara foto, días anteriores y CSV con recalcular todo, antes y después de reiniciar y
+operando sobre cuentas viejas; falla si se quita la carga de cuentas viejas o la de las
+cuentas del día al cerrar) y 4 (`novedades` al saludar y en el respaldo HTTP, `cambios`
+en cada operación; prueba de extremo a extremo que falla si el celular no manda su `seq`).
 
 Los puntos 1 y 2 son cortos (horas). El 3 es el trabajo grande y el más importante para
 el largo plazo. Ninguno cambia lo que se ve en pantalla ni las reglas del negocio.

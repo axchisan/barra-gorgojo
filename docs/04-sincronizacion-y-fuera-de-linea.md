@@ -119,6 +119,16 @@ servidor → todos     op { …, seq: 1858 }                       // a cada cel
 
 - La **foto** contiene solo lo vivo: cuentas abiertas, cuentas cerradas de la jornada
   actual, pasadas a comida sin cobrar, catálogo. No la historia completa.
+
+**Cómo quedó (2026-11-03, [13](13-revision-tecnica.md) punto 4).** El celular saluda con
+`hola { seq, base }` (lo último que tiene). Si es de la misma base y le faltan 500
+operaciones o menos, el servidor responde `novedades { seq, cambios }`; si no (primera vez,
+otra base, muy atrás), la `foto`. Cada operación reenviada a todos va como
+`op { op, cambios }`. `cambios` dice **cómo quedó lo que tocó**: las cuentas completas, y
+el catálogo, el orden o los cierres si cambiaron. El celular lo toma tal cual en vez de
+aplicar la operación: así le llega bien aunque sea sobre una cuenta vieja que ya no
+estaba en su foto, y el total es el del servidor (regla 5). El respaldo HTTP (`/api/ops`)
+manda también su `seq` y recibe novedades, no la foto cada 5 s.
 - Los pendientes se envían en lotes de hasta 50, en orden.
 - El servidor procesa cada operación así: si su `id` ya existe, responde con el `seq`
   que tenía (**idempotencia**); si no, valida permisos y datos, la aplica, la guarda,

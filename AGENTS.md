@@ -31,7 +31,7 @@ deja otra vez limpia, solo con las ventas reales.
 
 0. **Nunca cambiar en el código el precio de un producto del catálogo base ya usado**, y
    todo cambio en `src/dominio/estado.ts` debe dar el mismo estado al aplicar el registro
-   viejo. Ver `docs/04` «Precio fijado por el servidor». En producción el catálogo base
+   viejo (si cambia lo que queda guardado, subir `VERSION_PROYECCION`, ADR-13). Ver `docs/04` «Precio fijado por el servidor». En producción el catálogo base
    está vacío desde el 2026-11-02 (todo el catálogo vive en el registro, ADR-08); la regla
    sigue valiendo para cualquier negocio que siembre su catálogo en el código.
 

@@ -4,11 +4,15 @@
 
 La versión en uso es más simple que el diseño original de abajo. Lo que cambia:
 
-- **El servidor solo guarda el registro de operaciones** (más acceso y rechazos). Las
-  cuentas, rondas, líneas, pagos, el catálogo, el orden de los botones y los cierres del
-  día **no son tablas**: son el `Estado` que resulta de aplicar el registro en orden con
-  `aplicar` (`src/dominio/estado.ts`), la misma función que usa el celular. El Durable
-  Object lo recalcula al despertar (E3 lo cambiará cuando el registro sea grande).
+- **La verdad es el registro de operaciones.** El estado (cuentas con sus rondas, líneas
+  y pagos; catálogo; orden; cierres) es lo que resulta de aplicarlo en orden con
+  `aplicar` (`src/dominio/estado.ts`), la misma función que usa el celular.
+- **Desde E3 (2026-11-03) el servidor guarda además una proyección**: cada cuenta como
+  quedó (una fila JSON por cuenta, no tablas de rondas y líneas), los días en que tuvo
+  movimiento, y lo general. Se escribe en la misma transacción que la operación. Al
+  despertar se cargan solo las cuentas vigentes; si la proyección no corresponde al
+  registro (otra `VERSION_PROYECCION` o otro `seq`), se reconstruye una vez. Prueba de la
+  regla 4: `tests/servidor/proyeccion.test.ts`.
 - **Ids** generados en el celular con `crypto.randomUUID()` (UUID v4, no v7). El orden lo
   da `seq` del servidor.
 - **Nombres** de persona en las operaciones (`persona`), no ids.
@@ -25,6 +29,12 @@ CREATE TABLE operaciones (
   recibida_en INTEGER NOT NULL
 );
 CREATE TABLE rechazadas (id, persona, dispositivo, datos, motivo, en);  -- regla 8
+
+-- Proyección (E3): se puede borrar; se reconstruye del registro
+CREATE TABLE cuentas (id PRIMARY KEY, datos, ultima, viva);  -- la Cuenta en JSON; viva = abierta con valor o en cocina
+CREATE INDEX cuentas_vigentes ON cuentas (viva, ultima);
+CREATE TABLE cuenta_jornadas (fecha, cuenta, PRIMARY KEY (fecha, cuenta));  -- días anteriores, CSV y cierres
+CREATE TABLE proyeccion (clave PRIMARY KEY, valor);  -- version, seq, productos, orden, jornadas
 
 -- src/servidor/acceso.ts (fase D, ADR-10)
 CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada);  -- pin cifrado

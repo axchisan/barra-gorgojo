@@ -435,3 +435,62 @@ describe("forma de las operaciones", () => {
     expect(r.rechazadas ?? []).toEqual([]);
   });
 });
+
+// Punto 4 de docs/13: al reconectar, solo lo nuevo; y cada operación llega con cómo quedó lo que tocó.
+describe("novedades desde seq", () => {
+  let s: Servidor;
+  let ana: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+  });
+  afterAll(() => s?.apagar());
+
+  /** Saluda por WebSocket y devuelve la primera respuesta. */
+  const saludar = async (hola: Record<string, unknown>) => {
+    const ws = s.wsCrudo(ana);
+    const r = new Promise<any>((listo) => ws.addEventListener("message", (e) => { if (String(e.data) !== "pong") listo(JSON.parse(String(e.data))); }));
+    await new Promise((listo) => ws.addEventListener("open", listo));
+    ws.send(JSON.stringify(hola));
+    const m = await r;
+    ws.close();
+    return m;
+  };
+
+  it("con seq manda solo las cuentas que cambiaron; sin seq, con otra base o con un seq imposible, la foto", async () => {
+    const vieja = `nov-vieja-${Date.now()}`, nueva = `nov-nueva-${Date.now()}`;
+    const r1 = await s.ops(ana, [op({ t: "abrir", cuenta: vieja, nombre: "Vieja", tipo: "grupo" })]);
+    const desde = r1.seq;
+    await s.ops(ana, [
+      op({ t: "abrir", cuenta: nueva, nombre: "Nueva", tipo: "grupo" }),
+      op({ t: "anotar", cuenta: nueva, ronda: "r1", lineas: lineas([["rubia", 2]]) }),
+    ]);
+    const m = await saludar({ tipo: "hola", seq: desde, base: r1.base });
+    expect(m.tipo).toBe("novedades");
+    expect(m.seq).toBe(desde + 2);
+    expect(Object.keys(m.cambios.cuentas)).toEqual([nueva]);
+    expect(m.cambios.cuentas[nueva].lineas[0].precio).toBe(RUBIA);
+
+    expect((await saludar({ tipo: "hola" })).tipo).toBe("foto");
+    expect((await saludar({ tipo: "hola", seq: desde, base: "otra-base" })).tipo).toBe("foto");
+    expect((await saludar({ tipo: "hola", seq: desde + 1000, base: r1.base })).tipo).toBe("foto");
+    const nada = await saludar({ tipo: "hola", seq: desde + 2, base: r1.base });
+    expect(nada).toMatchObject({ tipo: "novedades", seq: desde + 2, cambios: {} });
+  });
+
+  it("cada operación reenviada trae la cuenta como quedó, y el respaldo HTTP con seq no repite la foto", async () => {
+    const cuenta = `nov-op-${Date.now()}`;
+    const ws = await s.conectar(ana);
+    await s.ops(ana, [op({ t: "abrir", cuenta, nombre: "Con cambios", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 3]]) })]);
+    await esperar(() => ws.mensajes.filter((x) => x.tipo === "op").length >= 2);
+    const anotar = ws.mensajes.find((x) => x.tipo === "op" && x.op.t === "anotar");
+    expect(anotar.cambios.cuentas[cuenta].lineas).toHaveLength(1);
+    ws.cerrar();
+
+    const r = await (await s.opsCrudo(ana, [])).json();
+    const conSeq = await (await s.pedir(ana, "/api/ops", { method: "POST", body: JSON.stringify({ ops: [], base: r.base, seq: r.seq }) })).json();
+    expect(conSeq.tipo).toBe("novedades");
+    expect(conSeq.estado).toBeUndefined();
+    expect(conSeq.cambios).toEqual({});
+  });
+});

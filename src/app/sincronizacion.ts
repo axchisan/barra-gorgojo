@@ -24,6 +24,14 @@ type Mensaje =
   | { tipo: "conexion"; conexion: Conexion }
   | { tipo: "rechazo"; motivo: string };
 
+/** Cómo quedó lo que tocaron unas operaciones, según el servidor (docs/13, punto 4). */
+interface Cambios {
+  cuentas?: Estado["cuentas"];
+  productos?: Estado["productos"];
+  orden?: Estado["orden"];
+  jornadas?: Estado["jornadas"];
+}
+
 const CANDADO = "barra-gorgojo-conexion";
 const CANAL = "barra-gorgojo";
 
@@ -379,21 +387,46 @@ class Sincronizador {
     this.recalcular();
   }
 
+  /** El saludo al servidor: con lo que ya se tiene, para que mande solo lo nuevo. */
+  private hola() {
+    return JSON.stringify({ tipo: "hola", ...(this.confirmado.seq > 0 ? { seq: this.confirmado.seq, base: this.base } : {}) });
+  }
+
+  /** Toma lo que dice el servidor de lo que cambió: es el total oficial (regla 5). */
+  private tomarCambios(c: Cambios | undefined) {
+    if (!c) return;
+    const e = this.confirmado.estado;
+    for (const [id, cuenta] of Object.entries(c.cuentas ?? {})) e.cuentas[id] = cuenta;
+    if (c.productos) e.productos = c.productos;
+    if (c.orden) e.orden = c.orden;
+    if (c.jornadas) e.jornadas = c.jornadas;
+  }
+
+  private recibirNovedades(m: { seq: number; cambios?: Cambios }) {
+    this.tomarCambios(m.cambios);
+    this.confirmado.seq = m.seq;
+    void this.guardar({ ajustes: { confirmado: this.confirmado } });
+    this.recalcular();
+  }
+
   private alMensaje(texto: string) {
     this.ultimoMensaje = Date.now();
     if (texto === "pong") return;
     const m = JSON.parse(texto);
-    if (m.tipo === "foto") {
-      this.recibirFoto(m.estado, m.seq, m.base);
+    if (m.tipo === "foto" || m.tipo === "novedades") {
+      if (m.tipo === "foto") this.recibirFoto(m.estado, m.seq, m.base);
+      else this.recibirNovedades(m);
       this.enVuelo = 0;
       this.enviar();
     } else if (m.tipo === "op") {
       const op = m.op as Operacion;
       if (op.seq === this.confirmado.seq + 1) {
-        aplicar(this.confirmado.estado, op);
+        // Con `cambios`, lo que dice el servidor; sin ellos (servidor viejo), se aplica aquí.
+        if (m.cambios) this.tomarCambios(m.cambios);
+        else aplicar(this.confirmado.estado, op);
         this.confirmado.seq = op.seq;
       } else if ((op.seq ?? 0) > this.confirmado.seq + 1) {
-        this.ws?.send(JSON.stringify({ tipo: "hola" })); // se perdió algo: pedir la foto completa
+        this.ws?.send(this.hola()); // se perdió algo: pedir lo que falta
       }
       this.quitarPendientes([op.id]);
       void this.guardar({ ajustes: { confirmado: this.confirmado } });
@@ -430,7 +463,7 @@ class Sincronizador {
       this.ultimoMensaje = Date.now();
       this.enVuelo = 0;
       this.ponerConexion("conectado");
-      ws.send(JSON.stringify({ tipo: "hola" }));
+      ws.send(this.hola());
     };
     ws.onmessage = (e) => this.alMensaje(String(e.data));
     ws.onclose = () => {
@@ -474,7 +507,7 @@ class Sincronizador {
       const r = await fetch("/api/ops", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${this.sesion.token}` },
-        body: JSON.stringify({ base: this.base, ops: this.pendientes.slice(0, 100) }),
+        body: JSON.stringify({ base: this.base, ops: this.pendientes.slice(0, 100), ...(this.confirmado.seq > 0 ? { seq: this.confirmado.seq } : {}) }),
       });
       if (r.status === 401) {
         const e = (await r.json().catch(() => ({}))) as { error?: string };
@@ -482,10 +515,11 @@ class Sincronizador {
         return this.salir();
       }
       if (!r.ok && r.status !== 409) throw new Error(); // 409: otra base; llega su foto
-      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: Estado; seq: number; base?: string };
+      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios };
       this.quitarPendientes(d.ok);
       this.rechazar(d.rechazadas);
-      this.recibirFoto(d.estado, d.seq, d.base);
+      if (d.tipo === "novedades") this.recibirNovedades(d);
+      else this.recibirFoto(d.estado, d.seq, d.base);
       this.ponerConexion("conectado");
     } catch {
       this.ponerConexion("sin-senal");

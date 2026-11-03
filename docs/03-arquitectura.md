@@ -364,11 +364,40 @@ E2, así quedan.
 
 | Atajo | Por qué | Hasta cuándo |
 |---|---|---|
-| El estado se recalcula del registro al despertar, sin proyecciones en tablas | Con cientos de operaciones tarda milisegundos y no hay dos verdades que mantener | E3: cuando pase de unas 5.000 operaciones |
+| ~~El estado se recalcula del registro al despertar~~ | Quitado el 2026-11-03 con E3: proyección por cuenta (ADR-13) | — |
 | ~~Sin Zod~~ | Quitado el 2026-11-03: Zod valida en el Worker cada operación que llega (ver [13](13-revision-tecnica.md), punto 2) | — |
 | Sin Tailwind: CSS propio con variables | Ya resuelve vertical, girado, tablet y teclado (fases C y C2) y está probado; migrarlo no da nada al negocio | No se planea |
 | Service Worker a mano, sin Workbox | Es corto (`public/sw.js`): abre sin señal, con tiempo límite a la red (punto 1 de [13](13-revision-tecnica.md)) y cada despliegue estrena caché | Si hiciera falta precache fino o sincronización en segundo plano |
 | Fuentes del sistema, no Bitter ni Source Sans 3 | Abren sin descargar nada y sin señal; se leen bien al sol | Si el negocio pide la identidad del sitio |
 | Ids UUID v4 y nombre de la persona en cada operación | El orden lo da `seq`; el nombre basta para la auditoría de un local | E4 (auditoría) puede pedir el id del celular |
 | Sin unir cuentas, cambiar tipo, notas en la pedida ni «agotado» por cualquiera (RF-05, 06, 17, 61) | El negocio no los ha pedido en el uso real | Cuando los pida |
+
+### ADR-13 · Proyección por cuenta en el servidor y «cambios» en cada operación (2026-11-03)
+
+Medido en [13](13-revision-tecnica.md): el Durable Object releía el registro completo cada
+vez que despertaba (30 a 40 veces el primer día) y guardaba todo el historial en memoria.
+Con un año de registro eso llega al límite gratuito de filas leídas, y al pasarlo la app
+falla ese día.
+
+**Decisión.** El servidor guarda, en la misma transacción que cada operación, una
+proyección: la cuenta tocada como quedó (una fila JSON por cuenta), los días en que tuvo
+movimiento y lo general (catálogo, orden, cierres, `seq`). Al despertar carga lo general y
+las cuentas vigentes; una cuenta vieja se trae cuando alguien opera sobre ella, y un
+cierre del día trae todas las cuentas de esa fecha, para que el efectivo esperado sea
+idéntico a recalcular todo. «Días anteriores» y el CSV leen de la proyección día por día.
+La proyección se puede borrar: si no coincide con el registro (`VERSION_PROYECCION` u otro
+`seq`), se reconstruye una vez.
+
+**Por qué una fila JSON por cuenta y no tablas de rondas, líneas y pagos** (lo del diseño
+original): el dominio ya trabaja con la `Cuenta` entera y `aplicar` es la única función de
+reglas (regla 5); partirla en tablas duplicaría las reglas en SQL. Los reportes que hagan
+falta (fase 3) se calculan con las mismas funciones del dominio sobre las cuentas del día.
+
+**«Cambios» en cada operación.** Con la foto recortada, el celular no tiene las cuentas
+viejas: una operación reenviada sobre una de ellas no se veía hasta la siguiente foto. Ahora
+el servidor manda con cada operación cómo quedó lo que tocó, y al reconectar manda solo
+las novedades desde el `seq` del celular.
+
+**Regla para quien cambie `aplicar`:** si el cambio hace que lo ya guardado deje de
+coincidir con recalcular el registro, subir `VERSION_PROYECCION` en `worker.ts`.
 

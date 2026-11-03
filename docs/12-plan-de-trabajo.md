@@ -272,7 +272,8 @@ Contexto útil para esa sesión:
 | F y E2 en producción | ✅ | 2026-11-03 | Autorizado (sin uso a esa hora; producción con datos de prueba). Foto antes y después igual: `seq` 106, 7 cuentas, $ 108.500. Revisado en las apps instaladas: tablet vertical y horizontal y celular vertical; las dos migraron solas de `localStorage` a IndexedDB. Una cuenta «Revisión F» anotada y cobrada (`seq` 109). Celular girado en la app instalada: gira (768 × 301, diseño horizontal) al girarlo a mano; forzarlo por adb no sirve con la rotación automática apagada. Queda resuelto el pendiente de C |
 | 13·1 App abre con la red colgada | ✅ | 2026-11-03 | Service Worker con 1,5 s de espera a la red; ver [13](13-revision-tecnica.md) |
 | 13·2 Validación en el servidor | ✅ | 2026-11-03 | Zod en el Worker; lo dañado se rechaza con motivo sin tumbar el lote |
-| E3 Foto del estado | ⬜ | | **Adelantar**: ver [13](13-revision-tecnica.md) punto 3, antes de ~100.000 operaciones |
+| E3 Foto del estado | ✅ | 2026-11-03 | Adelantada por [13](13-revision-tecnica.md) punto 3: proyección por cuenta (ADR-13); al despertar solo lo vigente |
+| 13·4 Novedades desde `seq` | ✅ | 2026-11-03 | Al reconectar y en el respaldo HTTP, solo lo nuevo; cada operación llega con cómo quedó lo que tocó |
 | E4 Auditoría | ⬜ | | |
 | E5 Ensayo de restauración | ⬜ | | |
 | E6 e2e completo | ⬜ | | |
