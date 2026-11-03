@@ -127,10 +127,11 @@ src/
 ├── app/
 │   ├── App.tsx         # solo sesión y qué pantalla se ve
 │   ├── navegacion.ts   # useNavegacion: cada pantalla es una entrada del historial
-│   ├── avisos.tsx      # aviso con «Deshacer»
+│   ├── avisos.tsx      # avisos arriba, con «Deshacer»; los rechazos se quedan
 │   ├── paquetes.ts     # petacos: agrupar, describir, contar
 │   ├── cuentas.ts      # resumen por producto, color, ícono del tipo
-│   ├── colores.ts · vibrar.ts · sincronizacion.ts (localStorage, cola, WebSocket)
+│   ├── memoria.ts      # IndexedDB con Dexie; trae lo de localStorage (0.1)
+│   ├── colores.ts · vibrar.ts · sincronizacion.ts (cola, WebSocket, varias pestañas)
 │   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Productos, EditarProducto
 │   └── componentes/    # TarjetaCuenta, TarjetasProducto, EditarLinea, Desglose, NoExiste,
 │                       # EstadoConexion, HojaLibre (mecato y «Otro»), HojaMixto
@@ -318,3 +319,17 @@ otro catálogo para comprobar que recalcular el registro no cambia lo anotado. C
 no se puede leer el SQLite por dentro ni mover el reloj del servidor (lo de «más de 36
 horas» se prueba en el dominio). Revisar cuando `vitest-pool-workers` soporte Vitest 5;
 la API `unstable_` puede cambiar al actualizar Wrangler.
+
+### ADR-11 · Memoria en IndexedDB sin `liveQuery`; una pestaña con la conexión (2026-11-03)
+
+E2 cambió `localStorage` por IndexedDB con Dexie, como estaba previsto, pero no usa
+`liveQuery`: el sincronizador ya tiene en memoria lo confirmado y la cola y avisa a React
+con `useSyncExternalStore`; IndexedDB es solo dónde queda guardado. La pantalla se
+actualiza al instante y la escritura va en paralelo (milisegundos); el envío espera a que
+esté guardada. Entre pestañas, un `BroadcastChannel` avisa que la memoria cambió y cada
+una la relee, sin deshacer lo que ella misma aún no guardó. La conexión la tiene la
+pestaña con el candado de Web Locks; sin Web Locks, cada pestaña se conecta como antes (el
+servidor es idempotente por `id`). La migración desde `localStorage` se hace cada vez que
+aparezca algo ahí, no una sola vez, porque una pestaña con la versión 0.1 puede seguir
+abierta; por eso `bg.base` se queda. Probado en la tablet y el celular reales: migraron
+sus colas de `localStorage` (6 anotaciones sin enviar en el celular) y llegaron una vez.

@@ -70,13 +70,23 @@ pendientes es instantáneo.
 Al abrir por primera vez se pide `navigator.storage.persist()`, para que el navegador no
 borre los datos por falta de espacio.
 
+**Cómo quedó (E2, 2026-11-03).** `src/app/memoria.ts`: una base IndexedDB
+`barra-gorgojo` con Dexie y dos tablas, `pendientes` (en orden, única por `id`) y
+`ajustes` (sesión, confirmado, base, apartados y personas). Catálogo y personas van
+dentro de lo confirmado (la foto del servidor). Cada cambio es una transacción; un cambio
+de base vacía la cola y la aparta en la misma transacción. La versión 0.1 guardaba todo en
+`localStorage`: al abrir, lo que haya ahí se trae uniendo por `id` (lo de otra base va a
+apartados) y se borra, salvo `bg.base`, que se deja y se mantiene al día para saber de qué
+base es lo que escriba una pestaña vieja que siga abierta. Si IndexedDB no abre, se
+sigue con `localStorage`. Pruebas: `tests/e2e/memoria.spec.ts`.
+
 ### Escribir
 
 1. El toque produce la operación.
-2. Se guarda en «pendientes» **en una transacción de IndexedDB** antes de cualquier otra
-   cosa.
-3. La pantalla se actualiza (Dexie avisa solo).
-4. Si hay conexión, se envía.
+2. Se guarda en «pendientes» **en una transacción de IndexedDB**, y a la vez la pantalla
+   se actualiza (no se espera a IndexedDB: tarda milisegundos, pero la interfaz no
+   espera nada).
+3. Cuando quedó guardada, si hay conexión, se envía.
 
 Si la app se cierra entre 2 y 4, la operación ya está guardada y sale en la próxima
 apertura.
@@ -85,6 +95,14 @@ apertura.
 
 Si alguien abre la app dos veces en el mismo celular, solo una pestaña mantiene la
 conexión (Web Locks API); las demás leen de IndexedDB, que es compartida.
+
+Cómo quedó: la pestaña con el candado `barra-gorgojo-conexion` tiene el WebSocket (y el
+respaldo por HTTP). Las pestañas se avisan por un `BroadcastChannel`: «cambié la memoria»
+(las demás la releen sin deshacer lo que ellas aún no guardaron), el estado de la
+conexión y los rechazos del servidor. Lo que anota una pestaña sin candado lo envía la que
+lo tiene. Al cerrarse la pestaña con el candado, otra lo toma y se conecta. Lo confirmado
+lo escribe solo la pestaña con el candado. La app instalada y Chrome comparten la memoria
+y el candado.
 
 ## El protocolo
 

@@ -49,7 +49,11 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
 
   // Entrada limpia
   await p.goto(dir);
-  await p.evaluate(() => { localStorage.clear(); history.replaceState({ vista: { v: "inicio", pestana: "cuentas" }, d: 0 }, ""); });
+  await p.evaluate(async () => {
+    localStorage.clear();
+    await new Promise((listo) => { const r = indexedDB.deleteDatabase("barra-gorgojo"); r.onsuccess = r.onerror = r.onblocked = listo; });
+    history.replaceState({ vista: { v: "inicio", pestana: "cuentas" }, d: 0 }, "");
+  });
   await p.reload();
   await foto("vincular");
   // Código de vinculación con la llave de instalación (CLAVE), como lo daría el administrador.

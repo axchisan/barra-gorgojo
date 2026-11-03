@@ -228,13 +228,16 @@ Además de las del código, la base rechaza:
 
 Copia parcial, en IndexedDB:
 
+Así quedó (E2, `src/app/memoria.ts`), en la base IndexedDB `barra-gorgojo`:
+
 | Tabla local | Contenido |
 |---|---|
-| `confirmado` | Cuentas vivas y de la jornada con sus rondas, líneas y pagos; último `seq` |
-| `pendientes` | Operaciones sin confirmar, en orden |
-| `catalogo` | Productos activos y precios de las últimas 48 horas |
-| `personas` | Personas activas con `pin_hash` (para entrar sin señal) |
-| `sesion` | Persona actual y dispositivo |
+| `pendientes` | Operaciones sin confirmar, en orden (`++n`, única por `id`) |
+| `ajustes` · `confirmado` | El estado de la foto (cuentas vivas y de la jornada, `productos`, `orden`, cierres) y el último `seq` |
+| `ajustes` · `sesion` | Persona, rol y token de la sesión |
+| `ajustes` · `base` | La base a la que pertenece lo confirmado y lo pendiente |
+| `ajustes` · `apartados` | Pendientes de una base anterior, que no se envían |
+| `ajustes` · `personas` | Personas para la entrada (sin PIN: el PIN se revisa en el servidor, ADR-10) |
 
 Nada de jornadas anteriores: eso se consulta con señal.
 

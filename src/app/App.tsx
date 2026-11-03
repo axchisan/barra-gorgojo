@@ -22,6 +22,7 @@ export function App() {
     return () => clearInterval(t);
   }, []);
 
+  if (!sinc.listo) return null; // leyendo la memoria del celular: unos milisegundos
   if (!sinc.sesion) return <Entrada />;
 
   const { vista } = nav;

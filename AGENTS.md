@@ -21,10 +21,11 @@ Se construyó con atajos para salir rápido. **El trabajo actual sigue
 `docs/12-plan-de-trabajo.md`**, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.
 
-Hechas (2026-11-03): fases A, B, C, D y E1. Sigue la **fase F** (pedidos del negocio:
-billetes, sugerir con cuánto pagan, mostrar al cliente en cobrar, avisos) y luego el resto
-de E. **Desde el 2026-11-03 producción tiene datos de prueba**; al terminar todo, la fase G
-la deja otra vez limpia, solo con las ventas reales.
+Hechas (2026-11-03): fases A, B, C, D, E1, F (billetes, sugerir con cuánto pagan,
+mostrar al cliente en cobrar, avisos) y E2 (IndexedDB), probadas en el entorno de
+pruebas. Sigue publicarlas en producción (con autorización) y el resto de E.
+**Desde el 2026-11-03 producción tiene datos de prueba**; al terminar todo, la fase G la
+deja otra vez limpia, solo con las ventas reales.
 
 ## Reglas no negociables
 

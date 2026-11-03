@@ -28,6 +28,7 @@
   },
   "packageManager": "pnpm@11.25.0",
   "dependencies": {
+    "dexie": "^4.4.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

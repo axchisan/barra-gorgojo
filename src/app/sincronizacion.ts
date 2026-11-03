@@ -1,37 +1,32 @@
 // Memoria local, cola de envío y conexión con el servidor.
 // Lo visible = lo confirmado por el servidor + lo pendiente de este celular.
 // `aplicar` es idempotente, así que reaplicar un pendiente ya confirmado no duplica nada.
+//
+// La memoria vive en IndexedDB (memoria.ts), compartida por todas las pestañas del
+// celular. Una sola pestaña tiene la conexión: la que tiene el candado (Web Locks). Las
+// demás anotan en la memoria y avisan por un BroadcastChannel; la del candado envía, y
+// todas releen la memoria cuando otra la cambia. Ver docs/04 «Varias pestañas».
 
 import { BASE_ORIGINAL } from "../dominio/base";
 import { aplicar, estadoVacio, recortar, type Estado, type Operacion } from "../dominio/estado";
+import { abrirMemoria, type Ajustes, type Apartado, type Cambio, type Confirmado, type Memoria, type PersonaPublica, type Sesion } from "./memoria";
+
+export type { PersonaPublica, Sesion } from "./memoria";
 
 type DistribuirOp<T> = T extends unknown ? Omit<T, "id" | "persona" | "en" | "seq"> : never;
 export type NuevaOperacion = DistribuirOp<Operacion>;
 export type Conexion = "conectado" | "conectando" | "sin-senal";
 
-const K = {
-  sesion: "bg.sesion", clave: "bg.clave", confirmado: "bg.confirmado", pendientes: "bg.pendientes",
-  base: "bg.base", apartados: "bg.pendientes-base-anterior", personas: "bg.personas",
-};
+/** Mensajes entre pestañas del mismo celular. */
+type Mensaje =
+  | { tipo: "cambio" }
+  | { tipo: "hola" }
+  | { tipo: "conexion"; conexion: Conexion }
+  | { tipo: "rechazo"; motivo: string };
 
-function leer<T>(k: string, porDefecto: T): T {
-  try {
-    const v = localStorage.getItem(k);
-    return v ? (JSON.parse(v) as T) : porDefecto;
-  } catch {
-    return porDefecto;
-  }
-}
-function escribir(k: string, v: unknown) {
-  try {
-    if (v == null) localStorage.removeItem(k);
-    else localStorage.setItem(k, JSON.stringify(v));
-  } catch { /* almacenamiento lleno o bloqueado: seguimos en memoria */ }
-}
+const CANDADO = "barra-gorgojo-conexion";
+const CANAL = "barra-gorgojo";
 
-export interface Sesion { token: string; persona: string; rol?: string }
-/** Una persona como la ve la entrada de un celular vinculado (sin PIN). */
-export interface PersonaPublica { id: string; nombre: string; color: string; admin: boolean; tienePin: boolean }
 type Respuesta<T> = T & { error?: string };
 
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<{ status: number; datos: Respuesta<T> }> {
@@ -40,18 +35,20 @@ async function pedir<T>(ruta: string, init?: RequestInit): Promise<{ status: num
 }
 
 class Sincronizador {
-  sesion: Sesion | null = leer(K.sesion, null);
-  private confirmado: { estado: Estado; seq: number } = leer(K.confirmado, { estado: estadoVacio(), seq: 0 });
-  pendientes: Operacion[] = leer(K.pendientes, []);
+  /** Ya se leyó la memoria del celular. Antes de eso la app no muestra nada. */
+  listo = false;
+  sesion: Sesion | null = null;
+  private confirmado: Confirmado = { estado: estadoVacio(), seq: 0 };
+  pendientes: Operacion[] = [];
   /**
    * Base de datos a la que pertenece lo confirmado y lo pendiente. Un celular de la
    * versión 0.1 no la guardaba: entonces es la original. Ver src/dominio/base.ts.
    */
-  base: string = leer(K.base, BASE_ORIGINAL);
+  base: string = BASE_ORIGINAL;
   /** Pendientes de una base anterior: no se envían nunca a la nueva. Se avisa en pantalla. */
-  apartados: (Operacion & { base: string })[] = leer(K.apartados, []);
+  apartados: Apartado[] = [];
   /** Personas del negocio, guardadas para mostrar la entrada aunque no haya señal. */
-  personas: PersonaPublica[] = leer(K.personas, []);
+  personas: PersonaPublica[] = [];
   /**
    * Si este celular está vinculado (tiene la cookie del dispositivo, que el código no
    * puede leer): se sabe al preguntarle al servidor por las personas.
@@ -62,6 +59,19 @@ class Sincronizador {
   conexion: Conexion = "conectando";
   visible: Estado = estadoVacio();
   version = 0;
+  /** Esta pestaña tiene la conexión del celular (el candado de Web Locks). */
+  lider = false;
+  /** Dónde quedó la memoria: «indexeddb», o «localstorage» si IndexedDB no abrió. */
+  memoriaTipo: Memoria["tipo"] | null = null;
+
+  private memoria: Memoria | null = null;
+  private canal: BroadcastChannel | null = null;
+  /** Escrituras y lecturas de la memoria, una tras otra, en el orden en que se pidieron. */
+  private cola: Promise<unknown> = Promise.resolve();
+  /** Cambios de esta pestaña que aún no están en la memoria: releer no debe deshacerlos. */
+  private porGuardar = new Set<string>();
+  private porQuitar = new Set<string>();
+  private ajustesPorGuardar = new Map<keyof Ajustes, number>();
 
   private oyentes = new Set<() => void>();
   private ws: WebSocket | null = null;
@@ -71,15 +81,103 @@ class Sincronizador {
   private temporizadorReconexion: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    this.confirmado.estado = recortar(this.confirmado.estado, Date.now());
+    if (typeof window === "undefined") { this.listo = true; return; }
+    void this.arrancar();
+  }
+
+  private async arrancar() {
+    this.memoria = await abrirMemoria();
+    this.memoriaTipo = this.memoria.tipo;
+    this.tomar(await this.memoria.cargar(), true);
+    this.listo = true;
     this.recalcular();
-    if (typeof window === "undefined") return;
+    if (typeof BroadcastChannel !== "undefined") {
+      this.canal = new BroadcastChannel(CANAL);
+      this.canal.onmessage = (e: MessageEvent<Mensaje>) => this.deOtraPestana(e.data);
+      this.avisarPestanas({ tipo: "hola" }); // la que tenga la conexión responde cómo está
+    }
     window.addEventListener("online", () => this.reconectarYa());
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") this.reconectarYa();
     });
     setInterval(() => this.vigilar(), 5000);
-    if (this.sesion) this.conectar();
+    this.pedirCandado();
+  }
+
+  /** Solo una pestaña por celular mantiene la conexión; si se cierra, la toma otra. */
+  private pedirCandado() {
+    const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+    const serLider = () => {
+      this.lider = true;
+      this.ponerConexion("conectando");
+      if (this.sesion) this.conectar();
+    };
+    if (!locks?.request) return serLider(); // sin Web Locks: cada pestaña con su conexión, como antes
+    void locks.request(CANDADO, () => {
+      serLider();
+      return new Promise<void>(() => {}); // se suelta al cerrar la pestaña
+    });
+  }
+
+  // ── Memoria ─────────────────────────────────────────────────────────
+
+  /** Toma lo leído de la memoria sin deshacer lo que esta pestaña aún no guardó. */
+  private tomar(g: Awaited<ReturnType<Memoria["cargar"]>>, todo: boolean) {
+    const sinGuardar = (k: keyof Ajustes) => (this.ajustesPorGuardar.get(k) ?? 0) > 0;
+    const sesionAntes = this.sesion?.token;
+    const cambioBase = g.base !== this.base;
+    if (!sinGuardar("sesion")) this.sesion = g.sesion;
+    if (!sinGuardar("base")) this.base = g.base;
+    if (!sinGuardar("apartados")) this.apartados = g.apartados;
+    if (!sinGuardar("personas")) this.personas = g.personas;
+    // Lo confirmado lo escribe solo la pestaña con la conexión: ella no lo relee.
+    if ((todo || !this.lider || cambioBase) && !sinGuardar("confirmado")) {
+      this.confirmado = { estado: recortar(g.confirmado.estado, Date.now()), seq: g.confirmado.seq };
+    }
+    const enMemoria = g.pendientes.filter((op) => !this.porQuitar.has(op.id));
+    const ids = new Set(enMemoria.map((op) => op.id));
+    this.pendientes = [...enMemoria, ...this.pendientes.filter((op) => this.porGuardar.has(op.id) && !ids.has(op.id))];
+    return sesionAntes !== this.sesion?.token;
+  }
+
+  /** Guarda un cambio en la memoria; después avisa a las otras pestañas. */
+  private guardar(c: Cambio): Promise<void> {
+    const agregados = (c.agregar ?? []).map((op) => op.id);
+    const quitados = c.quitar ?? [];
+    const claves = Object.keys(c.ajustes ?? {}) as (keyof Ajustes)[];
+    for (const id of agregados) this.porGuardar.add(id);
+    for (const id of quitados) this.porQuitar.add(id);
+    for (const k of claves) this.ajustesPorGuardar.set(k, (this.ajustesPorGuardar.get(k) ?? 0) + 1);
+    const hecho = this.cola.then(async () => {
+      try {
+        await this.memoria?.escribir(c);
+        this.avisarPestanas({ tipo: "cambio" });
+      } catch { /* memoria llena o bloqueada: seguimos en memoria de la pestaña */ }
+      for (const id of agregados) this.porGuardar.delete(id);
+      for (const id of quitados) this.porQuitar.delete(id);
+      for (const k of claves) this.ajustesPorGuardar.set(k, (this.ajustesPorGuardar.get(k) ?? 1) - 1);
+    });
+    this.cola = hecho;
+    return hecho;
+  }
+
+  private avisarPestanas(m: Mensaje) {
+    try { this.canal?.postMessage(m); } catch { /* canal cerrado */ }
+  }
+
+  /** Otra pestaña del celular cambió la memoria, la conexión o recibió un rechazo. */
+  private deOtraPestana(m: Mensaje) {
+    if (m.tipo === "conexion") { if (!this.lider) this.ponerConexion(m.conexion); return; }
+    if (m.tipo === "rechazo") { this.alRechazo?.(m.motivo); return; }
+    if (m.tipo === "hola") { if (this.lider) this.avisarPestanas({ tipo: "conexion", conexion: this.conexion }); return; }
+    this.cola = this.cola.then(async () => {
+      if (!this.memoria) return;
+      const otraSesion = this.tomar(await this.memoria.cargar(), false);
+      this.recalcular();
+      if (!this.lider) return;
+      if (otraSesion) { this.cerrarSocket(); if (this.sesion) this.conectar(); else this.ponerConexion("sin-senal"); }
+      else this.enviar();
+    }).catch(() => {});
   }
 
   suscribir = (fn: () => void) => {
@@ -100,18 +198,13 @@ class Sincronizador {
     this.avisar();
   }
 
-  private guardar() {
-    escribir(K.confirmado, this.confirmado);
-    escribir(K.pendientes, this.pendientes);
-  }
-
   // ── Sesión ─────────────────────────────────────────────────────────
 
   get esAdministrador() { return this.sesion?.rol === "admin"; }
 
   private ponerPersonas(personas: PersonaPublica[]) {
     this.personas = personas;
-    escribir(K.personas, personas);
+    void this.guardar({ ajustes: { personas } });
     this.vinculado = true;
     this.avisar();
   }
@@ -131,7 +224,6 @@ class Sincronizador {
       const { datos } = await pedir<{ personas?: PersonaPublica[]; base?: string }>("/api/vincular", { method: "POST", body: JSON.stringify({ codigo, nombre }) });
       if (!datos.personas) return datos.error ?? "No se pudo vincular.";
       if (datos.base) this.cambiarDeBase(datos.base);
-      escribir(K.clave, null); // la clave del negocio ya no existe
       this.ponerPersonas(datos.personas);
       return null;
     } catch {
@@ -152,9 +244,8 @@ class Sincronizador {
       if (!datos.token) return datos.error ?? "No se pudo entrar.";
       if (datos.base) this.cambiarDeBase(datos.base);
       this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol };
-      escribir(K.sesion, this.sesion);
-      this.cerrarSocket();
-      this.conectar();
+      void this.guardar({ ajustes: { sesion: this.sesion } });
+      if (this.lider) { this.cerrarSocket(); this.conectar(); }
       this.avisar();
       return null;
     } catch {
@@ -209,7 +300,7 @@ class Sincronizador {
   /** Cambiar de persona. Los pendientes se conservan y salen con la próxima sesión. */
   salir() {
     this.sesion = null;
-    escribir(K.sesion, null);
+    void this.guardar({ ajustes: { sesion: null } });
     this.cerrarSocket();
     this.avisar();
   }
@@ -217,11 +308,11 @@ class Sincronizador {
   /** El servidor no aceptó estas operaciones: salen de la cola y se avisa por qué (regla 8). */
   private rechazar(rechazadas: { id: string; motivo: string }[] | undefined) {
     if (!rechazadas?.length) return;
-    if (this.quitarPendientes(rechazadas.map((r) => r.id))) {
-      this.guardar();
-      this.recalcular();
+    if (this.quitarPendientes(rechazadas.map((r) => r.id))) this.recalcular();
+    for (const motivo of new Set(rechazadas.map((r) => r.motivo))) {
+      this.alRechazo?.(motivo);
+      this.avisarPestanas({ tipo: "rechazo", motivo }); // pudo anotarlo otra pestaña
     }
-    for (const motivo of new Set(rechazadas.map((r) => r.motivo))) this.alRechazo?.(motivo);
   }
 
   // ── Escribir ───────────────────────────────────────────────────────
@@ -229,14 +320,14 @@ class Sincronizador {
   emitir(nueva: NuevaOperacion): Operacion {
     const op = { ...nueva, id: crypto.randomUUID(), persona: this.sesion?.persona ?? "?", en: Date.now() } as Operacion;
     this.pendientes.push(op);
-    this.guardar(); // primero queda guardada; después se muestra y se envía
-    this.recalcular();
-    this.enviar();
+    this.recalcular(); // se ve al instante
+    // Se guarda ya; se envía cuando quedó guardada (o lo envía la pestaña con la conexión).
+    void this.guardar({ agregar: [op] }).then(() => this.enviar());
     return op;
   }
 
   private enviar() {
-    if (!this.pendientes.length) return;
+    if (!this.lider || !this.pendientes.length) return;
     if (this.ws?.readyState === WebSocket.OPEN) {
       if (Date.now() - this.enVuelo < 8000) return;
       this.enVuelo = Date.now();
@@ -248,9 +339,11 @@ class Sincronizador {
 
   private quitarPendientes(ids: Iterable<string>) {
     const fuera = new Set(ids);
-    const antes = this.pendientes.length;
+    const quitados = this.pendientes.filter((p) => fuera.has(p.id)).map((p) => p.id);
+    if (!quitados.length) return false;
     this.pendientes = this.pendientes.filter((p) => !fuera.has(p.id));
-    return antes !== this.pendientes.length;
+    void this.guardar({ quitar: quitados });
+    return true;
   }
 
   /**
@@ -260,29 +353,29 @@ class Sincronizador {
    */
   private cambiarDeBase(base: string) {
     if (base === this.base) return;
+    const ajustes: Partial<Ajustes> = { confirmado: { estado: estadoVacio(), seq: 0 }, base };
     if (this.pendientes.length) {
       this.apartados = [...this.apartados, ...this.pendientes.map((op) => ({ ...op, base: this.base }))];
-      escribir(K.apartados, this.apartados);
+      ajustes.apartados = this.apartados;
       this.pendientes = [];
     }
     this.confirmado = { estado: estadoVacio(), seq: 0 };
     this.base = base;
-    escribir(K.base, base);
-    this.guardar();
+    void this.guardar({ ajustes, vaciar: true }); // todo junto: no queda una cola a medio apartar
     this.recalcular();
   }
 
   /** Descarta los apartados, después de que el administrador los descargó y revisó. */
   olvidarApartados() {
     this.apartados = [];
-    escribir(K.apartados, null);
+    void this.guardar({ ajustes: { apartados: [] } });
     this.avisar();
   }
 
   private recibirFoto(estado: Estado, seq: number, base?: string) {
     if (base) this.cambiarDeBase(base);
     this.confirmado = { estado, seq };
-    this.guardar();
+    void this.guardar({ ajustes: { confirmado: this.confirmado } });
     this.recalcular();
   }
 
@@ -303,7 +396,7 @@ class Sincronizador {
         this.ws?.send(JSON.stringify({ tipo: "hola" })); // se perdió algo: pedir la foto completa
       }
       this.quitarPendientes([op.id]);
-      this.guardar();
+      void this.guardar({ ajustes: { confirmado: this.confirmado } });
       this.recalcular();
     } else if (m.tipo === "acceso") {
       // Quitaron este celular o desactivaron a la persona: a la entrada, y se revisa la vinculación.
@@ -312,10 +405,7 @@ class Sincronizador {
     } else if (m.tipo === "ok") {
       this.enVuelo = 0;
       this.rechazar(m.rechazadas);
-      if (this.quitarPendientes(m.ids)) {
-        this.guardar();
-        this.recalcular();
-      }
+      if (this.quitarPendientes(m.ids)) this.recalcular();
       this.enviar();
     }
   }
@@ -327,10 +417,11 @@ class Sincronizador {
       this.conexion = c;
       this.avisar();
     }
+    if (this.lider) this.avisarPestanas({ tipo: "conexion", conexion: c });
   }
 
   private conectar() {
-    if (!this.sesion || this.ws) return;
+    if (!this.lider || !this.sesion || this.ws) return;
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${proto}//${location.host}/api/ws?t=${encodeURIComponent(this.sesion.token)}`);
     this.ws = ws;
@@ -360,7 +451,7 @@ class Sincronizador {
   }
 
   private reconectarYa() {
-    if (!this.sesion) return;
+    if (!this.lider || !this.sesion) return;
     if (this.ws?.readyState === WebSocket.OPEN) return this.enviar();
     this.intentos = 0;
     this.cerrarSocket();
@@ -369,14 +460,16 @@ class Sincronizador {
 
   /** Cada 5 s: latido del WebSocket, y si no hay WebSocket, respaldo por HTTP. */
   private async vigilar() {
-    if (!this.sesion) return;
+    if (!this.lider || !this.sesion) return;
     const ws = this.ws;
     if (ws?.readyState === WebSocket.OPEN) {
       if (Date.now() - this.ultimoMensaje > 45_000) return this.reconectarYa(); // conexión zombi
       if (Date.now() - this.ultimoMensaje > 20_000) ws.send("ping");
       return this.enviar();
     }
-    if (document.visibilityState !== "visible") return;
+    // Sin WebSocket, por HTTP: si se ve la app, o si hay algo por enviar (la pestaña con la
+    // conexión puede estar escondida detrás de otra).
+    if (document.visibilityState !== "visible" && !this.pendientes.length) return;
     try {
       const r = await fetch("/api/ops", {
         method: "POST",

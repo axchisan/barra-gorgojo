@@ -12,7 +12,7 @@ necesitaba ya. Funciona el flujo completo del día; **estos atajos quedan por pu
 | Atajo de la 0.1 | Lo previsto | Dónde |
 |---|---|---|
 | Entrada con **una clave del negocio** + escoger nombre. El celular recuerda la clave | Vinculación de celular con código y PIN por persona | [03](03-arquitectura.md) «Acceso y seguridad» |
-| Memoria del celular en `localStorage` | IndexedDB con Dexie y Web Locks | [04](04-sincronizacion-y-fuera-de-linea.md) |
+| ~~Memoria del celular en `localStorage`~~ (hecho en E2, 2026-11-03) | IndexedDB con Dexie y Web Locks | [04](04-sincronizacion-y-fuera-de-linea.md) |
 | Catálogo y personas **en el código** (`src/dominio/catalogo.ts`); cambiar un precio es desplegar | Catálogo con historial de precios administrable desde la app | [05](05-modelo-de-datos.md) |
 | El servidor guarda solo el registro de operaciones y recalcula el estado en memoria al despertar | Proyecciones en tablas SQLite | [05](05-modelo-de-datos.md) |
 | Cuadre de caja calculado en pantalla, sin guardar la jornada | Jornadas cerradas y guardadas, historial y CSV | RF-51 a RF-53 |
