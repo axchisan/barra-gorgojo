@@ -15,6 +15,8 @@ verifica y qué no tocar.
 | **C** | Teléfono: aprovechar el espacio | Lo segundo que pidió el negocio; afecta el uso diario |
 | **D** | Acceso por persona con PIN | Hoy cualquiera con la clave entra como Administrador |
 | **E** | Lo que falta del plan original | Jornadas guardadas, IndexedDB, auditoría, e2e, documentación |
+| **F** | Pedidos del negocio del 2026-11-03: cobro más rápido y avisos cómodos | Salieron de usar la app en producción con datos de prueba |
+| **G** | Base limpia definitiva | Al terminar todas las fases: producción arranca otra vez solo con las ventas reales |
 
 D puede adelantarse a C si el negocio lo prefiere. A y B no se saltan.
 
@@ -189,6 +191,35 @@ En orden sugerido; cada punto es independiente.
 | E6 | Playwright con varios celulares y desconexión (completa A4) | [04](04-sincronizacion-y-fuera-de-linea.md) «Cómo se prueba» |
 | E7 | **Poner al día la documentación**: 01 y 02 con petacos, «Otro», comida, precio en cancha, editar cantidad, ordenar; 05 con el modelo real (registro + `productos` + `orden` en el estado); 03 con un ADR de los atajos que se mantienen y los que se quitaron; README y AGENTS.md | Todos |
 
+## Fase F · Pedidos del negocio (2026-11-03)
+
+Salieron de probar en producción. Hacer **antes de E2** (afectan la venta de todos los días).
+Cada uno con su prueba y revisado en el celular y la tablet reales, vertical y girados
+(`tests/e2e/a-la-vista.spec.ts` debe seguir pasando).
+
+| # | Qué | Detalle |
+|---|---|---|
+| F1 | **Billetes de Colombia en «¿Con cuánto paga?»** | Hoy salen solo 10.000, 20.000, 50.000 y 100.000 (`src/app/pantallas/Cobrar.tsx`, `billetes`). Billetes en circulación hoy: **2.000, 5.000, 10.000, 20.000, 50.000 y 100.000** (el de 1.000 ya casi no circula; monedas de 50, 100, 200, 500 y 1.000). Confirmar en la página del Banco de la República antes de fijarlo. Pasar la lista a `src/dominio` (función pura con pruebas) |
+| F2 | **Sugerir con cuánto pagan** | Las opciones deben ser los valores con que de verdad pagan: redondeos al billete siguiente y combinaciones comunes. Ej.: cuenta de 37.000 → 40.000, 50.000, 100.000; 47.000 → 50.000, 100.000; 12.500 → 13.000, 15.000, 20.000, 50.000. Regla propuesta: siguiente múltiplo de 1.000, de 5.000 y de 10.000, y cada billete mayor que la cuenta; sin repetidos, ordenados, máximo 4 o 5 chips para que quepan a la vista (C2). «Exacto» se queda primero. Que el cambio salga al instante al tocar. Ningún toque nuevo en el flujo (regla 1) |
+| F3 | **«Mostrar al cliente» desde Cobrar** | Hoy solo está en el menú ⋮ del detalle (RF-27). Ponerlo a la vista en la pantalla de cobrar: el cliente pide ver qué se le cobra. Pantalla limpia con productos y total grande; al cerrarla se vuelve al cobro sin perder lo escogido (medio, billete). Probar girado en el celular |
+| F4 | **Avisos más cómodos** | Hoy (`src/app/avisos.tsx`) tapan la parte de abajo de la pantalla y duran 4 s (8 s con «Deshacer»). Hacerlos más pequeños y que no tapen botones de venta (ver C2), que se vayan antes (~2,5 s sin deshacer), que se puedan quitar tocándolos o deslizándolos, y que un aviso nuevo reemplace al anterior. Los rechazos del servidor (regla 8) sí se quedan hasta que se toquen |
+
+## Fase G · Base limpia definitiva (al final)
+
+Desde el 2026-11-03 producción se usa **para probar**: lo que hay en la base
+`reten-del-gorgojo-v2` además de las ventas reales del 2026-11-02 son **datos de prueba**.
+Cuando todas las fases estén terminadas y probadas en producción:
+
+1. Pedir autorización al negocio y escoger hora fuera de atención (regla 14).
+2. Respaldo y foto de la base actual.
+3. Base nueva (por ejemplo `reten-del-gorgojo-v3`) con **solo** las cuentas reales del
+   2026-11-02 (las mismas que se migraron en B7, con su catálogo; detalle en `negocio/docs/09`) y los productos y personas
+   vigentes. Sin las cuentas de prueba ni sus cierres de día.
+4. Mismo procedimiento de B: `pnpm migrar` con verificación cuenta por cuenta, ensayo
+   antes en pruebas, `negocio/docs/10`. Registrar el corte en `negocio/docs/09`.
+5. Revisar que los PIN y celulares vinculados sigan sirviendo (viven en tablas aparte del
+   registro, no dependen de la base).
+
 Lo de fases 3 y 4 de [07](07-roadmap.md) (inventario, reportes, fiado, integración con el
 sitio) sigue igual y va después.
 
@@ -198,12 +229,24 @@ sitio) sigue igual y va después.
 
 Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 
-> Vamos a seguir con la Barra del Gorgojo. Lee `AGENTS.md`, después
-> `negocio/docs/09-auditoria-2026-11-02.md` y `docs/12-plan-de-trabajo.md`. Empieza por la fase A
-> en orden (A1 a A4). Respeta las «Reglas para trabajar en producción» de 12. Pregúntame
-> antes de crear el repositorio en GitHub, antes de cualquier despliegue a producción y
-> antes de ejecutar la migración (B7). Al terminar cada paso, actualiza el estado en la
-> tabla de seguimiento de 12.
+> Vamos a seguir con la Barra del Gorgojo. Lee `AGENTS.md` y `docs/12-plan-de-trabajo.md`
+> (sobre todo la tabla de seguimiento y las fases F y G). Sigue con la **fase F** en orden
+> (F1 a F4) y después E2. Producción hoy tiene datos de prueba: se puede probar ahí, pero
+> pregúntame antes de cada despliegue a producción y antes de la fase G. Revisa cada cambio
+> en el celular y la tablet reales si están conectados por USB. Al terminar cada paso,
+> actualiza el estado en la tabla de seguimiento de 12.
+
+Contexto útil para esa sesión:
+
+- Aparatos reales (depuración USB): tablet en `negocio/docs/11`; probar en la **app
+  instalada**, vertical y girada. Restaurar la rotación al terminar.
+- Producción: `pnpm desplegar` (después de `pnpm build`). Antes y después, foto con
+  `node scripts/admin.mjs .dev.vars.produccion foto migracion/<nombre>.json` y comparar con
+  `pnpm resumen` (regla 2 de producción).
+- Pruebas: `pnpm build && pnpm desplegar:pruebas`. URLs en `negocio/README.md`.
+- Último estado comprobado: 87 pruebas de Vitest y 29 e2e pasando.
+
+---
 
 ## Seguimiento
 
@@ -218,12 +261,17 @@ Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
 | B7 Migrar producción | ✅ | 2026-11-02 | Autorizada por el negocio (sin uso ese día: excepción a la regla 14). Código nuevo sin cambiar de base, después base `reten-del-gorgojo-v2` verificada cuenta por cuenta contra el corte; importar apagado. Cifras en `negocio/docs/09` |
 | B8 Clave, retención, registro | ✅ | 2026-11-02 | `CLAVE` y `FIRMA` rotadas; regla `respaldos-365-dias` en el bucket; corte anotado en `negocio/docs/09` |
 | C Teléfono | ✅ | 2026-11-02 | C1–C5 y C7–C12 en producción. Revisado en la tablet y el celular reales, en las apps instaladas: teclado (✓/Enter, barras escondidas al escribir, nada tapado), gesto «atrás» que cierra hojas y menús, y el diseño no salta al abrir el teclado. Pendiente menor: el celular girado en la app, cuando Android instale la app actualizada (manifiesto con `orientation: any`) |
-| D Acceso por persona | 🟨 | 2026-11-02 | Hecho y probado (ADR-10): celular vinculado con código, PIN cifrado (el administrador lo ve), bloqueo a los 5 intentos, permisos revisados en el servidor, anular con motivo, rechazos avisados. Personas: Yair, Olga, Jimena, Karol, Apoyo, Administrador. Falta publicar (secreto `PINES` y vincular cada celular) |
+| D Acceso por persona | ✅ | 2026-11-02 | En producción (ADR-10): celular vinculado con código, PIN cifrado (el administrador lo ve), bloqueo a los 5 intentos, permisos revisados en el servidor, anular con motivo, rechazos avisados. Personas en `negocio/catalogo.ts`. Secreto `PINES` puesto; celular del administrador vinculado |
 | C2 · Auditoría «todo a la vista» | ✅ | 2026-11-02 | Hecha: ver `negocio/docs/11` «C2». `tests/e2e/a-la-vista.spec.ts` exige todo a la vista en los cuatro tamaños reales. Pedido del negocio (2026-11-02), después de D: en cada vista, sobre todo las de venta (anotar, detalle, cobrar, el día), las acciones deben verse sin deslizar y con tamaño adecuado según aparato y orientación; en el celular girado hoy hay que deslizar en cobrar y otros paneles. Auditar, documentar en `negocio/docs/11` y ajustar |
-| E1 Cerrar el día | ✅ | 2026-11-02 | Operación `cerrar_jornada` (cualquiera; se puede repetir), días anteriores y CSV para el administrador. Ver 02 y 05 |
+| E1 Cerrar el día | ✅ | 2026-11-03 | Operación `cerrar_jornada` (cualquiera; se puede repetir), días anteriores y CSV para el administrador. Ver 02 y 05. En producción el 2026-11-03 (autorizado; producción con datos de prueba) |
+| F1 Billetes de Colombia | ⬜ | | |
+| F2 Sugerir con cuánto pagan | ⬜ | | |
+| F3 Mostrar al cliente en Cobrar | ⬜ | | |
+| F4 Avisos más cómodos | ⬜ | | |
 | E2 IndexedDB | ⬜ | | |
 | E3 Foto del estado | ⬜ | | |
 | E4 Auditoría | ⬜ | | |
 | E5 Ensayo de restauración | ⬜ | | |
 | E6 e2e completo | ⬜ | | |
 | E7 Documentación al día | ⬜ | | |
+| G Base limpia definitiva | ⬜ | | Al final de todo, con autorización. Producción tiene datos de prueba desde el 2026-11-03 |
