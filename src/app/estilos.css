@@ -676,3 +676,17 @@ html.apaisada-baja .productos { gap: 5px; }
 html.apaisada-baja .producto .corto { font-size: 0.66rem; letter-spacing: -0.02em; }
 html.apaisada-baja main.anotar { padding-left: 8px; }
 html.apaisada-baja main.detalle { --panel: 230px; }
+/* Inicio girado: «Nueva cuenta» en una línea (panel de 230 px), y fuera de «Cuentas»,
+   donde no hay ese botón, las pestañas ocupan todo el ancho. */
+html.apaisada-baja main.inicio { --panel: 230px; }
+html.apaisada .inicio .pie-fijo .principal { white-space: nowrap; }
+html.apaisada .inicio:not(.pestana-cuentas) .pestanas { right: 0; }
+/* El día girado: las cifras debajo de lo vendido, el cuadre a la derecha. */
+html.apaisada-baja .dia > .cifra.grande { grid-column: 1; grid-row: 1; }
+html.apaisada-baja .dia > article.caja { grid-column: 2; grid-row: 1 / span 2; }
+html.apaisada-baja .dia > details.por-producto { grid-column: 1 / -1; grid-row: auto; }
+html.apaisada-baja .dia > .cifras { grid-column: 1; grid-row: 2; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }
+html.apaisada-baja .dia .cifra { padding: 6px 8px; }
+html.apaisada-baja .dia .cifra span { font-size: 0.75rem; }
+html.apaisada-baja .dia .cifra strong { font-size: 0.95rem; }
+html.apaisada-baja .dia .cifra.pendiente { grid-column: 1 / -1; }

@@ -17,7 +17,7 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
   useAtrasCierra(cambiar, () => setCambiar(false));
 
   return (
-    <main className="inicio">
+    <main className={`inicio pestana-${pestana}`}>
       <header className="barra-superior">
         <strong>Barra</strong>
         <EstadoConexion />
