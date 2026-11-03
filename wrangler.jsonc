@@ -3,6 +3,12 @@
   "name": "barra-gorgojo",
   "main": "src/servidor/worker.ts",
   "compatibility_date": "2026-10-01",
+  // workers.dev se queda encendido aunque haya dominio propio (negocio/despliegue.json):
+  // con dominios, wrangler lo apaga si no se dice, y cortaría a los celulares instalados
+  // en esa dirección. Se apaga en la fase G, cuando todos estén en la dirección nueva.
+  "workers_dev": true,
+  // Sin URLs de vista previa por versión: usarían los mismos datos que la app.
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -26,6 +32,8 @@
   "env": {
     "pruebas": {
       "name": "barra-gorgojo-pruebas",
+      "workers_dev": true,
+      "preview_urls": false,
       "durable_objects": {
         "bindings": [{ "name": "BARRA", "class_name": "Barra" }]
       },

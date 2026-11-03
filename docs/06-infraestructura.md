@@ -97,7 +97,11 @@ todos sus registros idénticos y en «solo DNS», y el Worker usa el subdominio 
 propio. Los dominios no van en este repositorio (regla 16): están en
 `negocio/despliegue.json` y `pnpm desplegar` los pasa con `--domain`
 (`scripts/dominios.mjs`); sin ese archivo se despliega solo en `workers.dev`.
-`workers.dev` sigue encendido hasta la fase G, para no cortar a los celulares de hoy.
+`workers.dev` sigue encendido hasta la fase G, para no cortar a los celulares de hoy:
+`"workers_dev": true` está explícito en `wrangler.jsonc`, porque con dominios propios
+wrangler lo apaga si no se dice (pasó en pruebas el 2026-11-03: la dirección vieja quedó
+con «error code: 1042»). `"preview_urls": false`: sin URLs de vista previa por versión,
+que usarían los mismos datos.
 
 Cuando se compre `elretendelgorgojo.com`, hay dos caminos para `barra.`:
 
