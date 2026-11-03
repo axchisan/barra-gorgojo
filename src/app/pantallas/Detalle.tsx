@@ -9,6 +9,7 @@ import { Desglose } from "../componentes/Desglose";
 import { EditarLinea } from "../componentes/EditarLinea";
 import { NoExiste } from "../componentes/NoExiste";
 import { TarjetasProducto } from "../componentes/TarjetasProducto";
+import { VistaCliente } from "../componentes/VistaCliente";
 import { colorDe, iconoTipo, resumen } from "../cuentas";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { contarPaquetes, nombrePaquete, porPaquete, textoPaquetes } from "../paquetes";
@@ -31,24 +32,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const plural = palabra === "chico" ? "chicos" : "pedidas";
   const tipo = iconoTipo(c);
 
-  if (cliente) {
-    return (
-      <main className="cliente" onClick={() => setCliente(false)}>
-        <h1>{c.nombre}</h1>
-        {resumen(c).map((r) => (
-          <p key={`${r.producto}:${r.nombre}:${r.precio}`}><span>{r.cantidad} {r.nombre}</span><span>{pesos(r.valor)}</span></p>
-        ))}
-        {totalComida(c) > 0 && (
-          <>
-            <p className="parte"><span>Barra</span><span>{pesos(total(c) - totalComida(c))}</span></p>
-            <p className="parte"><span>🍽 Comida</span><span>{pesos(totalComida(c))}</span></p>
-          </>
-        )}
-        <p className="total-cliente"><span>Total</span><span>{pesos(saldo(c))}</span></p>
-        <small>Toque para volver</small>
-      </main>
-    );
-  }
+  if (cliente) return <VistaCliente c={c} cerrar={() => setCliente(false)} />;
 
   return (
     <main className="detalle">

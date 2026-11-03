@@ -5,7 +5,8 @@ import { sugerirPago } from "../../dominio/pago";
 import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
 import { NoExiste } from "../componentes/NoExiste";
-import type { Nav } from "../navegacion";
+import { VistaCliente } from "../componentes/VistaCliente";
+import { useAtrasCierra, type Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
 import { sinc } from "../sincronizacion";
 
@@ -14,12 +15,17 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   const [medio, setMedio] = useState<Exclude<Medio, "comida">>("efectivo");
   const [recibido, setRecibido] = useState<number | null>(null);
   const [otro, setOtro] = useState("");
+  // Mostrar al cliente (F3): el medio y el billete escogidos siguen aquí al volver.
+  const [cliente, setCliente] = useState(false);
+  useAtrasCierra(cliente, () => setCliente(false));
   if (!c) return <NoExiste nav={nav} />;
   const valor = saldo(c);
   if (valor <= 0) return <NoExiste nav={nav} />;
 
   const billetes = sugerirPago(valor);
   const cambio = medio === "efectivo" && recibido != null ? recibido - valor : null;
+
+  if (cliente) return <VistaCliente c={c} recibido={medio === "efectivo" ? recibido : null} cerrar={() => setCliente(false)} />;
 
   const cobrar = (m: Medio) => {
     sinc.emitir({ t: "cobrar", cuenta: c.id, pago: crypto.randomUUID(), medio: m, recibido: m === "efectivo" ? recibido ?? undefined : undefined });
@@ -35,9 +41,12 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       <header className="barra-superior">
         <button className="atras" onClick={nav.volver} aria-label="Volver">←</button>
         <strong>Cobrar · {c.nombre}</strong>
+        {/* En pantallas anchas va arriba, donde sobra espacio; en el celular vertical, bajo el total. */}
+        <button className="mostrar-cliente arriba" onClick={() => setCliente(true)}>Mostrar al cliente</button>
       </header>
       <p className="total">{pesos(valor)}</p>
       {totalComida(c) > 0 && <Desglose c={c} />}
+      <button className="secundario mostrar-cliente abajo" onClick={() => setCliente(true)}>Mostrar al cliente</button>
       <div className="opciones">
         {(["efectivo", "nequi", "breve"] as const).map((m) => (
           <button key={m} className={medio === m ? "chip activo" : "chip"} onClick={() => setMedio(m)}>
@@ -59,12 +68,13 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
             setOtro(v);
             setRecibido(v ? Number(v) : null);
           }} />
-          {cambio != null && (
-            <p className={cambio < 0 ? "cambio falta" : "cambio"}>
-              {cambio < 0 ? `Faltan ${pesos(-cambio)}` : `Cambio: ${pesos(cambio)}`}
-            </p>
-          )}
         </section>
+      )}
+      {/* Fuera de la sección: girado, va en la columna izquierda, bajo los medios de pago. */}
+      {cambio != null && (
+        <p className={cambio < 0 ? "cambio falta" : "cambio"}>
+          {cambio < 0 ? `Faltan ${pesos(-cambio)}` : `Cambio: ${pesos(cambio)}`}
+        </p>
       )}
       <div className="pie-fijo">
         {c.tipo === "mesa" ? (

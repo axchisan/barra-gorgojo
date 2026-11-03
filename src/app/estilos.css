@@ -191,6 +191,12 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .cliente p { display: flex; justify-content: space-between; margin: 0; font-variant-numeric: tabular-nums; }
 .cliente .total-cliente { font-size: 2.2rem; font-weight: 800; border-top: 3px solid var(--marron); padding-top: 12px; }
 .cliente small { text-align: center; color: var(--neutro-600); }
+.cliente .renglones, .cliente .cierre { display: flex; flex-direction: column; gap: 10px; }
+.cliente .cambio-cliente { font-size: 1.8rem; font-weight: 800; color: var(--verde); }
+/* Desde Cobrar (F3): a la vista, sin competir con «Cobrar». */
+.mostrar-cliente.abajo { display: block; margin: 4px auto 0; min-height: 48px; padding: 8px 20px; font-size: 1rem; }
+.mostrar-cliente.arriba { display: none; flex: 0 0 auto; background: none; color: var(--crema); border: 2px solid var(--crema); border-radius: var(--radio); min-height: 44px; padding: 4px 14px; font-weight: 700; white-space: nowrap; }
+@media (min-width: 700px) { .mostrar-cliente.abajo { display: none; } .mostrar-cliente.arriba { display: block; } }
 
 /* Cobrar */
 .recibido { display: flex; flex-direction: column; gap: 8px; text-align: center; }
@@ -226,7 +232,7 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
   .producto .corto { font-size: 1.1rem; }
   .tarjetas { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
   .tarjeta { min-height: 130px; }
-  .detalle .lineas, .detalle .ronda, .cobrar .recibido, .cocina, .dia, .entrada, .menu-persona, .renombrar { max-width: 720px; margin-left: auto; margin-right: auto; }
+  .detalle .lineas, .detalle .ronda, .cobrar .recibido, .cocina, .dia, .entrada, .menu-persona, .renombrar, .cliente { max-width: 720px; margin-left: auto; margin-right: auto; }
   .entrada .personas { grid-template-columns: repeat(3, 1fr); }
   .pie-fijo { padding-left: 20px; padding-right: 20px; }
 }
@@ -302,6 +308,8 @@ details.por-producto { display: block; }
 .cobrar .recibido p { margin-top: 8px; }
 /* Billetes: la cifra nunca se parte (C9) */
 .recibido .opciones { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Tablet: «Exacto» y hasta cuatro sugerencias (F2) en una sola fila; sobra ancho. */
+@media (min-width: 700px) { .recibido .opciones { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .recibido .opciones .chip { white-space: nowrap; padding: 8px 4px; font-size: clamp(0.9rem, 4.2vw, 1.05rem); min-height: 56px; }
 
 /* Controles segmentados: una fila, 44 px (fase C) */
@@ -642,13 +650,18 @@ html.apaisada-baja .cobrar > .barra-superior { grid-column: 1 / -1; }
 html.apaisada-baja .cobrar > .total { grid-column: 1; font-size: 1.9rem; margin: 0; }
 html.apaisada-baja .cobrar > .desglose { grid-column: 1; margin: 0; }
 html.apaisada-baja .cobrar > .opciones { grid-column: 1; margin: 6px 0; }
+html.apaisada-baja .barra-superior .mostrar-cliente { min-height: 36px; padding: 2px 12px; }
+/* Mostrar al cliente girado: productos a la izquierda, total y cambio a la derecha. */
+html.apaisada-baja main.cliente { display: grid; grid-template-columns: 1.3fr 1fr; column-gap: 28px; align-items: start; padding-top: 12px; max-width: none; }
+html.apaisada-baja .cliente h1 { grid-column: 1 / -1; font-size: 1.5rem; margin: 0 0 4px; }
+html.apaisada-baja .cliente .renglones { font-size: 1.1rem; gap: 6px; }
 html.apaisada-baja .cobrar > .opciones .chip { min-height: 44px; }
 html.apaisada-baja .cobrar > .recibido { grid-column: 2; grid-row: 2 / span 4; gap: 6px; }
 html.apaisada-baja .cobrar .recibido p { margin: 0; }
 html.apaisada-baja .cobrar .recibido .opciones { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; gap: 6px; }
 html.apaisada-baja .cobrar .recibido .opciones .chip { min-height: 44px; font-size: 0.9rem; }
 html.apaisada-baja .cobrar .recibido input { padding: 8px 12px; }
-html.apaisada-baja .cobrar .cambio { font-size: 1.3rem; margin: 0; }
+html.apaisada-baja .cobrar > .cambio { grid-column: 1; font-size: 1.3rem; margin: 2px 0 0; }
 html.apaisada-baja .cobrar .pie-fijo .grande { min-height: 48px; }
 
 /* El día: lo vendido y el cuadre de caja lado a lado. */

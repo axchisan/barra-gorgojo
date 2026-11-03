@@ -188,6 +188,12 @@ que los productos empiecen arriba en un teléfono pequeño. Los toques son los m
   los billetes en circulación mayores que la cuenta; sin repetidos y de menor a mayor.
   Ej.: 37.000 → 40.000, 50.000, 100.000. Tocar uno muestra el cambio al instante; no
   agrega ningún toque al flujo.
+- **«Mostrar al cliente»** (RF-27) está a la vista: bajo el total en el celular vertical y
+  en la barra superior en pantallas anchas (celular girado, tablet). Muestra productos,
+  total grande y, si ya escogió billete, con cuánto paga y el cambio. Tocar la pantalla o
+  «atrás» vuelve al cobro con el medio y el billete escogidos.
+- Girado, el cambio sale en la columna izquierda, bajo los medios de pago, para que no
+  lo tapen los billetes.
 - En una cuenta de **mesa**, en vez de cobrar directo aparecen dos botones del mismo
   tamaño: **«Cobrar aquí»** y **«Pasar a comida»**. No hay opción por defecto, a
   propósito: obliga a decidir (RF-42).

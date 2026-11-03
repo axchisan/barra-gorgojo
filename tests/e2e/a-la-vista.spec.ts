@@ -130,8 +130,14 @@ for (const [aparato, viewport] of Object.entries(APARATOS) as [Aparato, (typeof 
     await p.goBack();
 
     await p.locator(".pie-fijo").getByRole("button", { name: "Cobrar", exact: true }).click();
-    m.cobrar = await medir(p, { total: ".cobrar .total", medios: ".cobrar > .opciones .chip", billetes: ".recibido .chip", otroValor: ".recibido input", cobrar: ".pie-fijo .principal" });
+    m.cobrar = await medir(p, { total: ".cobrar .total", medios: ".cobrar > .opciones .chip", billetes: ".recibido .chip", otroValor: ".recibido input", mostrarCliente: ".mostrar-cliente", cobrar: ".pie-fijo .principal" });
     await foto("8-cobrar");
+    await p.locator(".recibido .chip").last().click();
+    m.cobrarCambio = await medir(p, { cambio: ".cobrar .cambio", cobrar: ".pie-fijo .principal" });
+    await p.getByRole("button", { name: "Mostrar al cliente" }).click();
+    m.cliente = await medir(p, { nombre: ".cliente h1", total: ".total-cliente", cambio: ".cambio-cliente" });
+    await foto("8b-cliente");
+    await p.locator("main.cliente").click();
     await p.goBack(); await p.goBack();
 
     await p.locator(".pestanas button").nth(2).click();

@@ -48,6 +48,17 @@ export type Nav = ReturnType<typeof useNavegacion>;
 
 let ignorarAtras = 0;
 let ultimaCapa = 0;
+// El «atrás» que hace una capa al cerrarse desde la pantalla no debe cerrar otra. Un solo
+// escuchador, registrado antes que los de las capas, decide para cada evento si se ignora
+// y gasta el contador aunque no haya otra capa abierta (si no, el siguiente «atrás» real
+// se perdía y la capa quedaba abierta).
+let ignorandoAhora = false;
+if (typeof window !== "undefined") {
+  window.addEventListener("popstate", () => {
+    ignorandoAhora = ignorarAtras > 0;
+    if (ignorandoAhora) ignorarAtras--;
+  });
+}
 
 export function useAtrasCierra(abierta: boolean, cerrar: () => void) {
   const cerrarRef = useRef(cerrar);
@@ -57,7 +68,7 @@ export function useAtrasCierra(abierta: boolean, cerrar: () => void) {
     const capa = ++ultimaCapa;
     history.pushState({ ...history.state, capa }, "");
     const alVolver = () => {
-      if (ignorarAtras > 0) { ignorarAtras--; return; }
+      if (ignorandoAhora) return;
       if (history.state?.capa !== capa) cerrarRef.current();
     };
     window.addEventListener("popstate", alVolver);
