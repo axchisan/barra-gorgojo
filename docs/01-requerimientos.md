@@ -43,7 +43,7 @@ tejo trae su ronda) y **«pedida»** en las demás.
 |---|---|---|
 | RF-20 | Ver el **detalle de la cuenta** de dos maneras: por ronda (cuándo y quién) y resumida por producto («6 Rubia × $ 4.000 = $ 24.000») | M |
 | RF-21 | **Cobrar** la cuenta completa escogiendo el medio: efectivo, Nequi o Breve | M |
-| RF-22 | En efectivo, botones de billete rápido (exacto, 10, 20, 50, 100 mil) y **cálculo del cambio** | M |
+| RF-22 | En efectivo, botones de billete rápido (exacto y los billetes en circulación: 2, 5, 10, 20, 50 y 100 mil) y **cálculo del cambio** | M |
 | RF-23 | **Pasar a la cuenta de comida** una cuenta de mesa: se cierra en la barra con el valor, marcada para que la cocina la cobre. Ver «La regla de las mesas» abajo | M |
 | RF-24 | Deshacer un cobro durante los segundos siguientes, sin diálogos de confirmación | M |
 | RF-25 | **Venta rápida**: alguien compra y paga en el momento, sin cuenta con nombre. Es abrir, anotar y cobrar en un solo recorrido | M |

@@ -264,7 +264,7 @@ Contexto útil para esa sesión:
 | D Acceso por persona | ✅ | 2026-11-02 | En producción (ADR-10): celular vinculado con código, PIN cifrado (el administrador lo ve), bloqueo a los 5 intentos, permisos revisados en el servidor, anular con motivo, rechazos avisados. Personas en `negocio/catalogo.ts`. Secreto `PINES` puesto; celular del administrador vinculado |
 | C2 · Auditoría «todo a la vista» | ✅ | 2026-11-02 | Hecha: ver `negocio/docs/11` «C2». `tests/e2e/a-la-vista.spec.ts` exige todo a la vista en los cuatro tamaños reales. Pedido del negocio (2026-11-02), después de D: en cada vista, sobre todo las de venta (anotar, detalle, cobrar, el día), las acciones deben verse sin deslizar y con tamaño adecuado según aparato y orientación; en el celular girado hoy hay que deslizar en cobrar y otros paneles. Auditar, documentar en `negocio/docs/11` y ajustar |
 | E1 Cerrar el día | ✅ | 2026-11-03 | Operación `cerrar_jornada` (cualquiera; se puede repetir), días anteriores y CSV para el administrador. Ver 02 y 05. En producción el 2026-11-03 (autorizado; producción con datos de prueba) |
-| F1 Billetes de Colombia | ⬜ | | |
+| F1 Billetes de Colombia | ✅ | 2026-11-03 | `src/dominio/pago.ts` (`BILLETES`, `billetesMayores`) con pruebas; familia de 2.000 a 100.000 confirmada en banrep.gov.co. Cobrar ya la usa |
 | F2 Sugerir con cuánto pagan | ⬜ | | |
 | F3 Mostrar al cliente en Cobrar | ⬜ | | |
 | F4 Avisos más cómodos | ⬜ | | |
