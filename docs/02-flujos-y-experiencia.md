@@ -279,3 +279,12 @@ En las vistas de venta lo necesario para terminar la acción se ve sin deslizar,
 celular y la tablet, en vertical y girados (`tests/e2e/a-la-vista.spec.ts`). En el
 celular girado, anotar, detalle y cobrar usan dos columnas: lo que se elige a la
 izquierda y el total con los botones a la derecha. «Cambiar cantidad» se abre como hoja.
+
+## Cerrar el día (E1, 2026-11-02)
+
+En «El día», al escribir el efectivo contado aparece **«Cerrar el día»**. Queda registrado
+quién cerró, a qué hora, lo contado y lo que debía haber en ese momento; la pantalla
+muestra si cuadró, sobraba o faltaba. Cerrar no bloquea nada: si después entra otro
+cobro, la pantalla lo dice y se puede cerrar otra vez. El administrador ve los **días
+anteriores** (vendido, por medio de pago, cierre) y baja el **CSV** de cada día: una fila
+por producto vendido, para la hoja de cálculo.

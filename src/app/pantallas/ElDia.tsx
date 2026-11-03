@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { jornada, saldo, situacion, type Cuenta, type Medio } from "../../dominio/estado";
-import { pesos } from "../../dominio/formato";
+import { jornada, saldo, situacion, type Cuenta } from "../../dominio/estado";
+import { horaDe, pesos } from "../../dominio/formato";
+import { resumenJornada } from "../../dominio/jornada";
+import { ponerAviso } from "../avisos";
+import { sinc } from "../sincronizacion";
 import { TarjetasProducto } from "../componentes/TarjetasProducto";
-import type { Renglon } from "../cuentas";
 import type { Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
 import { contarPaquetes, textoPaquetes } from "../paquetes";
@@ -12,31 +14,12 @@ const enTablet = () => typeof matchMedia === "function" && matchMedia("(min-widt
 export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const hoy = jornada(Date.now());
   const [contado, setContado] = useState("");
-  const porMedio: Record<Medio, number> = { efectivo: 0, nequi: 0, breve: 0, comida: 0 };
-  const porProducto = new Map<string, Renglon>();
-  let vendido = 0;
-  let vendidoComida = 0;
-  let recibidoEfectivo = 0;
-
-  for (const c of cuentas) {
-    if (c.anulada) continue;
-    for (const p of c.pagos) {
-      if (p.deshecho || jornada(p.en) !== hoy) continue;
-      porMedio[p.medio] += p.monto;
-      if (p.medio === "efectivo") recibidoEfectivo += p.monto;
-    }
-    const rondasHoy = new Set(c.rondas.filter((r) => jornada(r.en) === hoy).map((r) => r.id));
-    for (const l of c.lineas) {
-      if (l.anulada || !rondasHoy.has(l.ronda)) continue;
-      vendido += l.precio * l.cantidad;
-      if (l.comida) vendidoComida += l.precio * l.cantidad;
-      const clave = `${l.producto}:${l.nombre}`;
-      const x = porProducto.get(clave) ?? { producto: l.producto, nombre: l.nombre, cantidad: 0, valor: 0 };
-      x.cantidad += l.cantidad;
-      x.valor += l.precio * l.cantidad;
-      porProducto.set(clave, x);
-    }
-  }
+  const r = resumenJornada(cuentas, hoy);
+  const { vendido, vendidoComida, porMedio } = r;
+  const recibidoEfectivo = r.efectivo;
+  const porProducto = r.porProducto;
+  const cierres = sinc.visible.jornadas?.[hoy] ?? [];
+  const ultimoCierre = cierres[cierres.length - 1];
   const paquetesHoy = contarPaquetes(
     cuentas.filter((c) => !c.anulada).flatMap((c) => {
       const rondasHoy = new Set(c.rondas.filter((r) => jornada(r.en) === hoy).map((r) => r.id));
@@ -46,6 +29,12 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const abiertas = cuentas.filter((c) => situacion(c) === "abierta" && saldo(c) > 0);
   const porCobrar = abiertas.reduce((s, c) => s + saldo(c), 0);
   const diferencia = contado ? Number(contado) - recibidoEfectivo : null;
+  const cerrar = () => {
+    if (!contado) return;
+    sinc.emitir({ t: "cerrar_jornada", fecha: hoy, contado: Number(contado) });
+    setContado("");
+    ponerAviso({ texto: `Día cerrado · contado ${pesos(Number(contado))}` });
+  };
 
   return (
     <section className="dia">
@@ -59,6 +48,14 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
         {diferencia != null && (
           <p className={diferencia === 0 ? "cambio" : "cambio falta"}>
             {diferencia === 0 ? "Cuadra exacto" : diferencia > 0 ? `Sobran ${pesos(diferencia)}` : `Faltan ${pesos(-diferencia)}`}
+          </p>
+        )}
+        {contado && <button className="principal" onClick={cerrar}>{ultimoCierre ? "Cerrar el día otra vez" : "Cerrar el día"}</button>}
+        {ultimoCierre && (
+          <p className="cierre-hecho">
+            Cerrado a las {horaDe(ultimoCierre.en)} por {ultimoCierre.por}: contado {pesos(ultimoCierre.contado)}
+            {ultimoCierre.contado === ultimoCierre.esperado ? " · cuadró exacto" : ultimoCierre.contado > ultimoCierre.esperado ? ` · sobraban ${pesos(ultimoCierre.contado - ultimoCierre.esperado)}` : ` · faltaban ${pesos(ultimoCierre.esperado - ultimoCierre.contado)}`}
+            {recibidoEfectivo !== ultimoCierre.esperado && ` · desde entonces entraron ${pesos(recibidoEfectivo - ultimoCierre.esperado)} más en efectivo`}
           </p>
         )}
         {abiertas.length > 0 && (
@@ -86,8 +83,9 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
       {/* Plegable: cerrado en teléfono, abierto en la tablet. */}
       <details className="caja por-producto" open={enTablet()}>
         <summary><h2>Por producto</h2></summary>
-        <TarjetasProducto items={[...porProducto.values()].sort((a, b) => b.cantidad - a.cantidad)} />
+        <TarjetasProducto items={porProducto} />
       </details>
+      {sinc.esAdministrador && <button className="enlace" onClick={() => nav.ir({ v: "dias" })}>Días anteriores y CSV</button>}
       <button className="enlace" onClick={() => nav.ir({ v: "inicio", pestana: "cuentas" }, true)}>Ver cuentas</button>
     </section>
   );

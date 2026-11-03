@@ -73,6 +73,19 @@ export interface Estado {
   productos?: Record<string, Producto>;
   /** Orden de los botones que definió el administrador. Lo que no esté aquí va al final. */
   orden?: string[];
+  /** Cierres de cada jornada (AAAA-MM-DD), en el orden en que se hicieron. RF-51. */
+  jornadas?: Record<string, CierreJornada[]>;
+}
+
+/** Un cierre del día: el efectivo contado contra el esperado en ese momento. */
+export interface CierreJornada {
+  id: string;
+  por: string;
+  en: number;
+  contado: number;
+  /** Efectivo que debía haber por las ventas de la jornada cuando se cerró. */
+  esperado: number;
+  notas?: string;
 }
 
 /** El producto vigente: lo que el administrador haya definido, o el del catálogo base. */
@@ -130,6 +143,7 @@ export type Operacion = Base &
     | { t: "orden"; ids: string[] }
     | { t: "cantidad"; cuenta: string; linea: string; cantidad: number }
     | { t: "comida_linea"; cuenta: string; linea: string; valor: boolean }
+    | { t: "cerrar_jornada"; fecha: string; contado: number; notas?: string }
   );
 
 export const estadoVacio = (): Estado => ({ cuentas: {}, productos: {} });
@@ -170,9 +184,31 @@ export const unidades = (c: Cuenta) =>
   c.lineas.reduce((s, l) => s + (l.anulada ? 0 : l.cantidad), 0);
 
 /** Aplica una operación sobre `estado`, mutándolo. Ignora lo que no tenga sentido. */
+/** Efectivo cobrado en una jornada (sin cuentas anuladas ni cobros deshechos). */
+export function efectivoDeJornada(cuentas: Iterable<Cuenta>, fecha: string): number {
+  let s = 0;
+  for (const c of cuentas) {
+    if (c.anulada) continue;
+    for (const p of c.pagos) if (!p.deshecho && p.medio === "efectivo" && jornada(p.en) === fecha) s += p.monto;
+  }
+  return s;
+}
+
 export function aplicar(estado: Estado, op: Operacion): Estado {
   const c = "cuenta" in op ? estado.cuentas[op.cuenta] : undefined;
   switch (op.t) {
+    case "cerrar_jornada": {
+      // Cerrar no bloquea nada: se puede volver a cerrar si después entra un cobro.
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(op.fecha)) return estado;
+      const contado = Math.floor(Number(op.contado));
+      if (!(contado >= 0 && contado <= 1_000_000_000)) return estado;
+      estado.jornadas ??= {};
+      const cierres = (estado.jornadas[op.fecha] ??= []);
+      if (cierres.some((x) => x.id === op.id)) return estado; // reintento
+      const notas = typeof op.notas === "string" ? op.notas.trim().slice(0, 200) : "";
+      cierres.push({ id: op.id, por: op.persona, en: op.en, contado, esperado: efectivoDeJornada(Object.values(estado.cuentas), op.fecha), ...(notas ? { notas } : {}) });
+      return estado;
+    }
     case "abrir": {
       if (c) return estado; // reintento: ya existe
       estado.cuentas[op.cuenta] = {
@@ -351,7 +387,7 @@ export function esVigente(c: Cuenta, ahora: number): boolean {
 export function recortar(estado: Estado, ahora: number): Estado {
   const cuentas: Record<string, Cuenta> = {};
   for (const c of Object.values(estado.cuentas)) if (esVigente(c, ahora)) cuentas[c.id] = c;
-  return { cuentas, productos: estado.productos ?? {}, orden: estado.orden };
+  return { cuentas, productos: estado.productos ?? {}, orden: estado.orden, ...(estado.jornadas ? { jornadas: estado.jornadas } : {}) };
 }
 
 /** Validación ligera de forma, para lo que llega por la red. */
@@ -363,6 +399,7 @@ export function esOperacion(x: unknown): x is Operacion {
     typeof o.t === "string" && typeof o.en === "number" &&
     (o.t === "producto" ? typeof o.producto === "object"
       : o.t === "orden" ? Array.isArray(o.ids)
+      : o.t === "cerrar_jornada" ? typeof o.fecha === "string" && typeof o.contado === "number"
       : typeof o.cuenta === "string" && o.cuenta.length <= 64)
   );
 }

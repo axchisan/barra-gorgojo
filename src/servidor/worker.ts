@@ -5,6 +5,7 @@ import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
 import { aplicar, esOperacion, estadoVacio, recortar, situacion, total, type Estado, type Operacion } from "../dominio/estado";
+import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
 
 interface Env {
@@ -357,6 +358,23 @@ export class Barra extends DurableObject<Env> {
       this.acceso.revocar(revocar);
       this.cortar(`d:${revocar}`);
       return json({ ok: true });
+    }
+    if (ruta === "/api/admin/jornadas" && req.method === "GET") {
+      // Días anteriores (RF-52): con el estado completo, que el celular no guarda.
+      const cuentas = Object.values(this.estado.cuentas);
+      const dias = jornadasConMovimiento(cuentas).slice(0, 120).map((fecha) => {
+        const { porProducto: _, ...r } = resumenJornada(cuentas, fecha);
+        return { ...r, cierres: this.estado.jornadas?.[fecha] ?? [] };
+      });
+      return json({ dias });
+    }
+    if (ruta === "/api/admin/jornadas/csv" && req.method === "GET") {
+      const fecha = url.searchParams.get("fecha") ?? "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Falta la fecha." }, 400);
+      // Con BOM: así Excel reconoce las tildes.
+      return new Response(`\uFEFF${csvJornada(Object.values(this.estado.cuentas), fecha)}`, {
+        headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="barra-${fecha}.csv"`, "cache-control": "no-store" },
+      });
     }
     if (ruta === "/api/admin/rechazadas" && req.method === "GET") {
       return json({ rechazadas: this.ctx.storage.sql.exec("SELECT id, persona, dispositivo, motivo, en, datos FROM rechazadas ORDER BY en DESC LIMIT 200").toArray() });

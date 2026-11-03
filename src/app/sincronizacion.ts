@@ -189,6 +189,23 @@ class Sincronizador {
     }
   }
 
+  /** Descarga un archivo de /api/admin/… (por ejemplo, el CSV de un día). */
+  async descargarAdmin(ruta: string, nombre: string): Promise<string | null> {
+    if (!this.sesion) return "No hay sesión.";
+    try {
+      const r = await fetch(`/api/admin/${ruta}`, { credentials: "same-origin", headers: { authorization: `Bearer ${this.sesion.token}` } });
+      if (!r.ok) return "No se pudo descargar.";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(await r.blob());
+      a.download = nombre;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      return null;
+    } catch {
+      return "Sin señal.";
+    }
+  }
+
   /** Cambiar de persona. Los pendientes se conservan y salen con la próxima sesión. */
   salir() {
     this.sesion = null;

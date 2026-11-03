@@ -243,3 +243,13 @@ Nada de jornadas anteriores: eso se consulta con señal.
 El Cron diario exporta a R2 un JSON con **el registro de operaciones de la jornada** y
 una foto de las proyecciones. Con el registro completo se puede reconstruir todo, así
 que el respaldo es pequeño y suficiente. Ver [06](06-infraestructura.md).
+
+## Cómo quedó la jornada (E1, 2026-11-02)
+
+No hay tabla `jornadas`: el cierre es una operación más del registro,
+`cerrar_jornada { fecha, contado, notas? }`, y el estado guarda en `jornadas[fecha]` cada
+cierre con quién, cuándo, lo contado y el efectivo esperado al aplicarla. El resumen de un
+día (vendido, por medio de pago, comida, por producto) lo calcula
+`src/dominio/jornada.ts` con las cuentas; el celular lo hace con lo que tiene (36 horas)
+y el servidor, para los días anteriores y el CSV, con el estado completo
+(`/api/admin/jornadas` y `/api/admin/jornadas/csv?fecha=`).

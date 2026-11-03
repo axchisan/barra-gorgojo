@@ -187,6 +187,30 @@ describe("acceso por persona", () => {
       expect(r.estado.cuentas["se-arrepiente"].anulada).toBe(false);
     });
 
+    it("cualquiera cierra el día; los días anteriores y el CSV son del administrador", async () => {
+      await cuentaCon(beto, "para-el-dia");
+      await s.ops(beto, [op({ t: "cobrar", cuenta: "para-el-dia", pago: "p-dia", medio: "efectivo" })]);
+      const hoy = new Date(Date.now() - 10 * 3600_000).toISOString().slice(0, 10);
+      const r = (await s.ops(beto, [op({ t: "cerrar_jornada", fecha: hoy, contado: 5000 })])) as any;
+      expect(r.rechazadas).toEqual([]);
+      expect(r.estado.jornadas[hoy].at(-1)).toMatchObject({ por: "Beto", contado: 5000 });
+
+      expect((await s.pedir(beto, "/api/admin/jornadas")).status).toBe(403);
+      const { datos } = await json(await s.pedir(admin, "/api/admin/jornadas"));
+      const dia = datos.dias.find((d: { fecha: string }) => d.fecha === hoy);
+      expect(dia.vendido).toBeGreaterThan(0);
+      expect(dia.cierres.at(-1).por).toBe("Beto");
+
+      const csv = await s.pedir(admin, `/api/admin/jornadas/csv?fecha=${hoy}`);
+      expect(csv.headers.get("content-type")).toContain("text/csv");
+      expect(csv.headers.get("content-disposition")).toContain(`barra-${hoy}.csv`);
+      const bytes = new Uint8Array(await csv.arrayBuffer());
+      expect([...bytes.slice(0, 3)], "BOM, para que Excel lea las tildes").toEqual([0xef, 0xbb, 0xbf]);
+      const texto = new TextDecoder().decode(bytes);
+      expect(texto).toContain("para-el-dia");
+      expect((await s.pedir(beto, `/api/admin/jornadas/csv?fecha=${hoy}`)).status).toBe(403);
+    });
+
     it("lo rechazado queda registrado para el administrador", async () => {
       const { datos } = await json(await s.pedir(admin, "/api/admin/rechazadas"));
       expect(datos.rechazadas.length).toBeGreaterThan(0);

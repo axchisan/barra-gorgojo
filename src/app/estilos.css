@@ -690,3 +690,8 @@ html.apaisada-baja .dia .cifra { padding: 6px 8px; }
 html.apaisada-baja .dia .cifra span { font-size: 0.75rem; }
 html.apaisada-baja .dia .cifra strong { font-size: 0.95rem; }
 html.apaisada-baja .dia .cifra.pendiente { grid-column: 1 / -1; }
+/* Cierre del día e historial (E1) */
+.cierre-hecho { margin: 0; padding: 8px 10px; border-radius: 8px; background: #e3f0de; color: var(--verde); font-weight: 700; }
+.cierre-hecho.falta { background: #fbe3e0; color: var(--rojo); }
+.dias { padding-bottom: 40px; }
+.dia-pasado header strong:first-child::first-letter { text-transform: uppercase; }
