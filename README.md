@@ -27,6 +27,7 @@ pnpm verificar    # tipos + pruebas del dominio y del servidor (Worker real)
 pnpm test:e2e     # Playwright: varios celulares y sin señal, con el catálogo de ejemplo
 pnpm recorrido <carpeta>   # captura y HTML de todas las pantallas (con pnpm dev corriendo)
 pnpm resumen <respaldo|foto.json>    # cuentas, sumas y catálogo, para comparar antes y después
+pnpm ensayo-restauracion   # baja el último respaldo de R2 y lo restaura en local, comprobado (cada trimestre)
 pnpm migrar <corte.json> <regla.json> # depura un registro para una base limpia (docs/04 «Cambio de base»)
 node scripts/admin.mjs <claves> respaldo|foto|importar <archivo>   # rutas de administración
 pnpm desplegar:pruebas   # compila y publica en el entorno de pruebas

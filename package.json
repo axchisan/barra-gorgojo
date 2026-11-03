@@ -23,6 +23,7 @@
     "recorrido": "node scripts/recorrido.mjs",
     "resumen": "esbuild scripts/resumen-estado.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/resumen-estado.mjs --log-level=warning && node node_modules/.cache/resumen-estado.mjs",
     "migrar": "esbuild scripts/migrar.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/migrar.mjs --log-level=warning && node node_modules/.cache/migrar.mjs",
+    "ensayo-restauracion": "pnpm build && esbuild scripts/ensayo-restauracion.ts --bundle --platform=node --format=esm --external:wrangler --outfile=node_modules/.cache/ensayo-restauracion.mjs --log-level=warning && node node_modules/.cache/ensayo-restauracion.mjs",
     "desplegar": "pnpm build && wrangler deploy $(node scripts/dominios.mjs produccion)",
     "desplegar:pruebas": "pnpm build && wrangler deploy --env pruebas $(node scripts/dominios.mjs pruebas)"
   },

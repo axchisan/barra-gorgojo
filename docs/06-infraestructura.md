@@ -130,8 +130,17 @@ Tres capas, de la más inmediata a la más lejana:
 Y una cuarta, involuntaria: cada celular tiene la copia de la jornada en curso. Si el
 servidor desapareciera un sábado a mediodía, el día no se pierde.
 
-**Prueba de restauración**: una vez por trimestre se reconstruye el entorno de pruebas
-desde un respaldo de R2. Un respaldo que nunca se restauró no es un respaldo.
+**Prueba de restauración**: una vez por trimestre. Un respaldo que nunca se restauró no
+es un respaldo. Desde E5 (2026-11-03) es un comando, en local, sin tocar pruebas ni
+producción: `pnpm ensayo-restauracion` baja de R2 el último respaldo diario, levanta el
+Worker real con una base vacía, lo importa por la ruta de migración y comprueba que las
+operaciones sean las mismas y en el mismo orden, que recalcularlas dé el mismo estado y
+que la foto del servidor restaurado (de la proyección) coincida. Deja el informe en
+`migracion/respaldos/ultimo-ensayo.json`. Primer ensayo: 2026-11-03, cuadró.
+
+**Copia fuera de Cloudflare**: cada ensayo deja el respaldo en `migracion/respaldos/` del
+Mac del desarrollador (ignorado por git). Pendiente decidir una copia automática
+(ver [13](13-revision-tecnica.md) «Respaldos fuera de la cuenta»).
 
 ## Observabilidad
 
