@@ -270,7 +270,9 @@ Contexto útil para esa sesión:
 | F4 Avisos más cómodos | ✅ | 2026-11-03 | Arriba, sobre la barra superior (abajo están los botones de venta); compactos; 2,5 s, o 6 s con «Deshacer»; se quitan tocándolos o deslizándolos; uno reemplaza al otro; rechazos en rojo hasta tocarlos. `tests/e2e/avisos.spec.ts` (7 pruebas, también «no tapa la venta» en los cuatro tamaños). Revisado con toques reales por CDP en pruebas: tablet vertical y girada, celular girado. y celular vertical (después de que volviera su internet) |
 | E2 IndexedDB | ✅ | 2026-11-03 | `src/app/memoria.ts` (Dexie: `pendientes` y `ajustes`), migración desde `localStorage` uniendo por `id`, respaldo en `localStorage` si IndexedDB no abre; Web Locks + `BroadcastChannel`: una pestaña con la conexión, relevo al cerrarla (ADR-11). `tests/e2e/memoria.spec.ts`. En pruebas, en los aparatos reales: migraron solas (el celular con 6 anotaciones sin enviar, llegaron una vez), dos pestañas con un solo candado y relevo |
 | F y E2 en producción | ✅ | 2026-11-03 | Autorizado (sin uso a esa hora; producción con datos de prueba). Foto antes y después igual: `seq` 106, 7 cuentas, $ 108.500. Revisado en las apps instaladas: tablet vertical y horizontal y celular vertical; las dos migraron solas de `localStorage` a IndexedDB. Una cuenta «Revisión F» anotada y cobrada (`seq` 109). Celular girado en la app instalada: gira (768 × 301, diseño horizontal) al girarlo a mano; forzarlo por adb no sirve con la rotación automática apagada. Queda resuelto el pendiente de C |
-| E3 Foto del estado | ⬜ | | |
+| 13·1 App abre con la red colgada | ✅ | 2026-11-03 | Service Worker con 1,5 s de espera a la red; ver [13](13-revision-tecnica.md) |
+| 13·2 Validación en el servidor | ✅ | 2026-11-03 | Zod en el Worker; lo dañado se rechaza con motivo sin tumbar el lote |
+| E3 Foto del estado | ⬜ | | **Adelantar**: ver [13](13-revision-tecnica.md) punto 3, antes de ~100.000 operaciones |
 | E4 Auditoría | ⬜ | | |
 | E5 Ensayo de restauración | ⬜ | | |
 | E6 e2e completo | ⬜ | | |

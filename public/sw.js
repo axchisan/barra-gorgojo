@@ -6,6 +6,24 @@ const CACHE = "barra-v1";
 // servido viejo desde el caché, una app reinstalada quedaba bloqueada en vertical.
 const PRIMERO_LA_RED = ["/manifest.webmanifest"];
 const BASE = ["/", "/manifest.webmanifest", "/icono-192.png", "/icono-512.png"];
+// Cuánto se espera a la red para abrir la app antes de usar la copia (RNF-04). Con Wi-Fi
+// «conectado sin internet» la red no falla: se queda colgada, y sin este límite la app no
+// abría (docs/13, punto 1).
+const ESPERA_RED = 1500;
+
+/** Archivos de /assets que pide una página. */
+const archivosDe = (html) => [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+
+/**
+ * Guarda la página nueva solo después de tener sus archivos: así la copia nunca apunta a
+ * archivos que no están (y la app abre sin señal con la versión completa).
+ */
+async function guardarPagina(respuesta) {
+  const html = await respuesta.text();
+  const c = await caches.open(CACHE);
+  await c.addAll(archivosDe(html));
+  await c.put("/", new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } }));
+}
 
 self.addEventListener("install", (e) => {
   // Además de lo básico, guarda los archivos que pide la página, para abrir sin señal desde ya.
@@ -13,8 +31,7 @@ self.addEventListener("install", (e) => {
     const c = await caches.open(CACHE);
     await c.addAll(BASE);
     const html = await (await fetch("/")).text();
-    const archivos = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
-    await c.addAll(archivos);
+    await c.addAll(archivosDe(html));
     await self.skipWaiting();
   })());
 });
@@ -31,13 +48,22 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
 
-  // Páginas: primero la red (para recibir versiones nuevas), si no hay señal, la copia.
+  // Páginas: primero la red (para recibir versiones nuevas), pero si no responde en
+  // ESPERA_RED, la copia. La red sigue en segundo plano y deja lista la versión nueva.
   if (e.request.mode === "navigate") {
-    e.respondWith(
-      fetch(e.request)
-        .then((r) => { const copia = r.clone(); caches.open(CACHE).then((c) => c.put("/", copia)); return r; })
-        .catch(() => caches.match("/")),
-    );
+    const red = fetch(e.request);
+    e.waitUntil(red.then((r) => (r.ok ? guardarPagina(r.clone()) : undefined)).catch(() => {}));
+    e.respondWith((async () => {
+      const copia = await caches.match("/");
+      if (!copia) return red; // primera vez: no hay copia, se espera a la red
+      const limite = new Promise((listo) => setTimeout(() => listo(copia), ESPERA_RED));
+      try {
+        const r = await Promise.race([red, limite]);
+        return r.ok || r === copia ? r : copia;
+      } catch {
+        return copia; // sin señal: la red falló rápido
+      }
+    })());
     return;
   }
   if (PRIMERO_LA_RED.includes(url.pathname)) {

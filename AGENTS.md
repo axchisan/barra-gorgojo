@@ -75,16 +75,18 @@ deja otra vez limpia, solo con las ventas reales.
 ## Stack
 
 Vite · React 19 · TypeScript estricto · CSS propio · Dexie (IndexedDB) · Service Worker
-propio · Cloudflare Workers · Durable Objects con SQLite · R2 · Vitest · Playwright ·
-pnpm 11. Detalles y porqués en `docs/03-arquitectura.md`; lo que difiere del plan
-(sin Tailwind, Zod ni Workbox) está en ADR-12.
+propio · Cloudflare Workers · Durable Objects con SQLite · R2 · Zod (solo en el Worker) ·
+Vitest · Playwright · pnpm 11. Detalles y porqués en `docs/03-arquitectura.md`; lo que
+difiere del plan (sin Tailwind ni Workbox) está en ADR-12, y la revisión con medidas en
+`docs/13-revision-tecnica.md`.
 
 ## Convenciones
 
 - Carpetas y archivos en español: `src/dominio`, `src/app/pantallas`, `src/servidor`.
 - `src/dominio` no importa nada de navegador ni de Workers.
-- Cada tipo de operación está en `Operacion` (`src/dominio/estado.ts`); `esOperacion` y
-  `aplicar` descartan lo inválido. Una operación nueva va con su prueba y en `docs/05`.
+- Cada tipo de operación está en `Operacion` (`src/dominio/estado.ts`) y su forma en
+  `src/servidor/esquema.ts` (Zod): un campo nuevo va en los dos, con su prueba y en
+  `docs/05`, o el servidor rechazará lo que mande la app.
 - Horas en milisegundos UTC; se muestran en `America/Bogota`. La jornada cambia a las
   5:00 a. m.
 - Commits en español, en imperativo: `agrega cobro con cambio`.

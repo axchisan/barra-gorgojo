@@ -57,11 +57,11 @@ Una sola pieza de servidor, un solo despliegue, cero servidores que mantener.
 | Interfaz | **React 19** + **Vite** | App de una sola página detrás de una entrada, sin SEO. Ver ADR-02 |
 | Estilos | ~~Tailwind CSS 4~~ **CSS propio** (`estilos.css`) con variables de la marca | Ver ADR-12 |
 | Almacenamiento local | **IndexedDB** con **Dexie** | Guarda estado y pendientes; sobrevive a cerrar la app y apagar el celular. Sin `liveQuery`: ver ADR-11 |
-| PWA | Service Worker propio (`public/sw.js`, sin Workbox) | La app abre sin señal, desde la pantalla de inicio. Ver ADR-12 |
+| PWA | Service Worker propio (`public/sw.js`, sin Workbox), con tiempo límite de 1,5 s a la red | La app abre sin señal y con la red colgada. Ver ADR-12 |
 | Servidor | **Cloudflare Workers** | Sin servidor que administrar, plan gratuito amplio, cuenta ya configurada |
 | Estado compartido | **Durable Objects con SQLite** | Un único punto que ordena todo lo que pasa en la barra, con WebSockets y base propia. Ver ADR-01 |
 | Tiempo real | **WebSocket con hibernación** | Empuja los cambios al instante y no cobra mientras nadie anota |
-| Validación | ~~Zod~~ validación a mano en el dominio (`esOperacion` y `aplicar`) | Ver ADR-12 |
+| Validación | **Zod solo en el Worker** (`src/servidor/esquema.ts`); el dominio además limpia en `aplicar` | El celular no carga la librería. Ver ADR-12 y [13](13-revision-tecnica.md) |
 | Respaldos | **Cloudflare R2** | Sin costo de salida, ya usado en el sitio |
 | Pruebas | **Vitest** (el Worker real con `unstable_startWorker` de Wrangler) y **Playwright** | Playwright simula pérdida de red y varios celulares a la vez. Ver ADR-09 |
 | Paquetes | **pnpm 11** | |
@@ -365,9 +365,9 @@ E2, así quedan.
 | Atajo | Por qué | Hasta cuándo |
 |---|---|---|
 | El estado se recalcula del registro al despertar, sin proyecciones en tablas | Con cientos de operaciones tarda milisegundos y no hay dos verdades que mantener | E3: cuando pase de unas 5.000 operaciones |
-| Sin Zod: validación a mano en `esOperacion` y en `aplicar` | Una dependencia menos en el paquete del celular; `aplicar` ya descarta lo inválido y hay pruebas por regla | Si el protocolo crece o entran clientes de otros negocios |
+| ~~Sin Zod~~ | Quitado el 2026-11-03: Zod valida en el Worker cada operación que llega (ver [13](13-revision-tecnica.md), punto 2) | — |
 | Sin Tailwind: CSS propio con variables | Ya resuelve vertical, girado, tablet y teclado (fases C y C2) y está probado; migrarlo no da nada al negocio | No se planea |
-| Service Worker a mano, sin Workbox | Es corto (`public/sw.js`): la app abre sin señal y cada despliegue estrena caché | Si hiciera falta precache fino o sincronización en segundo plano |
+| Service Worker a mano, sin Workbox | Es corto (`public/sw.js`): abre sin señal, con tiempo límite a la red (punto 1 de [13](13-revision-tecnica.md)) y cada despliegue estrena caché | Si hiciera falta precache fino o sincronización en segundo plano |
 | Fuentes del sistema, no Bitter ni Source Sans 3 | Abren sin descargar nada y sin señal; se leen bien al sol | Si el negocio pide la identidad del sitio |
 | Ids UUID v4 y nombre de la persona en cada operación | El orden lo da `seq`; el nombre basta para la auditoría de un local | E4 (auditoría) puede pedir el id del celular |
 | Sin unir cuentas, cambiar tipo, notas en la pedida ni «agotado» por cualquiera (RF-05, 06, 17, 61) | El negocio no los ha pedido en el uso real | Cuando los pida |
