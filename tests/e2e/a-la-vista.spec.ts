@@ -4,14 +4,8 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { celular, sesionApi } from "./ayuda";
+import { APARATOS, celular, sesionApi } from "./ayuda";
 
-export const APARATOS = {
-  celularVertical: { width: 360, height: 746 },
-  celularGirado: { width: 768, height: 301 },
-  tabletVertical: { width: 686, height: 1030 },
-  tabletGirada: { width: 1097, height: 654 },
-} as const;
 type Aparato = keyof typeof APARATOS;
 
 const SALIDA = process.env.AUDITORIA_SALIDA;

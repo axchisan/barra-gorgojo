@@ -101,6 +101,11 @@ el código y en los documentos técnicos se llama *ronda*. Los botones cambian s
 - Los agotados se ven atenuados y no responden.
 - Al anotar: vuelve a la cuenta (o a inicio, según de dónde vino) con un aviso
   «Anotado · Deshacer» durante 6 segundos.
+- **Avisos** (F4): salen arriba, sobre la barra superior, que solo tiene título y persona;
+  así no tapan los botones de venta, que están abajo. Son pequeños, duran 2,5 s (6 s si
+  tienen «Deshacer»), se quitan tocándolos o deslizándolos, y uno nuevo reemplaza al
+  anterior. Lo que el servidor no aceptó (regla 8) sale en rojo y se queda hasta que se
+  toque; si mientras tanto llega otro aviso, el rechazo vuelve cuando ese se va.
 
 ### 3 · Nueva cuenta
 
@@ -197,7 +202,7 @@ que los productos empiecen arriba en un teléfono pequeño. Los toques son los m
 - En una cuenta de **mesa**, en vez de cobrar directo aparecen dos botones del mismo
   tamaño: **«Cobrar aquí»** y **«Pasar a comida»**. No hay opción por defecto, a
   propósito: obliga a decidir (RF-42).
-- Después de cobrar: «Cobrada · Deshacer» por 10 segundos.
+- Después de cobrar: «Cobrada · Deshacer» por 6 segundos.
 
 ### 6 · Cocina
 

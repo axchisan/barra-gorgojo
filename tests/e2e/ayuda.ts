@@ -65,3 +65,11 @@ export async function sesionApi(request: APIRequestContext, persona = "administr
   expect(r.ok(), "entrar por la API").toBe(true);
   return (await r.json()) as { token: string; base: string };
 }
+
+/** Tamaños reales del celular y la tablet del negocio, en vertical y girados (C2). */
+export const APARATOS = {
+  celularVertical: { width: 360, height: 746 },
+  celularGirado: { width: 768, height: 301 },
+  tabletVertical: { width: 686, height: 1030 },
+  tabletGirada: { width: 1097, height: 654 },
+} as const;

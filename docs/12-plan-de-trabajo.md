@@ -267,7 +267,7 @@ Contexto útil para esa sesión:
 | F1 Billetes de Colombia | ✅ | 2026-11-03 | `src/dominio/pago.ts` (`BILLETES`, `billetesMayores`) con pruebas; familia de 2.000 a 100.000 confirmada en banrep.gov.co. Cobrar ya la usa |
 | F2 Sugerir con cuánto pagan | ✅ | 2026-11-03 | `sugerirPago`: redondeo hacia arriba a 1.000, 5.000 y 10.000, siguiente múltiplo de 50.000 y 100.000 y billetes mayores; máximo 4 después de «Exacto». Pruebas con los ejemplos del negocio y de 100 a 300.000. Cabe a la vista en los cuatro tamaños (`a-la-vista`, `espacio-movil`) |
 | F3 Mostrar al cliente en Cobrar | ✅ | 2026-11-03 | `VistaCliente` compartida con el detalle; en Cobrar, bajo el total (celular vertical) o en la barra (pantallas anchas); muestra con cuánto paga y el cambio. Se vuelve tocando o con «atrás» sin perder medio ni billete (`tests/e2e/cobrar.spec.ts`). De paso: `useAtrasCierra` perdía el siguiente «atrás» después de cerrar una capa tocando; el cambio girado va a la columna izquierda; en tablet los 5 chips en una fila. Revisado en pruebas en el celular y la tablet reales, vertical y girados (pestaña de Chrome, no la app instalada) |
-| F4 Avisos más cómodos | ⬜ | | |
+| F4 Avisos más cómodos | ✅ | 2026-11-03 | Arriba, sobre la barra superior (abajo están los botones de venta); compactos; 2,5 s, o 6 s con «Deshacer»; se quitan tocándolos o deslizándolos; uno reemplaza al otro; rechazos en rojo hasta tocarlos. `tests/e2e/avisos.spec.ts` (7 pruebas, también «no tapa la venta» en los cuatro tamaños). Revisado con toques reales por CDP en pruebas: tablet vertical y girada, celular girado. **Pendiente:** celular vertical, que se quedó sin internet durante la revisión |
 | E2 IndexedDB | ⬜ | | |
 | E3 Foto del estado | ⬜ | | |
 | E4 Auditoría | ⬜ | | |
