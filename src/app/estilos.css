@@ -539,3 +539,33 @@ html.apaisada-baja .anotar .barra-superior {
 }
 html.apaisada-baja .anotar .barra-superior strong { font-size: 0.95rem; }
 html.apaisada-baja .anotar { padding-top: 8px; }
+
+/* ── Acceso por persona (fase D) ── */
+.vincular { width: 100%; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.vincular label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.persona { text-align: left; }
+.teclado-pin { width: 100%; max-width: 360px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 24px; }
+.teclado-pin h2 { font-size: 1.5rem; text-align: center; }
+.puntos { display: flex; gap: 18px; margin: 8px 0; }
+.punto { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--marron); }
+.punto.lleno { background: var(--marron); }
+.teclas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+.tecla { min-height: 64px; border-radius: var(--radio); border: 2px solid var(--neutro-200); background: var(--papel); font-size: 1.6rem; font-weight: 800; }
+.tecla:active { background: var(--neutro-100); }
+.tecla.suave { font-size: 1rem; font-weight: 600; border-color: transparent; background: none; }
+html.muy-baja .teclado-pin { padding-top: 4px; gap: 6px; max-width: 520px; }
+html.muy-baja .teclas { grid-template-columns: repeat(6, 1fr); }
+html.muy-baja .tecla { min-height: 48px; }
+
+.personas-admin, .mi-pin { padding-bottom: 40px; }
+.personas-admin .caja { margin-top: 12px; }
+.fila-persona { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--neutro-200); }
+.fila-persona.inactiva { opacity: 0.55; }
+.nombre-persona { flex: 1 1 140px; font-weight: 700; border-left: 6px solid var(--neutro-200); padding-left: 8px; }
+.fila-persona .chip { min-height: 44px; padding: 8px 12px; }
+.peligro-chip { color: var(--rojo); border-color: var(--rojo); }
+.fila-pin { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.fila-pin input { flex: 1 1 140px; min-width: 0; }
+.codigo-vincular { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; border-radius: var(--radio); background: var(--amarillo); }
+.codigo-vincular strong { font-size: 2.6rem; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+.anular-fila input { flex: 1 1 100%; }

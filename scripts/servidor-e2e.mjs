@@ -17,7 +17,8 @@ const w = await unstable_startWorker({
   build: { alias: { "#negocio": "./negocio.ejemplo/catalogo.ts" } },
   assets: "dist-e2e",
   bindings: {
-    CLAVE: { type: "plain_text", value: "prueba" },
+    CLAVE: { type: "plain_text", value: "prueba" }, // llave de instalación: saca códigos de vinculación
+    PINES: { type: "plain_text", value: "pines-solo-para-e2e" },
     FIRMA: { type: "plain_text", value: "firma-solo-para-e2e" },
   },
   dev: { persist: PERSISTIR, server: { port: PUERTO }, inspector: false, watch: false, logLevel: "warn" },

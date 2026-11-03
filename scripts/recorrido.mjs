@@ -51,10 +51,22 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
   await p.goto(dir);
   await p.evaluate(() => { localStorage.clear(); history.replaceState({ vista: { v: "inicio", pestana: "cuentas" }, d: 0 }, ""); });
   await p.reload();
+  await foto("vincular");
+  // Código de vinculación con la llave de instalación (CLAVE), como lo daría el administrador.
+  const { codigo } = await (await fetch(new URL("/api/instalacion/codigo", dir), { method: "POST", headers: { "x-llave": CLAVE } })).json();
+  await p.getByLabel("Código de 6 números").fill(codigo);
+  await toca("Vincular celular");
   await foto("entrada");
+  await toca("Soy el administrador");
   await toca("Administrador");
-  await p.locator("input[type=password]").fill(CLAVE);
-  await toca("Entrar");
+  const pin = async () => { for (const d of "1234") await p.locator(".teclas .tecla", { hasText: new RegExp(`^${d}$`) }).click(); };
+  await foto("pin");
+  const crear = /cree su PIN/.test(await p.locator(".teclado-pin h2").innerText());
+  await pin();
+  if (crear) {
+    await p.locator(".teclado-pin h2", { hasText: "Repita el PIN" }).waitFor();
+    await pin();
+  }
   await p.locator(".inicio").waitFor();
   await foto("inicio-vacio");
 
@@ -132,6 +144,7 @@ for (const [nombreTamano, viewport] of Object.entries(TAMANOS)) {
   await p.locator(".pestanas button").nth(2).click();
   await foto("el-dia");
   await p.locator(".caja input").fill("50000");
+  await p.keyboard.press("Enter"); // ✓ baja el teclado y vuelven las pestañas
   await foto("el-dia-cuadre");
   await p.locator(".pestanas button").nth(0).click();
 

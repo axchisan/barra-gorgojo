@@ -8,7 +8,7 @@ import { sinc } from "../sincronizacion";
 export function Apartados() {
   const n = sinc.apartados.length;
   if (!n) return null;
-  const esAdministrador = sinc.sesion?.persona === "Administrador";
+  const esAdministrador = sinc.esAdministrador;
   const descargar = () => {
     const blob = new Blob([JSON.stringify(sinc.apartados, null, 2)], { type: "application/json" });
     const a = document.createElement("a");

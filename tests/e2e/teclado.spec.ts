@@ -3,16 +3,11 @@
 // cierra la hoja o el menú abierto en vez de sacar a la persona de la pantalla.
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { celular as vinculado } from "./ayuda";
 
-async function celular(browser: Browser): Promise<Page> {
-  const contexto = await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true });
-  const p = await contexto.newPage();
-  await p.goto("/");
-  await p.getByRole("button", { name: "Administrador", exact: true }).click();
-  await p.locator("input[type=password]").fill("prueba");
-  await p.getByRole("button", { name: "Entrar" }).click();
-  await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
-  // Al entrar desaparece el campo de la clave: las barras no pueden quedar escondidas.
+async function celular(browser: Browser, viewport = { width: 360, height: 740 }): Promise<Page> {
+  const p = await vinculado(browser, "Administrador", { viewport, hasTouch: true, isMobile: true });
+  // Al entrar desaparecen los campos: las barras no pueden quedar escondidas.
   await expect(p.locator(".pestanas")).toBeVisible();
   return p;
 }
@@ -93,13 +88,8 @@ test("mientras se escribe no hay barras fijas encima del teclado; ✓ las devuel
 
 test("en la tablet vertical, abrir el teclado no cambia el diseño; girarla sí", async ({ browser }) => {
   // Tablet de la barra en vertical, app instalada: 686 × 1030.
-  const contexto = await browser.newContext({ viewport: { width: 686, height: 1030 }, hasTouch: true, isMobile: true });
-  const p = await contexto.newPage();
-  await p.goto("/");
-  await p.getByRole("button", { name: "Administrador", exact: true }).click();
-  await p.locator("input[type=password]").fill("prueba");
-  await p.getByRole("button", { name: "Entrar" }).click();
-  await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
+  const p = await celular(browser, { width: 686, height: 1030 });
+  const contexto = p.context();
   const clases = () => p.evaluate(() => document.documentElement.className);
 
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
@@ -127,13 +117,8 @@ test("en la tablet vertical, abrir el teclado no cambia el diseño; girarla sí"
 
 test("celular girado: la lista de la pedida se desliza dentro del panel y no tapa la cabecera", async ({ browser }) => {
   // El celular del negocio girado, en la app: 768 × 301.
-  const contexto = await browser.newContext({ viewport: { width: 768, height: 301 }, hasTouch: true, isMobile: true });
-  const p = await contexto.newPage();
-  await p.goto("/");
-  await p.getByRole("button", { name: "Administrador", exact: true }).click();
-  await p.locator("input[type=password]").fill("prueba");
-  await p.getByRole("button", { name: "Entrar" }).click();
-  await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
+  const p = await vinculado(browser, "Administrador", { viewport: { width: 768, height: 301 }, hasTouch: true, isMobile: true });
+  const contexto = p.context();
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
   const productos = p.locator("main > section .producto:not(.otro)");
   for (let i = 0; i < 10; i++) await productos.nth(i).click();

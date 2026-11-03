@@ -19,6 +19,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const [modo, setModo] = useState<"resumen" | "rondas">("resumen");
   const [anulando, setAnulando] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const [anularCon, setAnularCon] = useState<string | null>(null);
   useAtrasCierra(menu, () => setMenu(false));
   const [renombrar, setRenombrar] = useState<string | null>(null);
   const [cliente, setCliente] = useState(false);
@@ -60,14 +61,32 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         <div className="menu-persona">
           <button onClick={() => { setRenombrar(c.nombre); setMenu(false); }}>Cambiar nombre</button>
           <button onClick={() => { setCliente(true); setMenu(false); }}>Mostrar al cliente</button>
-          {s === "abierta" && (
+          {/* Anular: una cuenta vacía, cualquiera; con productos, solo el administrador y con motivo (RF-07). */}
+          {s === "abierta" && (total(c) === 0 || sinc.esAdministrador) && (
             <button className="peligro" onClick={() => {
+              setMenu(false);
+              if (total(c) > 0) return setAnularCon("");
               sinc.emitir({ t: "anular_cuenta", cuenta: c.id });
               nav.aInicio();
               ponerAviso({ texto: "Cuenta anulada", deshacer: () => sinc.emitir({ t: "reabrir", cuenta: c.id }) });
             }}>Anular cuenta</button>
           )}
         </div>
+      )}
+      {anularCon !== null && (
+        <form className="anular-fila" onSubmit={(e) => {
+          e.preventDefault();
+          if (!anularCon.trim()) return;
+          sinc.emitir({ t: "anular_cuenta", cuenta: c.id, motivo: anularCon.trim() });
+          setAnularCon(null);
+          nav.aInicio();
+          ponerAviso({ texto: `${c.nombre}: anulada`, deshacer: () => sinc.emitir({ t: "reabrir", cuenta: c.id }) });
+        }}>
+          <span>Anular «{c.nombre}» de {pesos(total(c))}. ¿Por qué?</span>
+          <input placeholder="Motivo: cuenta repetida, prueba…" autoCapitalize="sentences" enterKeyHint="done" value={anularCon} onChange={(e) => setAnularCon(e.target.value)} autoFocus />
+          <button type="button" className="secundario" onClick={() => setAnularCon(null)}>Cancelar</button>
+          <button className="peligro" disabled={!anularCon.trim()}>Anular cuenta</button>
+        </form>
       )}
       {renombrar !== null && (
         <form className="renombrar" onSubmit={(e) => {
@@ -162,7 +181,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         {s === "comida" && !c.comidaCobrada && (
           <button className="principal grande" onClick={() => sinc.emitir({ t: "comida_cobrada", cuenta: c.id, valor: true })}>Ya se cobró en comida</button>
         )}
-        {(s === "cobrada" || s === "comida" || s === "anulada") && (
+        {(s === "cobrada" || s === "comida" || s === "anulada") && sinc.esAdministrador && (
           <button className="secundario" onClick={() => sinc.emitir({ t: "reabrir", cuenta: c.id })}>Reabrir</button>
         )}
       </div>

@@ -1,23 +1,12 @@
 // Lo mínimo de extremo a extremo (A4): entrar, abrir, anotar y cobrar; dos celulares
 // que se ven al instante; anotar sin señal y que llegue al volver.
-// Corre contra `pnpm e2e:servidor` (catálogo de ejemplo, clave «prueba», base nueva).
+// Corre contra `pnpm e2e:servidor` (catálogo de ejemplo, base nueva). Cada celular se
+// vincula con un código y entra con su PIN (tests/e2e/ayuda.ts).
 
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { celular } from "./ayuda";
 
-const CLAVE = "prueba";
 const soloDigitos = (s: string) => Number(s.replace(/\D/g, ""));
-
-/** Un celular nuevo (memoria vacía) que entra como `persona`. */
-async function celular(browser: Browser, persona = "Administrador"): Promise<Page> {
-  const contexto = await browser.newContext();
-  const p = await contexto.newPage();
-  await p.goto("/");
-  await p.getByRole("button", { name: persona, exact: true }).click();
-  await p.locator("input[type=password]").fill(CLAVE);
-  await p.getByRole("button", { name: "Entrar" }).click();
-  await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
-  return p;
-}
 
 /** Abre una cuenta con nombre y le anota `veces` toques del primer producto. Devuelve el valor. */
 async function abrirYAnotar(p: Page, nombre: string, veces: number): Promise<number> {

@@ -61,6 +61,8 @@ export interface Cuenta {
   pagos: Pago[];
   comidaCobrada: boolean;
   anulada: boolean;
+  /** Quién la anuló, cuándo y por qué (el motivo lo exige el servidor si tenía productos). */
+  anulacion?: { por: string; en: number; motivo?: string };
   /** Se anotó algo después de cobrarla (otro celular sin señal). */
   reabierta: boolean;
 }
@@ -123,7 +125,7 @@ export type Operacion = Base &
     | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number }
     | { t: "reabrir"; cuenta: string }
     | { t: "comida_cobrada"; cuenta: string; valor: boolean }
-    | { t: "anular_cuenta"; cuenta: string }
+    | { t: "anular_cuenta"; cuenta: string; motivo?: string }
     | { t: "producto"; producto: Producto }
     | { t: "orden"; ids: string[] }
     | { t: "cantidad"; cuenta: string; linea: string; cantidad: number }
@@ -257,6 +259,9 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
     case "reabrir": {
       if (!c) return estado;
       for (const p of c.pagos) p.deshecho = true;
+      // También deshace una anulación («Deshacer» después de anular la cuenta).
+      c.anulada = false;
+      delete c.anulacion;
       c.comidaCobrada = false;
       c.ultima = op.en;
       return estado;
@@ -266,7 +271,10 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       return estado;
     }
     case "anular_cuenta": {
-      if (c) c.anulada = true;
+      if (!c) return estado;
+      c.anulada = true;
+      const motivo = typeof op.motivo === "string" ? op.motivo.trim().slice(0, 120) : "";
+      c.anulacion = { por: op.persona, en: op.en, ...(motivo ? { motivo } : {}) };
       return estado;
     }
     case "orden": {

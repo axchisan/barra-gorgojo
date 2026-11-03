@@ -255,3 +255,20 @@ Revisado con el teclado real en la tablet y en un celular, en las apps instalada
 - El campo que recibe el foco se desplaza a la vista si el teclado lo tapa.
 
 Pruebas: `tests/e2e/teclado.spec.ts`.
+
+## Entrada por persona (fase D, 2026-11-02)
+
+- **Una vez por celular:** se escribe el código de 6 números que da el administrador
+  («Personas y celulares» → «Vincular un celular») y, si se quiere, un nombre para el
+  celular («Tablet de la barra»).
+- **Al llegar o al cambiar de persona:** se toca el nombre y se escribe el PIN en un
+  teclado grande de la propia app (al cuarto número entra solo). La primera vez, la
+  persona crea su PIN escribiéndolo dos veces. El administrador no aparece en la lista:
+  entra por «Soy el administrador».
+- Son 5 toques para entrar (nombre + 4 números), **fuera del flujo de anotar**: anotar
+  una ronda sigue en 3 toques (regla 1). La sesión dura 60 días.
+- **Anular una cuenta con productos** es solo del administrador y pide el motivo; una
+  cuenta vacía la anula cualquiera. «Reabrir» una cuenta cobrada solo lo ve el
+  administrador; el «Deshacer» del aviso sigue sirviendo 5 minutos a quien cobró.
+- Si el servidor no acepta algo (por ejemplo, un cambio de precio de quien no es
+  administrador), se avisa «No se hizo: …» y no queda pendiente.

@@ -8,6 +8,7 @@ import { Detalle } from "./pantallas/Detalle";
 import { EditarProducto } from "./pantallas/EditarProducto";
 import { Entrada } from "./pantallas/Entrada";
 import { Inicio } from "./pantallas/Inicio";
+import { MiPin, Personas } from "./pantallas/Personas";
 import { Productos } from "./pantallas/Productos";
 import { sinc } from "./sincronizacion";
 
@@ -31,6 +32,8 @@ export function App() {
       {vista.v === "cobrar" && <Cobrar nav={nav} id={vista.id} />}
       {vista.v === "productos" && <Productos nav={nav} />}
       {vista.v === "producto" && <EditarProducto nav={nav} id={vista.id} />}
+      {vista.v === "personas" && <Personas nav={nav} />}
+      {vista.v === "mipin" && <MiPin nav={nav} />}
       <Avisos />
     </>
   );

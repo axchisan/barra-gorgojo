@@ -19,7 +19,7 @@ export function EditarProducto({ nav, id }: { nav: Nav; id?: string }) {
   const [error, setError] = useState("");
   const libre = !!actual?.libre;
 
-  if (sinc.sesion?.persona !== "Administrador") {
+  if (!sinc.esAdministrador) {
     return <main className="vacio-pantalla"><p>Solo el administrador cambia productos y precios.</p></main>;
   }
 

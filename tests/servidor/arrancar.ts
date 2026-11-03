@@ -7,12 +7,26 @@
 import { unstable_startWorker } from "wrangler";
 import { BASE_ORIGINAL } from "../../src/dominio/base";
 
+/** Llave de instalación de las pruebas: con ella se saca el código para vincular el primer celular. */
 export const CLAVE = "clave-de-prueba";
+/** PIN con que las pruebas crean y usan las personas. */
+export const PIN = "1234";
+/** El id de una persona a partir de su nombre (igual que en src/servidor/acceso.ts). */
+export const idDe = (nombre: string) =>
+  nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
 
 export interface Servidor {
   dir: URL;
-  entrar(persona: string, clave?: string): Promise<Response>;
-  token(persona: string): Promise<string>;
+  /** Entra con el nombre y el PIN desde el celular de las pruebas (o el de `cookie`). */
+  entrar(persona: string, pin?: string, opciones?: { pinNuevo?: string; cookie?: string }): Promise<Response>;
+  /** Entra (creando el PIN si la persona no tiene) y devuelve la sesión. */
+  token(persona: string, cookie?: string): Promise<string>;
+  /** Vincula un celular nuevo y devuelve su cookie. */
+  celular(nombre?: string): Promise<string>;
+  /** Cookie del celular con que se hacen los pedidos por defecto. */
+  cookie: string;
+  /** WebSocket crudo con la sesión y la cookie del celular. */
+  wsCrudo(token: string, cookie?: string): WebSocket;
   ops(token: string, ops: unknown[], base?: string): Promise<{ ok: string[]; seq: number; estado: any; base: string }>;
   /** Como `ops`, pero devuelve la respuesta cruda (para ver códigos de error). */
   opsCrudo(token: string, ops: unknown[], base?: string): Promise<Response>;
@@ -36,6 +50,7 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
     build: { alias: { "#negocio": catalogo } },
     bindings: {
       CLAVE: { type: "plain_text", value: CLAVE },
+      PINES: { type: "plain_text", value: "llave-de-pines-de-prueba" },
       FIRMA: { type: "plain_text", value: "firma-de-prueba-larga-y-aleatoria" },
       // Siempre explícita: las pruebas no dependen de la base vigente en wrangler.jsonc.
       BASE: { type: "plain_text" as const, value: base ?? BASE_ORIGINAL },
@@ -44,20 +59,37 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
     dev: { persist: persistir ?? false, server: { port: 0 }, inspector: false, watch: false, logLevel: "error" },
   });
   const dir = await w.url;
-  const pedir = async (ruta: string, init: RequestInit = {}) => {
-    const r = await fetch(new URL(ruta, dir), init);
-    return r;
+  const crudo = (ruta: string, init: RequestInit = {}) => fetch(new URL(ruta, dir), init);
+  // Lo que hace un celular nuevo: el administrador saca un código (aquí, con la llave de
+  // instalación) y el celular lo cambia por su cookie de dispositivo.
+  const vincular = async (nombre = "Celular de pruebas") => {
+    const c = await (await crudo("/api/instalacion/codigo", { method: "POST", headers: { "x-llave": CLAVE } })).json() as { codigo: string };
+    const r = await crudo("/api/vincular", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ codigo: c.codigo, nombre }) });
+    const galleta = r.headers.get("set-cookie")?.split(";")[0];
+    if (!r.ok || !galleta) throw new Error(`No se pudo vincular: ${r.status}`);
+    return galleta;
   };
+  const cookie = await vincular();
+  const pedir = (ruta: string, init: RequestInit = {}, galleta = cookie) =>
+    crudo(ruta, { ...init, headers: { cookie: galleta, ...(init.headers as Record<string, string> | undefined) } });
   const conToken = (token: string) => ({ authorization: `Bearer ${token}`, "content-type": "application/json" });
 
   const s: Servidor = {
     dir,
-    entrar: (persona, clave = CLAVE) =>
-      pedir("/api/entrar", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ persona, clave }) }),
-    async token(persona) {
-      const r = await s.entrar(persona);
+    cookie,
+    celular: vincular,
+    entrar: (persona, pin = PIN, opciones = {}) =>
+      pedir("/api/entrar", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ persona: idDe(persona), pin, pinNuevo: opciones.pinNuevo }) }, opciones.cookie),
+    async token(persona, galleta) {
+      let r = await s.entrar(persona, PIN, { cookie: galleta });
+      if (r.status === 409) r = await s.entrar(persona, "", { pinNuevo: PIN, cookie: galleta });
       if (!r.ok) throw new Error(`No pudo entrar ${persona}: ${r.status}`);
       return ((await r.json()) as { token: string }).token;
+    },
+    wsCrudo(token, galleta = cookie) {
+      const url = new URL(`/api/ws?t=${encodeURIComponent(token)}`, dir);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      return new WebSocket(url, { headers: { cookie: galleta } } as never);
     },
     opsCrudo: (token, ops, base) => pedir("/api/ops", { method: "POST", headers: conToken(token), body: JSON.stringify({ ops, base }) }),
     async ops(token, ops, base) {
@@ -72,9 +104,7 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
       return r.json() as never;
     },
     conectar(token) {
-      const url = new URL(`/api/ws?t=${encodeURIComponent(token)}`, dir);
-      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(url);
+      const ws = s.wsCrudo(token);
       const mensajes: any[] = [];
       ws.addEventListener("message", (e) => mensajes.push(JSON.parse(String(e.data))));
       return new Promise((listo, falla) => {

@@ -2,10 +2,13 @@
 // las envía: las aparta, avisa, y el administrador las descarga. Ver negocio/docs/10.
 
 import { expect, test } from "@playwright/test";
+import { sesionApi } from "./ayuda";
 
-test("los pendientes de otra base se apartan, se avisan y nunca llegan al servidor", async ({ browser, request }) => {
-  const r = await request.post("/api/entrar", { data: { persona: "Administrador", clave: "prueba" } });
-  const { token, base } = (await r.json()) as { token: string; base: string };
+test("los pendientes de otra base se apartan, se avisan y nunca llegan al servidor", async ({ browser }) => {
+  // El celular se vincula (la cookie queda en su contexto) y entra por la API.
+  const contexto = await browser.newContext();
+  const request = contexto.request;
+  const { token, base } = await sesionApi(request);
   expect(base).toBeTruthy();
 
   const ahora = Date.now();
@@ -13,11 +16,10 @@ test("los pendientes de otra base se apartan, se avisan y nunca llegan al servid
     { id: `vieja-abrir-${ahora}`, t: "abrir", cuenta: `vieja-${ahora}`, nombre: "Cuenta de la base vieja", tipo: "grupo", persona: "Administrador", en: ahora },
     { id: `vieja-anotar-${ahora}`, t: "anotar", cuenta: `vieja-${ahora}`, ronda: "r1", persona: "Administrador", en: ahora, lineas: [{ id: "l1", producto: "rubia", cantidad: 2 }] },
   ];
-  const contexto = await browser.newContext();
   await contexto.addInitScript(({ token, pendientes }) => {
     if (localStorage.getItem("bg.preparado")) return; // solo la primera carga
     localStorage.setItem("bg.preparado", "1");
-    localStorage.setItem("bg.sesion", JSON.stringify({ token, persona: "Administrador" }));
+    localStorage.setItem("bg.sesion", JSON.stringify({ token, persona: "Administrador", rol: "admin" }));
     localStorage.setItem("bg.base", JSON.stringify("base-vieja"));
     localStorage.setItem("bg.pendientes", JSON.stringify(pendientes));
   }, { token, pendientes });

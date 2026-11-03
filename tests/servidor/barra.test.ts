@@ -63,7 +63,7 @@ describe("servidor", () => {
       const antes = (await s.foto(ana)).seq;
 
       const ws = await s.conectar(ana);
-      const porWs = new WebSocket(new URL(`/api/ws?t=${encodeURIComponent(ana)}`, s.dir.href.replace(/^http/, "ws")));
+      const porWs = s.wsCrudo(ana);
       await new Promise((r) => porWs.addEventListener("open", r));
       porWs.send(JSON.stringify({ tipo: "ops", ops: [abrir, anotar] }));
       await Promise.all([s.ops(ana, [abrir, anotar]), s.ops(ana, [abrir, anotar])]);
@@ -84,7 +84,9 @@ describe("servidor", () => {
       const orden = op({ t: "orden", ids: ["agua", "rubia"] });
       const r = await s.ops(ana, [barata, orden]);
 
-      expect(r.ok).toEqual([barata.id, orden.id]); // sale de la cola, pero no se aplica
+      // No se aplican, y vuelven con su motivo para que el celular los saque de la cola y avise.
+      expect(r.ok).toEqual([]);
+      expect((r as unknown as { rechazadas: { id: string; motivo: string }[] }).rechazadas.map((x) => x.id)).toEqual([barata.id, orden.id]);
       expect(r.seq).toBe(antes.seq);
       expect(r.estado.productos.rubia).toBeUndefined();
       expect(r.estado.orden).toEqual(antes.estado.orden);
@@ -238,7 +240,7 @@ describe("cambio de base (migración)", () => {
 
   it("por WebSocket, a un envío de otra base responde con la foto de la base actual", async () => {
     const ws = await s.conectar(ana);
-    const crudo = new WebSocket(new URL(`/api/ws?t=${encodeURIComponent(ana)}`, s.dir.href.replace(/^http/, "ws")));
+    const crudo = s.wsCrudo(ana);
     const recibidos: any[] = [];
     crudo.addEventListener("message", (e) => recibidos.push(JSON.parse(String(e.data))));
     await new Promise((r) => crudo.addEventListener("open", r));

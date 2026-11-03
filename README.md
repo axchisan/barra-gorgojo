@@ -31,8 +31,15 @@ pnpm desplegar:pruebas   # compila y publica en el entorno de pruebas
 pnpm desplegar    # compila y publica en producción (ver reglas en docs/12)
 ```
 
-La clave del negocio vive en el secreto `CLAVE` del Worker (`wrangler secret put CLAVE`).
-Cambiarla obliga a escribirla de nuevo en cada celular.
+**Acceso** (ADR-10): cada celular se vincula una vez con un código de 6 dígitos que da el
+administrador en «Personas y celulares», y cada persona entra con su PIN de 4 números.
+Secretos del Worker (`wrangler secret put …`): `FIRMA` (sesiones), `PINES` (cifra los
+PIN) y `CLAVE`, que ya no es una clave para entrar sino la **llave de instalación**: solo
+sirve para sacar desde la terminal el código del primer celular:
+
+```bash
+curl -X POST https://…/api/instalacion/codigo -H "x-llave: $CLAVE"
+```
 
 ## Datos del negocio
 

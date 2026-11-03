@@ -160,15 +160,18 @@ sola no diría quién anotó. Juntas son rápidas y suficientes.
 
 ### Reglas
 
-- **PIN con hash** (PBKDF2 de Web Crypto, disponible en Workers sin dependencias) y
-  bloqueo de 5 minutos tras 5 intentos fallidos por persona y dispositivo.
+- **PIN cifrado** (AES-GCM de Web Crypto con el secreto `PINES`), no con hash, porque el
+  negocio quiere que el administrador pueda verlo: ver ADR-10. Bloqueo de 5 minutos tras
+  5 intentos fallidos por persona y dispositivo.
 - La sesión de persona vive en el celular y viaja en cada operación; el servidor
   **verifica en cada operación** que el dispositivo no esté revocado y que la persona
   esté activa y tenga el rol que exige esa operación. Ocultar un botón no es seguridad.
-- **Fuera de línea**, el celular ya no puede preguntar al servidor si el PIN es
-  correcto. Por eso guarda el hash del PIN de las personas de ese negocio y verifica
-  local. Al volver la señal, el servidor revalida todo: si la persona fue desactivada
-  mientras tanto, sus operaciones se aceptan (la venta ocurrió) pero quedan marcadas.
+- **Fuera de línea** se sigue anotando con la sesión abierta, pero **entrar o cambiar de
+  persona necesita señal**: el PIN se revisa en el servidor (ADR-10). La sesión dura 60
+  días, así que en la práctica solo se entra al llegar o al cambiar de persona.
+- Lo que el rol no permite se **rechaza con su motivo**: queda en la tabla `rechazadas`,
+  vuelve al celular, que lo saca de la cola y lo avisa en pantalla (regla 8), y el
+  administrador lo ve en «Personas y celulares».
 - Revocar un dispositivo corta su WebSocket al instante y rechaza su token en adelante.
 - Cabeceras: CSP estricta, sin scripts de terceros. La app no carga nada de fuera.
 - Ninguna clave en el repositorio: secretos con `wrangler secret`.
@@ -277,6 +280,32 @@ está vacío, el paquete del navegador no lleva productos ni precios del negocio
 celular los recibe en la foto, después de entrar. Mecato y «Otro» son de valor libre por
 su id (`ESPECIALES` en `src/dominio/catalogo.ts`), no por el catálogo base. Con la fase D
 las personas también salen del código.
+
+### ADR-10 · Acceso por persona: celular vinculado + PIN cifrado (2026-11-02)
+
+Implementación de «Acceso y seguridad» (fase D de [12](12-plan-de-trabajo.md)), con tres
+decisiones del negocio:
+
+- **El administrador puede ver los PIN.** Por eso se guardan cifrados con AES-GCM (llave
+  derivada del secreto `PINES`) y no con hash de una vía. Es aceptable porque sin un
+  celular vinculado el PIN no sirve, y el cifrado protege los respaldos de la base.
+  Cada persona puede cambiar el suyo con el actual; el administrador puede cambiarlo o
+  quitarlo (quien no tiene PIN lo crea al entrar).
+- **Vincular** es con un código de 6 dígitos que genera el administrador (vale 10 minutos
+  y una vez); el celular recibe una cookie `HttpOnly`, `Secure`, `SameSite=Strict` y en la
+  base queda solo su hash. Más de 10 códigos equivocados en 10 minutos apagan la
+  vinculación ese rato. La antigua clave del negocio (`CLAVE`) queda como **llave de
+  instalación**: solo sirve desde la terminal para sacar un código
+  (`POST /api/instalacion/codigo` con `x-llave`), para el primer celular.
+- **«Apoyo»** es una persona más, con un PIN que se comparte con quien ayude ese día.
+
+Las personas viven en el Durable Object (tablas `personas`, `dispositivos`, `codigos`,
+`intentos`); `PERSONAS` de `negocio/catalogo.ts` es solo la semilla de una base nueva.
+Permisos en el servidor (`permiso()` en `worker.ts`): catálogo y orden, anular una cuenta
+con productos (con motivo) y reabrir una cobrada o anulada son del administrador; quien
+cobró o anuló puede deshacerlo («Deshacer») durante 5 minutos. Quitar un celular o
+desactivar a una persona avisa y corta su WebSocket al instante. Pruebas:
+`tests/servidor/acceso.test.ts` y `tests/e2e/acceso.spec.ts`.
 
 ### ADR-09 · Pruebas del servidor con `unstable_startWorker`, no `vitest-pool-workers` (2026-11-02)
 

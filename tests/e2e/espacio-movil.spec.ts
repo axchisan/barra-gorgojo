@@ -4,6 +4,7 @@
 // tamaños. Las metas se miden a 360 × 740; en tablet, que nada empeore.
 
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { sesionApi, vincularYEntrar } from "./ayuda";
 
 const TAMANOS = {
   pequeno: { width: 360, height: 740 },
@@ -29,8 +30,7 @@ const producto = (pid: string, nombre: string, corto: string, categoria: string,
 
 /** Siembra una vez por corrida (el servidor e2e arranca con base nueva). */
 async function sembrar(request: APIRequestContext) {
-  const r = await request.post("/api/entrar", { data: { persona: "Administrador", clave: "prueba" } });
-  const { token, base } = (await r.json()) as { token: string; base: string };
+  const { token, base } = await sesionApi(request);
   const ops = async (lista: unknown[]) => {
     const res = await request.post("/api/ops", { headers: { authorization: `Bearer ${token}` }, data: { base, ops: lista } });
     expect(res.status(), "siembra aceptada").toBe(200);
@@ -100,11 +100,7 @@ const renglones = (p: Page, selector: string) =>
   }), selector);
 
 async function entrar(p: Page) {
-  await p.goto("/");
-  await p.getByRole("button", { name: "Administrador", exact: true }).click();
-  await p.locator("input[type=password]").fill("prueba");
-  await p.getByRole("button", { name: "Entrar" }).click();
-  await expect(p.locator(".conexion")).toHaveText(/Todo al día|●/);
+  await vincularYEntrar(p);
   await expect(p.locator(".tarjeta").first()).toBeVisible();
 }
 

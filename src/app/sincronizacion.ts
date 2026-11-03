@@ -11,7 +11,7 @@ export type Conexion = "conectado" | "conectando" | "sin-senal";
 
 const K = {
   sesion: "bg.sesion", clave: "bg.clave", confirmado: "bg.confirmado", pendientes: "bg.pendientes",
-  base: "bg.base", apartados: "bg.pendientes-base-anterior",
+  base: "bg.base", apartados: "bg.pendientes-base-anterior", personas: "bg.personas",
 };
 
 function leer<T>(k: string, porDefecto: T): T {
@@ -29,7 +29,15 @@ function escribir(k: string, v: unknown) {
   } catch { /* almacenamiento lleno o bloqueado: seguimos en memoria */ }
 }
 
-export interface Sesion { token: string; persona: string }
+export interface Sesion { token: string; persona: string; rol?: string }
+/** Una persona como la ve la entrada de un celular vinculado (sin PIN). */
+export interface PersonaPublica { id: string; nombre: string; color: string; admin: boolean; tienePin: boolean }
+type Respuesta<T> = T & { error?: string };
+
+async function pedir<T>(ruta: string, init?: RequestInit): Promise<{ status: number; datos: Respuesta<T> }> {
+  const r = await fetch(ruta, { credentials: "same-origin", ...init, headers: { "content-type": "application/json", ...init?.headers } });
+  return { status: r.status, datos: (await r.json().catch(() => ({}))) as Respuesta<T> };
+}
 
 class Sincronizador {
   sesion: Sesion | null = leer(K.sesion, null);
@@ -42,6 +50,15 @@ class Sincronizador {
   base: string = leer(K.base, BASE_ORIGINAL);
   /** Pendientes de una base anterior: no se envían nunca a la nueva. Se avisa en pantalla. */
   apartados: (Operacion & { base: string })[] = leer(K.apartados, []);
+  /** Personas del negocio, guardadas para mostrar la entrada aunque no haya señal. */
+  personas: PersonaPublica[] = leer(K.personas, []);
+  /**
+   * Si este celular está vinculado (tiene la cookie del dispositivo, que el código no
+   * puede leer): se sabe al preguntarle al servidor por las personas.
+   */
+  vinculado: boolean | null = null;
+  /** Lo avisa la pantalla: el servidor no aceptó algo que se anotó en este celular. */
+  alRechazo: ((motivo: string) => void) | null = null;
   conexion: Conexion = "conectando";
   visible: Estado = estadoVacio();
   version = 0;
@@ -90,37 +107,104 @@ class Sincronizador {
 
   // ── Sesión ─────────────────────────────────────────────────────────
 
-  get claveGuardada(): string { return leer(K.clave, ""); }
+  get esAdministrador() { return this.sesion?.rol === "admin"; }
 
-  async entrar(persona: string, clave: string): Promise<string | null> {
+  private ponerPersonas(personas: PersonaPublica[]) {
+    this.personas = personas;
+    escribir(K.personas, personas);
+    this.vinculado = true;
+    this.avisar();
+  }
+
+  /** Pregunta quiénes pueden entrar; de paso, si el celular está vinculado. */
+  async cargarPersonas(): Promise<void> {
     try {
-      const r = await fetch("/api/entrar", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ persona, clave }),
+      const { status, datos } = await pedir<{ personas: PersonaPublica[] }>("/api/personas");
+      if (status === 401) { this.vinculado = false; this.avisar(); return; }
+      if (datos.personas) this.ponerPersonas(datos.personas);
+    } catch { /* sin señal: queda lo guardado */ }
+  }
+
+  /** Vincula este celular con el código de 6 dígitos que da el administrador. */
+  async vincular(codigo: string, nombre: string): Promise<string | null> {
+    try {
+      const { datos } = await pedir<{ personas?: PersonaPublica[]; base?: string }>("/api/vincular", { method: "POST", body: JSON.stringify({ codigo, nombre }) });
+      if (!datos.personas) return datos.error ?? "No se pudo vincular.";
+      if (datos.base) this.cambiarDeBase(datos.base);
+      escribir(K.clave, null); // la clave del negocio ya no existe
+      this.ponerPersonas(datos.personas);
+      return null;
+    } catch {
+      return "Sin señal. Para vincular el celular se necesita internet.";
+    }
+  }
+
+  /**
+   * Entra con el PIN. Si la persona todavía no tiene, `pinNuevo` lo crea. Devuelve el
+   * error para mostrar, «sin-pin» si hay que crearlo, o null si entró.
+   */
+  async entrar(persona: string, pin: string, pinNuevo?: string): Promise<string | null> {
+    try {
+      const { status, datos } = await pedir<{ token?: string; persona?: string; rol?: string; base?: string }>("/api/entrar", {
+        method: "POST", body: JSON.stringify({ persona, pin, pinNuevo }),
       });
-      const d = (await r.json()) as { token?: string; persona?: string; base?: string; error?: string };
-      if (!r.ok || !d.token) return d.error ?? "No se pudo entrar.";
-      if (d.base) this.cambiarDeBase(d.base);
-      this.sesion = { token: d.token, persona: d.persona! };
+      if (status === 401 && datos.error === "dispositivo") { this.vinculado = false; this.avisar(); return "Este celular no está vinculado."; }
+      if (!datos.token) return datos.error ?? "No se pudo entrar.";
+      if (datos.base) this.cambiarDeBase(datos.base);
+      this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol };
       escribir(K.sesion, this.sesion);
-      escribir(K.clave, clave); // este celular ya quedó autorizado: cambiar de persona no vuelve a pedirla
       this.cerrarSocket();
       this.conectar();
       this.avisar();
       return null;
     } catch {
-      return "Sin señal. Para entrar la primera vez se necesita internet.";
+      return "Sin señal. Para entrar se necesita internet.";
+    }
+  }
+
+  /** Cambia el PIN de quien está usando el celular. */
+  async cambiarMiPin(actual: string, nuevo: string): Promise<string | null> {
+    if (!this.sesion) return "No hay sesión.";
+    try {
+      const { datos } = await pedir("/api/mi-pin", { method: "POST", headers: { authorization: `Bearer ${this.sesion.token}` }, body: JSON.stringify({ actual, nuevo }) });
+      return datos.error ?? null;
+    } catch {
+      return "Sin señal. Para cambiar el PIN se necesita internet.";
+    }
+  }
+
+  /** Para las pantallas del administrador: llamadas a /api/admin/… con la sesión. */
+  async admin<T>(ruta: string, cuerpo?: unknown): Promise<Respuesta<T>> {
+    if (!this.sesion) return { error: "No hay sesión." } as Respuesta<T>;
+    try {
+      const { status, datos } = await pedir<T>(`/api/admin/${ruta}`, {
+        method: cuerpo === undefined ? "GET" : "POST",
+        headers: { authorization: `Bearer ${this.sesion.token}` },
+        ...(cuerpo === undefined ? {} : { body: JSON.stringify(cuerpo) }),
+      });
+      if (status === 401) this.salir();
+      return datos;
+    } catch {
+      return { error: "Sin señal." } as Respuesta<T>;
     }
   }
 
   /** Cambiar de persona. Los pendientes se conservan y salen con la próxima sesión. */
-  salir(olvidarClave = false) {
+  salir() {
     this.sesion = null;
     escribir(K.sesion, null);
-    if (olvidarClave) escribir(K.clave, null);
     this.cerrarSocket();
     this.avisar();
+  }
+
+  /** El servidor no aceptó estas operaciones: salen de la cola y se avisa por qué (regla 8). */
+  private rechazar(rechazadas: { id: string; motivo: string }[] | undefined) {
+    if (!rechazadas?.length) return;
+    if (this.quitarPendientes(rechazadas.map((r) => r.id))) {
+      this.guardar();
+      this.recalcular();
+    }
+    for (const motivo of new Set(rechazadas.map((r) => r.motivo))) this.alRechazo?.(motivo);
   }
 
   // ── Escribir ───────────────────────────────────────────────────────
@@ -204,8 +288,13 @@ class Sincronizador {
       this.quitarPendientes([op.id]);
       this.guardar();
       this.recalcular();
+    } else if (m.tipo === "acceso") {
+      // Quitaron este celular o desactivaron a la persona: a la entrada, y se revisa la vinculación.
+      this.salir();
+      void this.cargarPersonas();
     } else if (m.tipo === "ok") {
       this.enVuelo = 0;
+      this.rechazar(m.rechazadas);
       if (this.quitarPendientes(m.ids)) {
         this.guardar();
         this.recalcular();
@@ -277,10 +366,15 @@ class Sincronizador {
         headers: { "content-type": "application/json", authorization: `Bearer ${this.sesion.token}` },
         body: JSON.stringify({ base: this.base, ops: this.pendientes.slice(0, 100) }),
       });
-      if (r.status === 401) return this.salir();
+      if (r.status === 401) {
+        const e = (await r.json().catch(() => ({}))) as { error?: string };
+        if (e.error === "dispositivo") this.vinculado = false;
+        return this.salir();
+      }
       if (!r.ok && r.status !== 409) throw new Error(); // 409: otra base; llega su foto
-      const d = (await r.json()) as { ok: string[]; estado: Estado; seq: number; base?: string };
+      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: Estado; seq: number; base?: string };
       this.quitarPendientes(d.ok);
+      this.rechazar(d.rechazadas);
       this.recibirFoto(d.estado, d.seq, d.base);
       this.ponerConexion("conectado");
     } catch {

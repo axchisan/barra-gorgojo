@@ -25,9 +25,13 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
       </header>
       {cambiar && (
         <div className="menu-persona">
-          {sinc.sesion!.persona === "Administrador" && (
-            <button onClick={() => { setCambiar(false); nav.ir({ v: "productos" }); }}>Productos y precios</button>
+          {sinc.esAdministrador && (
+            <>
+              <button onClick={() => { setCambiar(false); nav.ir({ v: "productos" }); }}>Productos y precios</button>
+              <button onClick={() => { setCambiar(false); nav.ir({ v: "personas" }); }}>Personas y celulares</button>
+            </>
           )}
+          <button onClick={() => { setCambiar(false); nav.ir({ v: "mipin" }); }}>Cambiar mi PIN</button>
           <button onClick={() => sinc.salir()}>Cambiar de persona</button>
           <button onClick={() => setCambiar(false)}>Cerrar</button>
         </div>
