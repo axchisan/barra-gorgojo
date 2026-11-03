@@ -22,8 +22,8 @@ Se construyó con atajos para salir rápido. **El trabajo actual sigue
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.
 
 Hechas (2026-11-03): fases A, B, C, D, E1, F (billetes, sugerir con cuánto pagan,
-mostrar al cliente en cobrar, avisos) y E2 (IndexedDB), probadas en el entorno de
-pruebas. Sigue publicarlas en producción (con autorización) y el resto de E.
+mostrar al cliente en cobrar, avisos) y E2 (IndexedDB), en producción desde ese día.
+Sigue el resto de E (E3 a E7).
 **Desde el 2026-11-03 producción tiene datos de prueba**; al terminar todo, la fase G la
 deja otra vez limpia, solo con las ventas reales.
 
