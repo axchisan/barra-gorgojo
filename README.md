@@ -8,19 +8,21 @@ celulares ven lo mismo.
 
 ## Estado
 
-**Versión 0.1 en uso** desde el 2026-10-04.
+**En uso** desde el 2026-10-04; en el local desde el 2026-11-01. Al 2026-11-03 están
+hechas las fases A a F y E2 del [plan de trabajo](docs/12-plan-de-trabajo.md), que es
+por donde se empieza para trabajar en el código.
 
-> **Trabajo en curso:** pulir la versión de emergencia hasta lo planeado. Empezar por
-> [12 · Plan de trabajo](docs/12-plan-de-trabajo.md).
-
-Cuentas, pedidas y chicos, repetir, mecato de valor libre, cobro con cambio, mesas que
-se pasan a comida, lista de cocina, «el día» con cuadre de caja, tiempo real entre
-celulares y trabajo sin señal. Lo que se simplificó para salir rápido está en
-[07 · Roadmap](docs/07-roadmap.md), sección «Versión 0.1».
+Cuentas de grupo, persona, mesa y cancha; pedidas y chicos con un toque por producto,
+repetir, petacos y medios (puros o mixtos), mecato y «Otro» de valor libre, precio de
+cancha, cambiar cantidades; cobro en efectivo (con sugerencias de con cuánto pagan y el
+cambio), Nequi o Breve, «mostrar al cliente», mesas que se pasan a comida y lista de
+cocina; «el día» con cierre de caja, días anteriores y CSV; acceso por persona con PIN;
+tiempo real entre celulares y trabajo sin señal. Qué está hecho de cada requerimiento:
+[01](docs/01-requerimientos.md); qué atajos se quedan: [03](docs/03-arquitectura.md) ADR-12.
 
 ```bash
 pnpm install
-pnpm dev          # compila y levanta en http://localhost:8787 (clave local: prueba)
+pnpm dev          # compila y levanta en http://localhost:8787 (llave de instalación local: prueba)
 pnpm verificar    # tipos + pruebas del dominio y del servidor (Worker real)
 pnpm test:e2e     # Playwright: varios celulares y sin señal, con el catálogo de ejemplo
 pnpm recorrido <carpeta>   # captura y HTML de todas las pantallas (con pnpm dev corriendo)
@@ -61,8 +63,8 @@ en el archivo: el registro se recalcula con el catálogo base (regla 0 de `AGENT
 El catálogo de `negocio/catalogo.ts` es solo la semilla de una base nueva: en cuanto el
 administrador cambia algo desde la app, queda en el registro. En el Retén del Gorgojo
 está vacío: todo el catálogo vive en la base de datos y llega al celular después de
-entrar (ADR-08). Las personas salen del código con la fase D de
-[12 · Plan de trabajo](docs/12-plan-de-trabajo.md).
+entrar (ADR-08). Las personas viven en el Durable Object desde la fase D; las del
+archivo son solo la semilla de una base nueva.
 
 ## En una línea por tema
 
@@ -88,7 +90,7 @@ entrar (ADR-08). Las personas salen del código con la fase D de
 | [05 · Modelo de datos](docs/05-modelo-de-datos.md) | Tablas, operaciones y reglas |
 | [06 · Infraestructura](docs/06-infraestructura.md) | Servicios, entornos, respaldos, costos y límites |
 | [07 · Roadmap](docs/07-roadmap.md) | Fases, entregables, adopción y riesgos |
-| [12 · Plan de trabajo](docs/12-plan-de-trabajo.md) | **Fases A–E en orden, reglas para producción y cómo iniciar la sesión** |
+| [12 · Plan de trabajo](docs/12-plan-de-trabajo.md) | **Fases A–G en orden, seguimiento, reglas para producción y cómo iniciar la sesión** |
 
 Los documentos 08 a 11 (datos del negocio, auditoría, migración y revisión en teléfono
 con capturas) tienen datos reales y viven en `negocio/docs/`.

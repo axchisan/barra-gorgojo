@@ -7,17 +7,18 @@
 ## Versión 0.1 · En uso — 2026-10-04
 
 Se publicó una versión funcional antes de completar la fase 1, porque el negocio la
-necesitaba ya. Funciona el flujo completo del día; **estos atajos quedan por pulir**:
+necesitaba ya. Funciona el flujo completo del día; **estos atajos quedaban por pulir**.
+Cómo quedó cada uno (2026-11-03): [03](03-arquitectura.md) ADR-12.
 
 | Atajo de la 0.1 | Lo previsto | Dónde |
 |---|---|---|
-| Entrada con **una clave del negocio** + escoger nombre. El celular recuerda la clave | Vinculación de celular con código y PIN por persona | [03](03-arquitectura.md) «Acceso y seguridad» |
+| ~~Entrada con una clave del negocio~~ (hecho en D, 2026-11-02) | Vinculación de celular con código y PIN por persona | [03](03-arquitectura.md) «Acceso y seguridad» |
 | ~~Memoria del celular en `localStorage`~~ (hecho en E2, 2026-11-03) | IndexedDB con Dexie y Web Locks | [04](04-sincronizacion-y-fuera-de-linea.md) |
-| Catálogo y personas **en el código** (`src/dominio/catalogo.ts`); cambiar un precio es desplegar | Catálogo con historial de precios administrable desde la app | [05](05-modelo-de-datos.md) |
-| El servidor guarda solo el registro de operaciones y recalcula el estado en memoria al despertar | Proyecciones en tablas SQLite | [05](05-modelo-de-datos.md) |
-| Cuadre de caja calculado en pantalla, sin guardar la jornada | Jornadas cerradas y guardadas, historial y CSV | RF-51 a RF-53 |
-| Sin respaldo diario a R2 (el SQLite del Durable Object tiene recuperación a 30 días) | Cron diario a R2 | [06](06-infraestructura.md) |
-| Fuentes del sistema; sin pruebas de extremo a extremo automatizadas | Bitter y Source Sans 3; Playwright con varios celulares | |
+| ~~Catálogo y personas en el código~~ (hecho en B9 y D, 2026-11-02) | Catálogo con historial de precios administrable desde la app | [05](05-modelo-de-datos.md) |
+| El servidor guarda solo el registro de operaciones y recalcula el estado en memoria al despertar (se queda hasta E3) | Proyecciones en tablas SQLite | [05](05-modelo-de-datos.md) |
+| ~~Cuadre de caja sin guardar la jornada~~ (hecho en E1, 2026-11-03) | Jornadas cerradas y guardadas, historial y CSV | RF-51 a RF-53 |
+| ~~Sin respaldo diario a R2~~ (Cron diario, 365 días) | Cron diario a R2 | [06](06-infraestructura.md) |
+| Fuentes del sistema (se quedan, ADR-12); ~~sin pruebas de extremo a extremo~~ (Playwright desde A4) | Bitter y Source Sans 3; Playwright con varios celulares | |
 
 Verificado antes de publicar: 10 pruebas de reglas (precios, reintentos sin duplicar,
 anular, doble cobro, reapertura por anotación tardía, mesas y cocina, convergencia), y a

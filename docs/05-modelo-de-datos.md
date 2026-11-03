@@ -1,5 +1,86 @@
 # 05 · Modelo de datos
 
+## Cómo es hoy (comprobado en el código el 2026-11-03)
+
+La versión en uso es más simple que el diseño original de abajo. Lo que cambia:
+
+- **El servidor solo guarda el registro de operaciones** (más acceso y rechazos). Las
+  cuentas, rondas, líneas, pagos, el catálogo, el orden de los botones y los cierres del
+  día **no son tablas**: son el `Estado` que resulta de aplicar el registro en orden con
+  `aplicar` (`src/dominio/estado.ts`), la misma función que usa el celular. El Durable
+  Object lo recalcula al despertar (E3 lo cambiará cuando el registro sea grande).
+- **Ids** generados en el celular con `crypto.randomUUID()` (UUID v4, no v7). El orden lo
+  da `seq` del servidor.
+- **Nombres** de persona en las operaciones (`persona`), no ids.
+
+### Tablas del Durable Object (SQLite)
+
+```sql
+-- src/servidor/worker.ts
+CREATE TABLE operaciones (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,   -- orden oficial
+  id TEXT NOT NULL UNIQUE,                 -- generado en el celular: idempotencia
+  persona TEXT NOT NULL,
+  datos TEXT NOT NULL,                     -- la operación en JSON; el servidor escribe precioFijado
+  recibida_en INTEGER NOT NULL
+);
+CREATE TABLE rechazadas (id, persona, dispositivo, datos, motivo, en);  -- regla 8
+
+-- src/servidor/acceso.ts (fase D, ADR-10)
+CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada);  -- pin cifrado
+CREATE TABLE dispositivos (id, nombre, token_hash UNIQUE, creado, por, ultimo_uso, revocado);
+CREATE TABLE codigos (codigo_hash, vence, por, usado);      -- vinculación de 6 dígitos
+CREATE TABLE intentos (persona, dispositivo, fallos, hasta); -- bloqueo de PIN
+CREATE TABLE intentos_vincular (ventana, fallos);
+```
+
+### Operaciones (`Operacion` en `src/dominio/estado.ts`)
+
+Todas llevan `id`, `persona`, `en` (hora del celular) y, ya en el servidor, `seq`.
+
+| `t` | Datos | Qué hace |
+|---|---|---|
+| `abrir` | `cuenta, nombre, tipo, mesa?, cancha?` | Abre una cuenta (grupo, persona, mesa, cancha o rápida) |
+| `renombrar` | `cuenta, nombre` | Cambia el nombre |
+| `anotar` | `cuenta, ronda, lineas[]` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`. El servidor agrega `precioFijado` |
+| `anular` | `cuenta, linea` | Anula un producto anotado (queda tachado) |
+| `cantidad` | `cuenta, linea, cantidad` | Cambia la cantidad; guarda la anterior y quién |
+| `comida_linea` | `cuenta, linea, valor` | Marca o desmarca un producto como comida |
+| `cobrar` | `cuenta, pago, medio, recibido?` | Cobra el saldo: efectivo, Nequi, Breve o «comida» (pasada a comida) |
+| `reabrir` | `cuenta` | Deshace el último cobro o la anulación |
+| `comida_cobrada` | `cuenta, valor` | La cocina marca cobrada (o no) una cuenta pasada a comida |
+| `anular_cuenta` | `cuenta, motivo?` | Anula la cuenta; con productos, solo el administrador y con motivo |
+| `producto` | `producto` | Crea o cambia un producto (administrador) |
+| `orden` | `ids[]` | Orden de los botones (administrador) |
+| `cerrar_jornada` | `fecha, contado, notas?` | Cierre del día con el efectivo contado (E1) |
+
+### El estado
+
+```ts
+interface Estado {
+  cuentas: Record<string, Cuenta>;        // con rondas, lineas y pagos adentro
+  productos?: Record<string, Producto>;   // lo creado o cambiado desde la app: pisa al catálogo base
+  orden?: string[];                       // orden de los botones
+  jornadas?: Record<string, CierreJornada[]>; // cierres por fecha AAAA-MM-DD
+}
+```
+
+El catálogo vigente es el catálogo base del código (`#negocio`, vacío en producción desde
+B9) con los `productos` del estado encima y en el `orden` del estado. Una `Linea` guarda
+copia de nombre y precio; el precio con que se cobró queda fijado por el servidor
+(`precioFijado`), así que cambiar el catálogo no cambia lo ya anotado. Los permisos por
+rol los revisa el servidor antes de aceptar cada operación (`permiso()` en `worker.ts`).
+
+En el celular, la foto y la cola viven en IndexedDB (ver «Lo que se guarda en el
+celular», abajo).
+
+---
+
+## Diseño original (2026-10, no implementado así)
+
+Lo que sigue es el modelo planeado antes de la versión 0.1. Se conserva como referencia
+para cuando hagan falta proyecciones en tablas (E3) o reportes (fase 3).
+
 Todo vive en el **SQLite del Durable Object** (ver [03](03-arquitectura.md), ADR-01).
 Hay dos clases de tablas:
 
@@ -12,7 +93,7 @@ Convenciones: nombres en español y `snake_case`, identificadores `TEXT` con UUI
 (ordenables por tiempo), horas en milisegundos UTC (`INTEGER`) y se muestran en
 `America/Bogota`, **dinero en enteros de pesos** con sufijo `_cop`.
 
-## Registro de operaciones
+### Registro de operaciones
 
 ```sql
 CREATE TABLE operaciones (
@@ -38,7 +119,7 @@ CREATE TABLE operaciones_rechazadas (
 );
 ```
 
-## Proyecciones
+### Proyecciones
 
 ```sql
 CREATE TABLE cuentas (
@@ -110,7 +191,7 @@ CREATE TABLE pagos (
 funcionan sin casos especiales: lo cobrado en la barra es todo menos `comida`, y lo
 pasado a comida se ve aparte.
 
-### Saldo y estado
+#### Saldo y estado
 
 - `saldo = total_cop − pagado_cop`.
 - Una cuenta queda `cobrada` (o `pasada_a_comida`) solo cuando el saldo llega a cero.
@@ -118,7 +199,7 @@ pasado a comida se ve aparte.
   `reabierta = 1`. Así la regla de [04](04-sincronizacion-y-fuera-de-linea.md) sale sola
   de la aritmética.
 
-## Catálogo
+### Catálogo
 
 ```sql
 CREATE TABLE productos (
@@ -152,7 +233,7 @@ y la Club Colombia, inactivos hasta tener precio.
 Los medios de pago son una lista corta en el código y en el `CHECK`. Agregar uno (el
 datáfono, Bancolombia) es una migración pequeña.
 
-## Personas, dispositivos, jornadas
+### Personas, dispositivos, jornadas
 
 ```sql
 CREATE TABLE personas (
@@ -202,7 +283,7 @@ CREATE TABLE jornadas (
 );
 ```
 
-### La jornada
+#### La jornada
 
 - Se abre **sola** con la primera operación del día.
 - El día cambia a las **5:00 a. m.** hora de Colombia, no a medianoche: el local cierra
@@ -213,7 +294,7 @@ CREATE TABLE jornadas (
 - Una cuenta abierta al cambiar de jornada **sigue abierta**; su venta cuenta en la
   jornada en que se anotó cada ronda.
 
-## Reglas que hace cumplir la base
+### Reglas que hace cumplir la base
 
 Además de las del código, la base rechaza:
 
@@ -243,9 +324,12 @@ Nada de jornadas anteriores: eso se consulta con señal.
 
 ## Respaldo
 
-El Cron diario exporta a R2 un JSON con **el registro de operaciones de la jornada** y
-una foto de las proyecciones. Con el registro completo se puede reconstruir todo, así
-que el respaldo es pequeño y suficiente. Ver [06](06-infraestructura.md).
+Todos los días a las 5:30 a. m. de Colombia, el Cron guarda en R2
+(`respaldos/AAAA-MM-DD.json.gz`) **el registro completo** de operaciones, comprimido, con
+la base y el número de operaciones en sus metadatos. Con el registro se reconstruye todo
+(`pnpm resumen` lo recalcula). Se conservan 365 días (regla del bucket, B8). El
+administrador también lo baja cuando quiera (`/api/admin/respaldo`). Ver
+[06](06-infraestructura.md).
 
 ## Cómo quedó la jornada (E1, 2026-11-02)
 

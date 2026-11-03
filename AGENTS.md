@@ -44,7 +44,7 @@ deja otra vez limpia, solo con las ventas reales.
    generado en el celular; el servidor es idempotente por `id`.
 4. **Nada se edita ni se borra:** se corrige con una operación nueva (anular, deshacer,
    reabrir). Nunca `DELETE` ni `UPDATE` sobre el registro de operaciones.
-5. **Una sola función de reglas** (`src/dominio/aplicar.ts`), pura y compartida entre
+5. **Una sola función de reglas** (`aplicar` en `src/dominio/estado.ts`), pura y compartida entre
    celular y servidor. El total oficial es el del servidor.
 6. **Cada regla de conflicto de `docs/04` tiene su prueba.** Si se agrega una regla, se
    agrega su prueba en el mismo commit.
@@ -74,15 +74,17 @@ deja otra vez limpia, solo con las ventas reales.
 
 ## Stack
 
-Vite · React 19 · TypeScript estricto · Tailwind 4 · Dexie (IndexedDB) · Workbox ·
-Cloudflare Workers · Durable Objects con SQLite · R2 · Zod · Vitest · Playwright ·
-pnpm 11. Detalles y porqués en `docs/03-arquitectura.md`.
+Vite · React 19 · TypeScript estricto · CSS propio · Dexie (IndexedDB) · Service Worker
+propio · Cloudflare Workers · Durable Objects con SQLite · R2 · Vitest · Playwright ·
+pnpm 11. Detalles y porqués en `docs/03-arquitectura.md`; lo que difiere del plan
+(sin Tailwind, Zod ni Workbox) está en ADR-12.
 
 ## Convenciones
 
 - Carpetas y archivos en español: `src/dominio`, `src/app/pantallas`, `src/servidor`.
 - `src/dominio` no importa nada de navegador ni de Workers.
-- Un esquema de Zod por tipo de operación, en `src/dominio/operaciones.ts`.
+- Cada tipo de operación está en `Operacion` (`src/dominio/estado.ts`); `esOperacion` y
+  `aplicar` descartan lo inválido. Una operación nueva va con su prueba y en `docs/05`.
 - Horas en milisegundos UTC; se muestran en `America/Bogota`. La jornada cambia a las
   5:00 a. m.
 - Commits en español, en imperativo: `agrega cobro con cambio`.

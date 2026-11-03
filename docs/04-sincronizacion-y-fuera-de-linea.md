@@ -21,7 +21,7 @@ Cada operación lleva:
 |---|---|
 | `id` | UUID v7 generado **en el celular**. Es lo que hace que reenviar sea inofensivo |
 | `tipo` | Qué pasó (lista abajo) |
-| `datos` | Lo necesario para aplicarla, validado con Zod |
+| `datos` | Lo necesario para aplicarla, validado en el dominio (`esOperacion` y `aplicar`) |
 | `persona_id`, `dispositivo_id` | Quién y desde dónde |
 | `creada_en` | Hora del celular cuando se tocó. Para mostrar y para escoger el precio vigente |
 | `seq` | Lo asigna el servidor. Orden oficial. Vacío mientras está pendiente |

@@ -94,11 +94,17 @@ el código y en los documentos técnicos se llama *ronda*. Los botones cambian s
   categorías debajo.
 - **Repetir** precarga la última pedida de la cuenta; se ajusta y se anota. En las
   canchas es el caso normal: cada chico suele traer la misma ronda.
-- **Mecato** es de valor libre: al tocarlo aparece una fila de valores ($ 1.000 a
-  $ 3.000) y «Otro valor». Cada valor tocado suma una línea.
+- **Mecato** es de valor libre: al tocarlo se abre una hoja con valores ($ 1.000,
+  1.500, 2.000, 2.500, 3.000 y 5.000) y «Otro valor». Cada valor tocado suma una línea.
+- **«＋ Otro»** es lo que no está en el catálogo: se escribe el nombre y el valor, y se
+  marca si es **barra** o **comida** (un almuerzo anotado en la barra). Lo de comida se
+  suma aparte en el total, en el cobro y en el día (RF-31).
+- En las cuentas de **cancha** cada producto cobra su **precio de cancha**, si lo tiene; el
+  botón lo muestra (RF-32).
 - Debajo de las cervezas: gaseosas, jugos y agua; luego cigarrillos y mecato; al final
   lo que casi no se pide (licor por botella).
-- Los agotados se ven atenuados y no responden.
+- Un producto desactivado por el administrador no aparece (no hay «agotado» atenuado:
+  ver RF-61 en [01](01-requerimientos.md)).
 - Al anotar: vuelve a la cuenta (o a inicio, según de dónde vino) con un aviso
   «Anotado · Deshacer» durante 6 segundos.
 - **Avisos** (F4): salen arriba, sobre la barra superior, que solo tiene título y persona;
@@ -160,10 +166,12 @@ que los productos empiecen arriba en un teléfono pequeño. Los toques son los m
 - **Resumen** agrupa por producto: es lo que el cliente quiere ver al pagar.
 - **Pedidas** (o **Chicos**) muestra cada una con hora y quién la anotó: es lo que resuelve el
   «yo no pedí esa».
-- Tocar una línea en esa lista permite **anular** ese producto (con motivo opcional). La
-  línea anulada se ve tachada; no desaparece.
-- Menú ⋮: renombrar, cambiar tipo, unir con otra cuenta, mostrar al cliente, anular
-  cuenta.
+- Tocar un producto abre **«Cambiar cantidad»** (RF-33): más o menos unidades, marcarlo
+  como barra o comida (RF-34), o **anularlo**. Queda quién y cuánto era; la línea anulada
+  se ve tachada, no desaparece. Cada cambio tiene «Deshacer».
+- Menú ⋮: cambiar nombre, mostrar al cliente y anular cuenta (vacía, cualquiera; con
+  productos, el administrador con motivo). Cambiar el tipo y unir cuentas (RF-05, RF-06)
+  no están hechos.
 
 ### 5 · Cobrar
 
@@ -217,7 +225,27 @@ unidades por producto. Desde aquí, **cerrar el día**: pide el efectivo contado
 la diferencia con el esperado. Hoy no se hace cuadre de caja; el negocio lo quiere, así
 que entra desde la primera versión.
 
-### 8 · Entrada
+### 8 · Menú de la persona
+
+Tocar el nombre arriba a la derecha: **Cambiar mi PIN**, **Cambiar de persona** y, para el
+administrador, **Productos y precios** y **Personas y celulares**.
+
+### 9 · Productos y precios (administrador)
+
+- **Editar**: nombre, nombre corto del botón, categoría, precio, precio de cancha, colores
+  del botón (con vista previa) y si está activo. «＋ Nuevo producto» crea uno.
+- **Ordenar**: ◀ ▶ mueven cada botón; el orden es el mismo en todos los celulares y no
+  cambia solo (RF-63).
+- Los cambios son operaciones del registro: el precio nuevo rige para lo que se anote
+  después; lo anotado conserva el suyo (RNF-32).
+
+### 10 · Personas y celulares (administrador)
+
+Personas con su rol y su PIN (el administrador lo ve, ADR-10): agregar, activar o
+desactivar y quitar el PIN (la persona crea uno nuevo al entrar). Celulares: vincular uno
+con un código de 6 números y quitar uno perdido (RF-72).
+
+### 11 · Entrada
 
 - Celular nuevo: pide el **código de vinculación** de 6 dígitos que genera un
   administrador desde su celular. Se hace una vez por aparato.

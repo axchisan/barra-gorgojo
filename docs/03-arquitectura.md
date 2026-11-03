@@ -55,13 +55,13 @@ Una sola pieza de servidor, un solo despliegue, cero servidores que mantener.
 |---|---|---|
 | Lenguaje | **TypeScript** estricto | El mismo de todos los proyectos. Y aquí además permite **compartir el código de reglas** entre celular y servidor |
 | Interfaz | **React 19** + **Vite** | App de una sola página detrás de una entrada, sin SEO. Ver ADR-02 |
-| Estilos | **Tailwind CSS 4** | Mismo sistema que el sitio; tokens de la marca reaprovechados |
-| Almacenamiento local | **IndexedDB** con **Dexie** | Guarda estado y pendientes; sobrevive a cerrar la app y apagar el celular. `liveQuery` actualiza la interfaz sola |
-| PWA | Service Worker propio con **Workbox** (`vite-plugin-pwa`) | La app abre sin señal, desde la pantalla de inicio |
+| Estilos | ~~Tailwind CSS 4~~ **CSS propio** (`estilos.css`) con variables de la marca | Ver ADR-12 |
+| Almacenamiento local | **IndexedDB** con **Dexie** | Guarda estado y pendientes; sobrevive a cerrar la app y apagar el celular. Sin `liveQuery`: ver ADR-11 |
+| PWA | Service Worker propio (`public/sw.js`, sin Workbox) | La app abre sin señal, desde la pantalla de inicio. Ver ADR-12 |
 | Servidor | **Cloudflare Workers** | Sin servidor que administrar, plan gratuito amplio, cuenta ya configurada |
 | Estado compartido | **Durable Objects con SQLite** | Un único punto que ordena todo lo que pasa en la barra, con WebSockets y base propia. Ver ADR-01 |
 | Tiempo real | **WebSocket con hibernación** | Empuja los cambios al instante y no cobra mientras nadie anota |
-| Validación | **Zod** | Mismo esquema en celular y servidor |
+| Validación | ~~Zod~~ validación a mano en el dominio (`esOperacion` y `aplicar`) | Ver ADR-12 |
 | Respaldos | **Cloudflare R2** | Sin costo de salida, ya usado en el sitio |
 | Pruebas | **Vitest** (el Worker real con `unstable_startWorker` de Wrangler) y **Playwright** | Playwright simula pérdida de red y varios celulares a la vez. Ver ADR-09 |
 | Paquetes | **pnpm 11** | |
@@ -72,8 +72,8 @@ La pieza más importante del código no es ni la interfaz ni el servidor. Es una
 pura** que recibe el estado y una operación, y devuelve el estado nuevo:
 
 ```ts
-// src/dominio/aplicar.ts — se ejecuta igual en el celular y en el Durable Object
-export function aplicar(estado: EstadoBarra, op: Operacion): EstadoBarra
+// `aplicar` en src/dominio/estado.ts — se ejecuta igual en el celular y en el Durable Object
+export function aplicar(estado: Estado, op: Operacion): Estado
 ```
 
 - En el **celular**, se aplica para mostrar al instante lo que se acaba de tocar, encima
@@ -118,26 +118,36 @@ BarraGorgojo/
 └── vite.config.ts
 ```
 
-**Así está hoy** (2026-11-02, después de partir `App.tsx` en el paso A3 de
-[12](12-plan-de-trabajo.md)); lo que falta frente al plan de arriba lo cierra la fase E:
+**Así está hoy** (2026-11-03, después de F y E2); las diferencias con el plan de arriba
+están en ADR-12:
 
 ```
 src/
-├── dominio/            # catalogo.ts (tipos; el catálogo viene de #negocio), estado.ts, formato.ts
+├── dominio/            # sin dependencias de navegador ni de Workers
+│   ├── estado.ts       # tipos, operaciones y `aplicar`: la única función de reglas
+│   ├── catalogo.ts     # tipos y reglas fijas; el catálogo base viene de #negocio
+│   ├── jornada.ts      # resumen del día y CSV (E1)
+│   ├── pago.ts         # billetes y sugerencias de con cuánto pagan (F1, F2)
+│   ├── base.ts · formato.ts
 ├── app/
 │   ├── App.tsx         # solo sesión y qué pantalla se ve
-│   ├── navegacion.ts   # useNavegacion: cada pantalla es una entrada del historial
+│   ├── navegacion.ts   # cada pantalla es una entrada del historial; «atrás» cierra hojas
 │   ├── avisos.tsx      # avisos arriba, con «Deshacer»; los rechazos se quedan
-│   ├── paquetes.ts     # petacos: agrupar, describir, contar
-│   ├── cuentas.ts      # resumen por producto, color, ícono del tipo
 │   ├── memoria.ts      # IndexedDB con Dexie; trae lo de localStorage (0.1)
-│   ├── colores.ts · vibrar.ts · sincronizacion.ts (cola, WebSocket, varias pestañas)
-│   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Productos, EditarProducto
-│   └── componentes/    # TarjetaCuenta, TarjetasProducto, EditarLinea, Desglose, NoExiste,
-│                       # EstadoConexion, HojaLibre (mecato y «Otro»), HojaMixto
-└── servidor/worker.ts  # Worker y Durable Object en un solo archivo
+│   ├── sincronizacion.ts # cola, WebSocket con respaldo HTTP, una conexión por celular
+│   ├── paquetes.ts · cuentas.ts · colores.ts · teclado.ts · ajustarNombres.ts · vibrar.ts
+│   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Dias,
+│   │                   # Productos, EditarProducto, Personas (y MiPin)
+│   └── componentes/    # TarjetaCuenta, TarjetasProducto, EditarLinea, Desglose, VistaCliente,
+│                       # HojaLibre (mecato y «Otro»), HojaMixto, TecladoPin, Apartados,
+│                       # EstadoConexion, NoExiste
+└── servidor/
+    ├── worker.ts       # Worker (rutas, archivos, Cron a R2) y Durable Object `Barra`
+    └── acceso.ts       # personas, celulares, códigos, PIN y sesiones (ADR-10)
+public/sw.js            # Service Worker propio: la app abre sin señal
 negocio.ejemplo/        # catálogo de ejemplo (el real, en negocio/, privado)
-scripts/                # preparar.mjs, recorrido.mjs (capturas y HTML de todas las pantallas)
+scripts/                # preparar, recorrido, resumen-estado, migrar, admin, servidor-e2e
+tests/                  # dominio (Vitest), servidor/ (Worker real, ADR-09), e2e/ (Playwright)
 ```
 
 ## Acceso y seguridad
@@ -333,3 +343,32 @@ servidor es idempotente por `id`). La migración desde `localStorage` se hace ca
 aparezca algo ahí, no una sola vez, porque una pestaña con la versión 0.1 puede seguir
 abierta; por eso `bg.base` se queda. Probado en la tablet y el celular reales: migraron
 sus colas de `localStorage` (6 anotaciones sin enviar en el celular) y llegaron una vez.
+
+### ADR-12 · Atajos de la versión 0.1: los que se quitaron y los que se quedan (2026-11-03)
+
+La 0.1 salió con atajos ([07](07-roadmap.md) «Versión 0.1»). Después de las fases A a F y
+E2, así quedan.
+
+**Se quitaron:**
+
+| Atajo | Cómo se quitó |
+|---|---|
+| Una clave del negocio para entrar | Celular vinculado y PIN por persona (fase D, ADR-10) |
+| Memoria en `localStorage` | IndexedDB con Dexie y una conexión por celular (E2, ADR-11) |
+| Catálogo y personas en el código | Catálogo en el registro (B9, ADR-08); personas en el Durable Object (fase D) |
+| Cuadre sin guardar | Cierre del día como operación, días anteriores y CSV (E1) |
+| Sin respaldo propio | Cron diario a R2 con el registro completo, 365 días (B8) |
+| Sin pruebas de extremo a extremo | Playwright: varios celulares, sin señal, tamaños reales, pestañas (A4, C, F, E2) |
+
+**Se quedan, a propósito:**
+
+| Atajo | Por qué | Hasta cuándo |
+|---|---|---|
+| El estado se recalcula del registro al despertar, sin proyecciones en tablas | Con cientos de operaciones tarda milisegundos y no hay dos verdades que mantener | E3: cuando pase de unas 5.000 operaciones |
+| Sin Zod: validación a mano en `esOperacion` y en `aplicar` | Una dependencia menos en el paquete del celular; `aplicar` ya descarta lo inválido y hay pruebas por regla | Si el protocolo crece o entran clientes de otros negocios |
+| Sin Tailwind: CSS propio con variables | Ya resuelve vertical, girado, tablet y teclado (fases C y C2) y está probado; migrarlo no da nada al negocio | No se planea |
+| Service Worker a mano, sin Workbox | Es corto (`public/sw.js`): la app abre sin señal y cada despliegue estrena caché | Si hiciera falta precache fino o sincronización en segundo plano |
+| Fuentes del sistema, no Bitter ni Source Sans 3 | Abren sin descargar nada y sin señal; se leen bien al sol | Si el negocio pide la identidad del sitio |
+| Ids UUID v4 y nombre de la persona en cada operación | El orden lo da `seq`; el nombre basta para la auditoría de un local | E4 (auditoría) puede pedir el id del celular |
+| Sin unir cuentas, cambiar tipo, notas en la pedida ni «agotado» por cualquiera (RF-05, 06, 17, 61) | El negocio no los ha pedido en el uso real | Cuando los pida |
+

@@ -274,5 +274,5 @@ Contexto útil para esa sesión:
 | E4 Auditoría | ⬜ | | |
 | E5 Ensayo de restauración | ⬜ | | |
 | E6 e2e completo | ⬜ | | |
-| E7 Documentación al día | ⬜ | | |
+| E7 Documentación al día | ✅ | 2026-11-03 | Comprobada contra el código. 01: estado de cada requerimiento y RF-30 a RF-36 (petacos, «Otro», precio de cancha, cantidad, comida, sugerencias, a la vista). 02: «Otro», cancha, cambiar cantidad, menú de la persona, productos y personas. 03: árbol real, stack real y ADR-12 (atajos quitados y los que se quedan: sin Zod, Tailwind ni Workbox, estado recalculado). 05: modelo real (registro, tablas, 13 operaciones, `Estado`), el diseño original aparte. 06: secretos, respaldo completo, observabilidad. 07, README y AGENTS.md |
 | G Base limpia definitiva | ⬜ | | Al final de todo, con autorización. Producción tiene datos de prueba desde el 2026-11-03 |

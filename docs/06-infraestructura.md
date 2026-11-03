@@ -50,12 +50,15 @@ Los dos entornos remotos tienen **Durable Objects separados**: imposible que una
 anote en la caja real. Las personas y dispositivos también son por entorno (la misma
 lección de las cuentas por rama del sitio).
 
-Cada entorno tiene sus secretos (`CLAVE`, `FIRMA`). Los de pruebas se guardan en
-`.dev.vars.pruebas` (ignorado por git), que también usa `pnpm dev:pruebas` en local:
+Cada entorno tiene sus secretos: `CLAVE` (llave de instalación), `FIRMA` (sesiones) y
+`PINES` (cifra los PIN, fase D); `MIGRACION` solo mientras se importa una base. Los de
+pruebas se guardan en `.dev.vars.pruebas` (ignorado por git), que también usa
+`pnpm dev:pruebas` en local:
 
 ```bash
 wrangler secret put CLAVE --env pruebas
 wrangler secret put FIRMA --env pruebas
+wrangler secret put PINES --env pruebas
 ```
 
 Las direcciones de cada entorno están en el repositorio privado del negocio
@@ -102,11 +105,11 @@ Tres capas, de la más inmediata a la más lejana:
 1. **Recuperación a un punto en el tiempo** del SQLite de Durable Objects: Cloudflare
    permite devolver el objeto a cualquier momento de los últimos 30 días.
 2. **Exportación diaria a R2** a las 5:30 a. m. (después del corte de jornada): el
-   registro de operaciones del día y una foto de las proyecciones, en JSON comprimido.
+   registro de operaciones **completo**, en JSON comprimido (`respaldos/AAAA-MM-DD.json.gz`).
    Se conservan 365 días con una regla de ciclo de vida del bucket (`respaldos-365-dias`,
    activa desde el 2026-11-02). El respaldo es de la base vigente (`vars.BASE`).
-3. **Exportación manual a CSV** desde la app (fase 2), que el negocio puede guardar
-   donde quiera.
+3. **Exportación manual a CSV** de cada día desde «Días anteriores» (E1), que el negocio
+   puede guardar donde quiera, y el respaldo completo a demanda (`/api/admin/respaldo`).
 
 Y una cuarta, involuntaria: cada celular tiene la copia de la jornada en curso. Si el
 servidor desapareciera un sábado a mediodía, el día no se pierde.
@@ -117,10 +120,10 @@ desde un respaldo de R2. Un respaldo que nunca se restauró no es un respaldo.
 ## Observabilidad
 
 - **Workers Logs** para errores y operaciones rechazadas, y `wrangler tail` en vivo.
-- Pantalla de administrador con: celulares conectados, última vez que se vio cada uno,
-  versión de la app, pendientes reportados por cada celular y operaciones rechazadas.
-- El Cron diario revisa que haya habido respaldo el día anterior y deja un aviso en la
-  pantalla de administrador si no.
+- Hoy: «Personas y celulares» muestra cada celular y su último uso; las operaciones
+  rechazadas se guardan en la tabla `rechazadas` (`/api/admin/rechazadas`).
+- Pendiente (E4): pantalla con celulares conectados, versión de la app, pendientes de
+  cada celular y rechazadas; y que el Cron avise si faltó un respaldo.
 
 ## Lo que cada celular necesita
 
