@@ -357,3 +357,81 @@ describe("base con el catálogo entero en el registro (B9)", () => {
     }
   });
 });
+
+// Punto 2 de docs/13: la forma de cada operación se valida en el servidor (src/servidor/esquema.ts).
+describe("forma de las operaciones", () => {
+  let s: Servidor;
+  let ana: string;
+  let admin: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    admin = await s.token("Administrador");
+  });
+  afterAll(() => s?.apagar());
+  const enviar = (token: string, ops: unknown[]) => s.ops(token, ops) as Promise<{ ok: string[]; seq: number; estado: any; rechazadas?: { id: string; motivo: string }[] }>;
+
+  it("acepta todas las operaciones como las manda la app", async () => {
+    const cuenta = `forma-${Date.now()}`, mesa = `${cuenta}-m`;
+    const r = await enviar(ana, [
+      op({ t: "abrir", cuenta, nombre: "Forma", tipo: "grupo" }),
+      op({ t: "abrir", cuenta: mesa, nombre: "Mesa 3", tipo: "mesa", mesa: 3 }),
+      op({ t: "renombrar", cuenta, nombre: "Forma bien" }),
+      op({ t: "anotar", cuenta, ronda: "r1", lineas: [
+        { id: "a", producto: "rubia", cantidad: 2, precio: 4000 },
+        { id: "b", producto: "otro", cantidad: 1, nombre: "Almuerzo", precio: 15000, comida: true },
+        { id: "c", producto: "rubia", cantidad: 15, paquete: { id: "pq", tipo: "medio", mixto: false } },
+      ] }),
+      op({ t: "cantidad", cuenta, linea: "a", cantidad: 3 }),
+      op({ t: "comida_linea", cuenta, linea: "b", valor: false }),
+      op({ t: "anular", cuenta, linea: "c" }),
+      op({ t: "cobrar", cuenta, pago: "p1", medio: "efectivo", recibido: 50000 }),
+      op({ t: "reabrir", cuenta }),
+      op({ t: "anotar", cuenta: mesa, ronda: "r1", lineas: [{ id: "m1", producto: "rubia", cantidad: 1 }] }),
+      op({ t: "cobrar", cuenta: mesa, pago: "p2", medio: "comida" }),
+      op({ t: "comida_cobrada", cuenta: mesa, valor: true }),
+      op({ t: "anular_cuenta", cuenta: `${cuenta}-vacia` }),
+      op({ t: "cerrar_jornada", fecha: "2026-11-03", contado: 0 }),
+    ]);
+    expect(r.rechazadas ?? []).toEqual([]);
+    expect(r.ok).toHaveLength(14);
+    const p = await enviar(admin, [
+      op({ t: "producto", producto: { id: "colada", nombre: "Colada", corto: "COLADA", categoria: "otro", precio: 2000, precioCancha: null, activo: true, fondo: "#123456", texto: "#FFFFFF" } }),
+      op({ t: "orden", ids: ["colada", "rubia"] }),
+    ]);
+    expect(p.rechazadas ?? []).toEqual([]);
+  });
+
+  it("rechaza con motivo lo que no tiene forma, sin tumbar el lote ni tocar el estado", async () => {
+    const cuenta = `mala-${Date.now()}`;
+    const buena1 = op({ t: "abrir", cuenta, nombre: "Antes", tipo: "grupo" });
+    const malas = [
+      op({ t: "cobrar", cuenta, pago: "p", medio: "bitcoin" }),
+      op({ t: "abrir", cuenta: `${cuenta}-x`, nombre: "x", tipo: "hacker" }),
+      op({ t: "anotar", cuenta, ronda: "r", lineas: null }),
+      op({ t: "anotar", cuenta, ronda: "r2", lineas: [null] }),
+      op({ t: "abrir", cuenta: `${cuenta}-y`, nombre: "x".repeat(10_000), tipo: "grupo" }),
+      op({ t: "borrar_todo", cuenta }),
+    ];
+    const buena2 = op({ t: "anotar", cuenta, ronda: "r3", lineas: lineas([["rubia", 1]]) });
+    const antes = (await s.foto(ana)).seq;
+    const r = await enviar(ana, [buena1, ...malas, buena2]);
+    expect(r.ok).toEqual([buena1.id, buena2.id]);
+    expect(r.rechazadas?.map((x) => x.id)).toEqual(malas.map((m) => m.id));
+    expect(r.rechazadas?.every((x) => /dañada/.test(x.motivo))).toBe(true);
+    expect(r.seq).toBe(antes + 2);
+    expect(r.estado.cuentas[`${cuenta}-x`]).toBeUndefined();
+    expect(r.estado.cuentas[cuenta].pagos).toEqual([]);
+    // Quedan en `rechazadas` para el administrador (regla 8).
+    const lista = await (await fetch(new URL("/api/admin/rechazadas", s.dir), { headers: { authorization: `Bearer ${admin}`, cookie: s.cookie } })).json().catch(() => null);
+    if (lista) expect(JSON.stringify(lista)).toContain(malas[0].id);
+  });
+
+  it("lo ya aceptado se sigue confirmando al reintentar", async () => {
+    const abrir = op({ t: "abrir", cuenta: `re-${Date.now()}`, nombre: "Reintento", tipo: "grupo" });
+    expect((await enviar(ana, [abrir])).ok).toEqual([abrir.id]);
+    const r = await enviar(ana, [abrir]);
+    expect(r.ok).toEqual([abrir.id]);
+    expect(r.rechazadas ?? []).toEqual([]);
+  });
+});

@@ -6,6 +6,7 @@ import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
 import { aplicar, esOperacion, estadoVacio, recortar, situacion, total, type Estado, type Operacion } from "../dominio/estado";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
+import { validar } from "./esquema";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
 
 interface Env {
@@ -209,27 +210,42 @@ export class Barra extends DurableObject<Env> {
     const aceptadas: string[] = [];
     const rechazadas: Rechazo[] = [];
     const ahora = Date.now();
+    const rechazar = (id: string, t: unknown, crudo: unknown, motivo: string) => {
+      this.ctx.storage.sql.exec("INSERT INTO rechazadas (id, persona, dispositivo, datos, motivo, en) VALUES (?, ?, ?, ?, ?, ?)",
+        id, quien.nombre, quien.dispositivo, JSON.stringify(crudo).slice(0, 10_000), motivo, ahora);
+      console.warn(JSON.stringify({ aviso: "operacion-rechazada", id, t, persona: quien.nombre, motivo }));
+      rechazadas.push({ id, motivo });
+    };
     for (const crudo of ops.slice(0, 200)) {
-      if (!esOperacion(crudo)) continue;
-      const ya = this.ctx.storage.sql.exec("SELECT seq FROM operaciones WHERE id = ?", crudo.id).toArray();
+      const idCrudo = crudo && typeof crudo === "object" && typeof (crudo as { id?: unknown }).id === "string" ? (crudo as { id: string }).id : null;
+      if (!idCrudo || idCrudo.length > 64) {
+        console.warn(JSON.stringify({ aviso: "operacion-sin-id", persona: quien.nombre }));
+        continue; // sin id el celular no puede saber cuál fue
+      }
+      // Primero el reintento: lo ya aceptado se confirma aunque hoy no pasara la validación.
+      const ya = this.ctx.storage.sql.exec("SELECT seq FROM operaciones WHERE id = ?", idCrudo).toArray();
       if (ya.length > 0) {
-        aceptadas.push(crudo.id);
+        aceptadas.push(idCrudo);
         continue;
       }
+      const v = validar(crudo);
+      if ("motivo" in v) { rechazar(idCrudo, (crudo as { t?: unknown }).t, crudo, v.motivo); continue; }
       // Quién la hizo lo dice la sesión, no el celular. La hora se acota.
-      const op = { ...crudo, persona: quien.nombre, en: Math.min(ahora, Math.max(ahora - DIA, crudo.en)) } as Operacion;
+      const op = { ...v.op, persona: quien.nombre, en: Math.min(ahora, Math.max(ahora - DIA, v.op.en)) } as Operacion;
       delete op.seq;
       const motivo = this.permiso(op, quien, ahora);
-      if (motivo) {
-        this.ctx.storage.sql.exec("INSERT INTO rechazadas (id, persona, dispositivo, datos, motivo, en) VALUES (?, ?, ?, ?, ?, ?)",
-          op.id, quien.nombre, quien.dispositivo, JSON.stringify(crudo), motivo, ahora);
-        console.warn(JSON.stringify({ aviso: "operacion-rechazada", id: op.id, t: op.t, persona: quien.nombre, motivo }));
-        rechazadas.push({ id: op.id, motivo });
-        continue;
-      }
+      if (motivo) { rechazar(op.id, op.t, crudo, motivo); continue; }
       // El precio fijado solo lo pone el servidor: lo que mande el celular se descarta.
       if (op.t === "anotar") op.lineas = op.lineas.map(({ precioFijado: _, ...l }) => l);
-      aplicar(this.estado, op);
+      try {
+        aplicar(this.estado, op);
+      } catch (e) {
+        // Una regla que falla a medias pudo dejar el estado tocado: se rearma del registro.
+        console.error(JSON.stringify({ aviso: "aplicar-fallo", id: op.id, t: op.t, error: String(e) }));
+        this.rearmar();
+        rechazar(op.id, op.t, crudo, "No se pudo anotar. Avise al administrador.");
+        continue;
+      }
       // Queda escrito el precio con que se cobró cada línea, para que recalcular el
       // registro nunca cambie lo ya anotado aunque después cambie el catálogo.
       if (op.t === "anotar") {
