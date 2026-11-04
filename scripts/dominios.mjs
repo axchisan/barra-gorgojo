@@ -14,4 +14,6 @@ const dominios = JSON.parse(readFileSync(archivo, "utf8"))[entorno] ?? [];
 for (const d of dominios) {
   if (!/^[a-z0-9.-]+$/.test(d)) throw new Error(`Dominio inválido en negocio/despliegue.json: ${d}`);
 }
-process.stdout.write(dominios.map((d) => `--domain ${d}`).join(" "));
+// El primero es la dirección propia: abrir la página por otra (workers.dev) lleva a ella.
+const direccion = dominios.length ? [`--var DIRECCION:https://${dominios[0]}`] : [];
+process.stdout.write([...dominios.map((d) => `--domain ${d}`), ...direccion].join(" "));

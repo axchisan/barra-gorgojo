@@ -635,3 +635,20 @@ describe("doble cobro y autoría (E6)", () => {
     expect((await s.foto(admin)).estado.cuentas[cuenta].abiertaPor).toBe("Beto");
   });
 });
+
+// Fase G: quien abre la app por la dirección vieja (workers.dev) llega a la propia.
+describe("dirección propia", () => {
+  let s: Servidor;
+  beforeAll(async () => { s = await arrancar({ direccion: "https://barra.ejemplo.test" }); });
+  afterAll(() => s?.apagar());
+
+  it("abrir la página por otra dirección lleva a la propia; la API y los archivos no se redirigen", async () => {
+    // El navegador manda sec-fetch-dest «document» al abrir una página (Node no deja poner sec-fetch-mode).
+    const abrir = await fetch(new URL("/?x=1", s.dir), { headers: { "sec-fetch-dest": "document" }, redirect: "manual" });
+    expect(abrir.status).toBe(302);
+    expect(abrir.headers.get("location")).toBe("https://barra.ejemplo.test/?x=1");
+    expect((await fetch(new URL("/api/personas", s.dir), { headers: { "sec-fetch-dest": "document" }, redirect: "manual" })).status).not.toBe(302);
+    expect((await fetch(new URL("/", s.dir), { redirect: "manual" })).status).not.toBe(302); // el Service Worker pide la página sin «navigate»
+  });
+});
+

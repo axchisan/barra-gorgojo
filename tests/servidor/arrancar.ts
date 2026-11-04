@@ -42,8 +42,8 @@ export interface Servidor {
  * @param catalogo archivo que hace de `#negocio` (por defecto, el de ejemplo)
  * @param persistir carpeta para la base; sin ella, todo vive en memoria
  */
-export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", persistir, base, migracion }: {
-  catalogo?: string; persistir?: string; base?: string; migracion?: string;
+export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", persistir, base, migracion, direccion }: {
+  catalogo?: string; persistir?: string; base?: string; migracion?: string; direccion?: string;
 } = {}): Promise<Servidor> {
   const w = await unstable_startWorker({
     config: "wrangler.jsonc",
@@ -55,6 +55,7 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
       // Siempre explícita: las pruebas no dependen de la base vigente en wrangler.jsonc.
       BASE: { type: "plain_text" as const, value: base ?? BASE_ORIGINAL },
       ...(migracion ? { MIGRACION: { type: "plain_text" as const, value: migracion } } : {}),
+      ...(direccion ? { DIRECCION: { type: "plain_text" as const, value: direccion } } : {}),
     },
     dev: { persist: persistir ?? false, server: { port: 0 }, inspector: false, watch: false, logLevel: "error" },
   });

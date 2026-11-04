@@ -23,6 +23,11 @@ interface Env {
   PINES: string;
   /** Nombre de la base (instancia del Durable Object). Variable de wrangler.jsonc. */
   BASE?: string;
+  /**
+   * Dirección propia de la app (`https://…`), si tiene. Abrir la página por otra dirección
+   * (workers.dev) lleva a esta. La pone `pnpm desplegar` desde negocio/despliegue.json.
+   */
+  DIRECCION?: string;
   /** Llave de la importación de la migración. Sin ella, importar está apagado. */
   MIGRACION?: string;
 }
@@ -53,6 +58,12 @@ const cookieDe = (req: Request) =>
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
+    // Por la dirección vieja, la página lleva a la propia (las apps instaladas allá se
+    // reinstalan en la nueva). La API no se redirige: responde igual en las dos.
+    const propia = env.DIRECCION ? new URL(env.DIRECCION) : null;
+    if (propia && url.host !== propia.host && !url.pathname.startsWith("/api/") && req.method === "GET" && (req.headers.get("sec-fetch-mode") === "navigate" || req.headers.get("sec-fetch-dest") === "document")) {
+      return Response.redirect(new URL(url.pathname + url.search, propia).toString(), 302);
+    }
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     return barraDe(env).fetch(req);
   },
