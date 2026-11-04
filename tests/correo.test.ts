@@ -1,9 +1,10 @@
 // Copia semanal del respaldo por correo (docs/13 «Respaldos fuera de la cuenta»).
-import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { esDiaDeCorreo, peticionRespaldo } from "../src/servidor/correo";
 
 const comprimido = async (texto: string) => new Response(new Blob([texto]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+const descomprimir = async (base64: string) =>
+  new Response(new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
 
 describe("correo del respaldo", () => {
   it("sin llave o sin destino no envía nada", async () => {
@@ -27,7 +28,7 @@ describe("correo del respaldo", () => {
     expect(cuerpo.to).toEqual(["a@b.co", "c@d.co"]);
     expect(cuerpo.from).toBe("Barra del Gorgojo <respaldos@ejemplo.com>");
     expect(cuerpo.attachments[0].filename).toBe("barra-v3-2026-11-09.json.gz");
-    expect(gunzipSync(Buffer.from(cuerpo.attachments[0].content, "base64")).toString("utf8")).toBe(texto);
+    expect(await descomprimir(cuerpo.attachments[0].content)).toBe(texto);
   });
 
   it("se manda los lunes, en hora de Colombia", () => {
