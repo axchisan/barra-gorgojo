@@ -16,4 +16,15 @@ for (const d of dominios) {
 }
 // El primero es la dirección propia: abrir la página por otra (workers.dev) lleva a ella.
 const direccion = dominios.length ? [`--var DIRECCION:https://${dominios[0]}`] : [];
-process.stdout.write([...dominios.map((d) => `--domain ${d}`), ...direccion].join(" "));
+// Correo semanal del respaldo (src/servidor/correo.ts): { "para": "a@b.c, …", "de": "Nombre <x@dominio>" }.
+const correo = JSON.parse(readFileSync(archivo, "utf8")).respaldo?.[entorno];
+const vars = [];
+if (correo?.para) {
+  if (!/^[^\s"'`$]+(,[^\s"'`$]+)*$/.test(correo.para)) throw new Error("respaldo.para inválido");
+  vars.push(`--var RESPALDO_PARA:${correo.para}`);
+}
+if (correo?.de) {
+  if (!/^[^\s"'`$<>]+@[^\s"'`$<>]+$/.test(correo.de)) throw new Error("respaldo.de: solo la dirección, sin nombre");
+  vars.push(`--var RESPALDO_DE:${correo.de}`);
+}
+process.stdout.write([...dominios.map((d) => `--domain ${d}`), ...direccion, ...vars].join(" "));

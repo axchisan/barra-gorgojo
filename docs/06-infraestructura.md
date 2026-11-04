@@ -138,9 +138,14 @@ operaciones sean las mismas y en el mismo orden, que recalcularlas dé el mismo 
 que la foto del servidor restaurado (de la proyección) coincida. Deja el informe en
 `migracion/respaldos/ultimo-ensayo.json`. Primer ensayo: 2026-11-03, cuadró.
 
-**Copia fuera de Cloudflare**: cada ensayo deja el respaldo en `migracion/respaldos/` del
-Mac del desarrollador (ignorado por git). Pendiente decidir una copia automática
-(ver [13](13-revision-tecnica.md) «Respaldos fuera de la cuenta»).
+**Copia fuera de Cloudflare** (2026-11-04): los **lunes**, después del respaldo a R2, el
+Cron manda el registro completo comprimido por correo con Resend
+(`src/servidor/correo.ts`), con una llave de idempotencia para no duplicarlo si se
+reintenta. Si falla, queda en los logs y el respaldo en R2 sigue igual. Destino y
+remitente en `negocio/despliegue.json` (`respaldo`); la llave es el secreto
+`RESEND_API_KEY`. Sin llave o sin destino no envía nada. El administrador también puede
+mandarlo cuando quiera (`POST /api/admin/respaldo/correo`). Además, cada ensayo de
+restauración deja una copia en `migracion/respaldos/` del Mac del desarrollador.
 
 ## Observabilidad
 

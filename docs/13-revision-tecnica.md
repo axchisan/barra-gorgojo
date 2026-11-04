@@ -203,6 +203,9 @@ un seguro barato; no reemplaza a E3, pero quita el riesgo mientras se hace.
 
 ### Respaldos fuera de la cuenta
 
+**Hecho el 2026-11-04:** correo semanal con el respaldo por Resend (ver
+[06](06-infraestructura.md) «Respaldos»). Lo que sigue es el razonamiento original.
+
 Los respaldos en R2 están en la **misma cuenta** que la app: si la cuenta se pierde o se
 compromete, se pierde todo junto. Conviene una copia fuera de Cloudflare (por ejemplo, el
 administrador baja el respaldo completo cada semana, o un envío automático a otro
