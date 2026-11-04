@@ -50,8 +50,8 @@ function bajarUltimo(): string {
   throw new Error("No encontré respaldos en R2 de los últimos 10 días.");
 }
 
-const sinMarcasDelServidor = (o: Record<string, unknown>) => {
-  const { seq: _s, recibida_en: _r, ...resto } = o;
+const sinMarcasDelServidor = (o: object) => {
+  const { seq: _s, recibida_en: _r, ...resto } = o as Record<string, unknown>;
   return JSON.stringify(resto);
 };
 const recalcular = (ops: Operacion[]): Estado => {

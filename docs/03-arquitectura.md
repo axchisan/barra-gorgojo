@@ -401,3 +401,17 @@ las novedades desde el `seq` del celular.
 **Regla para quien cambie `aplicar`:** si el cambio hace que lo ya guardado deje de
 coincidir con recalcular el registro, subir `VERSION_PROYECCION` en `worker.ts`.
 
+### ADR-14 · Autoría probada con la sesión firmada de quien anotó (2026-11-03)
+
+ADR-10 decía «quién la hizo lo dice la sesión, no el celular»: así nadie puede poner otro
+nombre. Pero si Ana anota sin señal y Beto entra al mismo celular antes de que salga, lo
+de Ana llegaba a nombre de Beto, y la auditoría (E4) quedaba mal.
+
+**Decisión.** Cada operación lleva, solo en el celular y en el envío, la sesión firmada de
+quien la anotó (`firma`, el mismo token que ya guarda el celular). El servidor la
+verifica: si es válida y de ese mismo celular, la operación queda a nombre de esa persona
+y se guarda `enviadaPor` con quien la envió; la auditoría lo resalta. Si no, queda a nombre
+de quien envía, como antes. **Los permisos se revisan siempre con quien envía**, y la
+firma no se guarda en el registro ni en los respaldos (ni en la descarga de apartados).
+Atribuirle algo a otra persona exige tener su sesión de ese celular, no solo su nombre.
+

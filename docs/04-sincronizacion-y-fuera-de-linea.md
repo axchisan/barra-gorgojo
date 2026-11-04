@@ -167,13 +167,14 @@ deciden cosas incompatibles sin haberse visto. Cada uno tiene una regla escrita:
 |---|---|
 | **Se anota una ronda en una cuenta que otro celular ya cobró** (el que anotó no tenía señal) | La ronda **se acepta**: las cervezas salieron. La cuenta se **reabre sola** con saldo pendiente y todos los celulares muestran un aviso: «Grupo de Juan: se anotaron 2 Rubia después del cobro. Saldo $ 8.000». Esto es RF-26 y es el caso más importante |
 | Se anota en una cuenta **pasada a comida** | Igual: se acepta, y la cuenta de cocina muestra el valor nuevo con aviso. Si la cocina ya la había marcado cobrada, vuelve a quedar pendiente |
-| Se anota en una cuenta que otro **unió** a otra | La ronda se redirige a la cuenta de destino. El origen guarda a dónde se unió |
+| Se anota en una cuenta que otro **unió** a otra | La ronda se redirige a la cuenta de destino. El origen guarda a dónde se unió. *(Unir cuentas, RF-06, no está hecho: esta fila aplica cuando exista)* |
 | Se anota en una cuenta **anulada** | Se acepta y la cuenta se reactiva con aviso: si alguien anotó, había clientes |
 | Dos celulares **anulan la misma línea** | La segunda no hace nada. No es error |
 | Dos celulares **cobran la misma cuenta** | El primero que llega al servidor cobra. El segundo se **rechaza** con «Esta cuenta ya la cobró Ana a las 4:12 p. m. por Nequi». Si hubo plata recibida dos veces, se ve y se devuelve; el sistema no lo esconde |
 | Dos celulares **renombran** la misma cuenta | Gana el último en llegar. Es inofensivo |
 | Se anota un producto **agotado** en otro celular | Se acepta. «Agotado» es un aviso para no ofrecerlo, no una prohibición: si se vendió, es porque había |
 | Una persona desactivada anotó sin señal | Se acepta y queda marcada para revisión del administrador |
+| **Otra persona entra al celular** antes de que salga lo anotado sin señal | Queda a nombre de quien lo anotó, con prueba: cada operación lleva la sesión firmada de quien la anotó y el servidor la verifica (que sea válida y de ese mismo celular); se guarda también quién la envió y la auditoría lo resalta. Sin firma válida, queda a nombre de quien envía. Los permisos se revisan con quien envía (ADR-14) |
 | Operación inválida (datos corruptos, versión vieja de la app) | Se rechaza, queda en un registro de rechazos visible al administrador, y el celular la saca de pendientes mostrando el aviso. **Nunca se descarta en silencio** |
 
 ### Precios
@@ -207,6 +208,12 @@ en el momento de hacerse y no son urgentes:
 - Ver jornadas anteriores y exportar.
 
 Cerrar sesión con pendientes está bloqueado hasta enviarlos (RNF-16).
+
+Pruebas de esta tabla (E6, 2026-11-03): `tests/conflictos.test.ts` (reglas, fila por
+fila, y la propiedad de convergencia con 200 secuencias al azar),
+`tests/servidor/barra.test.ts` «doble cobro y autoría» y `tests/e2e/conflictos.spec.ts`
+(tres celulares). El doble cobro se rechaza en el servidor con el mensaje de la tabla
+(`yaCobrada` en `worker.ts`).
 
 ## Cómo se prueba
 

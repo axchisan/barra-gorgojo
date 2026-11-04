@@ -86,3 +86,9 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
   }
   return { texto: "Operación desconocida", atencion: true };
 }
+
+/** La frase con la nota de quién la envió, si fue otra persona (lo anotado sin señal salió con otra sesión). */
+export function describirConEnvio(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos">) {
+  const d = describir(op, cuenta, estado);
+  return op.enviadaPor ? { texto: `${d.texto} · la envió ${op.enviadaPor}`, atencion: true } : d;
+}

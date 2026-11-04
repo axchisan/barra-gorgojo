@@ -124,9 +124,20 @@ const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 interface Base {
   id: string;
+  /** Quién lo hizo: quien estaba usando el celular al anotar. */
   persona: string;
   en: number;
   seq?: number;
+  /**
+   * Quién la envió, si no fue la misma persona (otra entró al celular antes de que saliera
+   * lo anotado sin señal). Lo escribe solo el servidor; no cambia ninguna regla.
+   */
+  enviadaPor?: string;
+  /**
+   * Solo en el celular y en el envío: la sesión firmada de quien anotó, con la que el
+   * servidor prueba la autoría. El servidor la quita antes de guardar; no cambia ninguna regla.
+   */
+  firma?: string;
 }
 
 export type Operacion = Base &

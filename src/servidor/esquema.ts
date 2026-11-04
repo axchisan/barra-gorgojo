@@ -15,7 +15,8 @@ const texto = (max: number) => z.string().max(max);
 const numero = z.number().finite();
 const opcional = <T extends z.ZodType>(t: T) => t.nullish();
 
-const comun = { id: z.string().min(8).max(64), persona: z.string().max(80).optional(), en: numero, seq: z.unknown().optional() };
+// `firma`: la sesión de quien anotó, para probar la autoría (worker.ts, `autores`); no se guarda.
+const comun = { id: z.string().min(8).max(64), persona: z.string().max(80).optional(), en: numero, seq: z.unknown().optional(), firma: z.string().max(400).optional() };
 
 const linea = z.object({
   id,

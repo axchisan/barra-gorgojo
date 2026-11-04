@@ -573,3 +573,65 @@ describe("auditoría y celulares conectados (E4)", () => {
     ws.close();
   });
 });
+
+// E6: dos cobros de la misma cuenta y quién hizo qué cuando otra persona envía (docs/04, tabla de conflictos).
+describe("doble cobro y autoría (E6)", () => {
+  let s: Servidor;
+  let ana: string;
+  let beto: string;
+  let admin: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    beto = await s.token("Beto");
+    admin = await s.token("Administrador");
+  });
+  afterAll(() => s?.apagar());
+
+  it("el segundo cobro se rechaza diciendo quién la cobró; el reintento del primero se confirma", async () => {
+    const cuenta = `doble-${Date.now()}`;
+    await s.ops(ana, [op({ t: "abrir", cuenta, nombre: "Doble cobro", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 2]]) })]);
+    const primero = op({ t: "cobrar", cuenta, pago: "p-ana", medio: "nequi" });
+    const segundo = op({ t: "cobrar", cuenta, pago: "p-beto", medio: "efectivo" });
+    expect((await s.ops(ana, [primero])).ok).toEqual([primero.id]);
+    const r = (await s.ops(beto, [segundo])) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any };
+    expect(r.ok).toEqual([]);
+    expect(r.rechazadas?.[0].id).toBe(segundo.id);
+    expect(r.rechazadas?.[0].motivo).toMatch(/^Doble cobro ya la cobró Ana a las .* por Nequi\. Si recibió plata, devuélvala\.$/);
+    expect(r.estado.cuentas[cuenta].pagos).toHaveLength(1);
+    expect((await s.ops(ana, [primero])).ok).toEqual([primero.id]); // reintento: no es doble cobro
+  });
+
+  it("lo que anotó Ana y envió Beto desde el mismo celular queda a nombre de Ana (con su sesión firmada), y se sabe quién lo envió", async () => {
+    const cuenta = `autor-${Date.now()}`;
+    const abrir = { ...op({ t: "abrir", cuenta, nombre: "Anotada sin señal", tipo: "grupo" }), persona: "Ana", firma: ana };
+    await s.ops(beto, [abrir]);
+    const foto = await s.foto(admin);
+    expect(foto.estado.cuentas[cuenta].abiertaPor).toBe("Ana");
+    const respaldo = (await (await s.pedir(admin, "/api/admin/respaldo")).json()) as { operaciones: Record<string, unknown>[] };
+    const guardada = respaldo.operaciones.find((o) => o.id === abrir.id)!;
+    expect(guardada).toMatchObject({ persona: "Ana", enviadaPor: "Beto" });
+    expect(guardada.firma).toBeUndefined(); // la sesión no queda en el registro ni en los respaldos
+  });
+
+  it("sin firma, o con la firma de otro celular, queda a nombre de quien envía", async () => {
+    const sinFirma = `sin-firma-${Date.now()}`, otroCel = `otro-cel-${Date.now()}`;
+    const anaEnOtroCelular = await s.token("Ana", await s.celular("Otro"));
+    await s.ops(beto, [
+      { ...op({ t: "abrir", cuenta: sinFirma, nombre: "X", tipo: "grupo" }), persona: "Ana" },
+      { ...op({ t: "abrir", cuenta: otroCel, nombre: "Y", tipo: "grupo" }), persona: "Ana", firma: anaEnOtroCelular },
+    ]);
+    const foto = await s.foto(admin);
+    expect(foto.estado.cuentas[sinFirma].abiertaPor).toBe("Beto");
+    expect(foto.estado.cuentas[otroCel].abiertaPor).toBe("Beto");
+  });
+
+  it("poner el nombre del administrador no da sus permisos, y un nombre inventado queda como quien envía", async () => {
+    const producto = { ...op({ t: "producto", producto: { id: "falso", nombre: "Falso", corto: "F", categoria: "otro", precio: 1, activo: true, fondo: "#000000", texto: "#FFFFFF" } }), persona: "Administrador" };
+    const r = (await s.ops(beto, [producto])) as { rechazadas?: { motivo: string }[] };
+    expect(r.rechazadas?.[0].motivo).toMatch(/administrador/i);
+    const cuenta = `inventado-${Date.now()}`;
+    await s.ops(beto, [{ ...op({ t: "abrir", cuenta, nombre: "X", tipo: "grupo" }), persona: "Alguien que no existe" }]);
+    expect((await s.foto(admin)).estado.cuentas[cuenta].abiertaPor).toBe("Beto");
+  });
+});

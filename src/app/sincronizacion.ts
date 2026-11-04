@@ -328,7 +328,10 @@ class Sincronizador {
   // ── Escribir ───────────────────────────────────────────────────────
 
   emitir(nueva: NuevaOperacion): Operacion {
-    const op = { ...nueva, id: crypto.randomUUID(), persona: this.sesion?.persona ?? "?", en: Date.now() } as Operacion;
+    // `firma`: la sesión de quien anota, para que el servidor sepa con prueba quién fue aunque
+    // la envíe otra persona después (anotada sin señal). Se queda solo en este celular y en
+    // el envío; el servidor no la guarda.
+    const op = { ...nueva, id: crypto.randomUUID(), persona: this.sesion?.persona ?? "?", en: Date.now(), ...(this.sesion ? { firma: this.sesion.token } : {}) } as Operacion;
     this.pendientes.push(op);
     this.recalcular(); // se ve al instante
     // Se guarda ya; se envía cuando quedó guardada (o lo envía la pestaña con la conexión).

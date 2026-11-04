@@ -10,7 +10,9 @@ export function Apartados() {
   if (!n) return null;
   const esAdministrador = sinc.esAdministrador;
   const descargar = () => {
-    const blob = new Blob([JSON.stringify(sinc.apartados, null, 2)], { type: "application/json" });
+    // Sin `firma`: es la sesión de quien anotó y no debe salir del celular en un archivo.
+    const sinFirma = sinc.apartados.map(({ firma: _f, ...o }) => o);
+    const blob = new Blob([JSON.stringify(sinFirma, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `anotaciones-apartadas-${new Date().toISOString().slice(0, 10)}.json`;

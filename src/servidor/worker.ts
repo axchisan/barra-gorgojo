@@ -4,9 +4,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esOperacion, esVigente, estadoVacio, jornada, recortar, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, esOperacion, esVigente, estadoVacio, jornada, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { horaDe } from "../dominio/formato";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
-import { describir, type Evento } from "../dominio/auditoria";
+import { describirConEnvio, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
 
@@ -250,6 +251,21 @@ export class Barra extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Dos celulares cobraron la misma cuenta sin verse (docs/04, tabla de conflictos): el
+   * segundo no cobra nada y se le dice quién la cobró, para devolver la plata si la
+   * recibieron los dos. Un reintento del mismo cobro no es esto (se confirma antes).
+   */
+  private yaCobrada(op: Operacion): string | null {
+    if (op.t !== "cobrar") return null;
+    const c = this.estado.cuentas[op.cuenta];
+    if (!c || c.pagos.some((p) => p.id === op.pago) || saldo(c) > 0) return null;
+    const u = [...c.pagos].reverse().find((p) => !p.deshecho);
+    if (!u) return null; // sin cobros: es una cuenta vacía, no un doble cobro
+    const como = u.medio === "efectivo" ? "en efectivo" : u.medio === "comida" ? "pasándola a comida" : `por ${u.medio === "nequi" ? "Nequi" : "Breve"}`;
+    return `${c.nombre} ya la cobró ${u.persona} a las ${horaDe(u.en)} ${como}. Si recibió plata, devuélvala.`;
+  }
+
   /** Agrega a `cambios` cómo quedó lo que tocó una operación ya aplicada. */
   private cambiosDe(op: Operacion, cambios: Cambios = {}): Cambios {
     if ("cuenta" in op) {
@@ -300,7 +316,7 @@ export class Barra extends DurableObject<Env> {
     const eventos: Evento[] = filas.map((f) => {
       const op = JSON.parse(f.datos) as Operacion;
       const c = "cuenta" in op ? cuentaDe(op.cuenta) : undefined;
-      const { texto, atencion } = describir(op, c, this.estado);
+      const { texto, atencion } = describirConEnvio(op, c, this.estado);
       return { seq: f.seq, en: op.en, persona: f.persona, t: op.t, ...("cuenta" in op ? { cuenta: op.cuenta, cuentaNombre: c?.nombre } : {}), texto, atencion };
     });
     const rechazadas = sql.exec<{ id: string; persona: string; motivo: string; en: number; datos: string }>(
@@ -409,7 +425,30 @@ export class Barra extends DurableObject<Env> {
   }
 
   /** Recibe operaciones de un celular. Idempotente por `id`. */
-  private recibir(ops: unknown[], quien: Quien): { aceptadas: string[]; rechazadas: Rechazo[] } {
+  /**
+   * Quién anotó cada operación, probado: la sesión firmada que el celular guardó con ella
+   * al anotarla (`firma`), si es válida y de este mismo celular. Así lo anotado sin señal
+   * queda a nombre de quien lo anotó aunque lo envíe otra persona después, y nadie puede
+   * atribuirle algo a otro solo poniendo su nombre. Se resuelve antes de `recibir`, que no
+   * debe esperar nada a mitad de camino (el orden de las operaciones lo da este objeto).
+   */
+  private async autores(ops: unknown[], quien: Quien): Promise<Map<string, string>> {
+    const autores = new Map<string, string>();
+    const vistas = new Map<string, string | null>();
+    for (const crudo of ops.slice(0, 200)) {
+      const o = crudo as { id?: unknown; firma?: unknown };
+      if (typeof o?.id !== "string" || typeof o.firma !== "string" || o.firma.length > 400) continue;
+      if (!vistas.has(o.firma)) {
+        const s = await leerSesion(this.env.FIRMA, o.firma);
+        vistas.set(o.firma, s && s.dispositivo === quien.dispositivo ? this.acceso.persona(s.persona)?.nombre ?? null : null);
+      }
+      const nombre = vistas.get(o.firma);
+      if (nombre && nombre !== quien.nombre) autores.set(o.id, nombre);
+    }
+    return autores;
+  }
+
+  private recibir(ops: unknown[], quien: Quien, autores = new Map<string, string>()): { aceptadas: string[]; rechazadas: Rechazo[] } {
     const aceptadas: string[] = [];
     const rechazadas: Rechazo[] = [];
     const ahora = Date.now();
@@ -433,11 +472,15 @@ export class Barra extends DurableObject<Env> {
       }
       const v = validar(crudo);
       if ("motivo" in v) { rechazar(idCrudo, (crudo as { t?: unknown }).t, crudo, v.motivo); continue; }
-      // Quién la hizo lo dice la sesión, no el celular. La hora se acota.
-      const op = { ...v.op, persona: quien.nombre, en: Math.min(ahora, Math.max(ahora - DIA, v.op.en)) } as Operacion;
+      // Quién la hizo: quien envía (la sesión), salvo que la operación traiga la sesión
+      // firmada de otra persona de este celular (ver `autores`). Los permisos se revisan
+      // siempre con quien envía. La firma no se guarda.
+      const autor = autores.get(idCrudo) ?? quien.nombre;
+      const { firma: _f, ...limpia } = v.op;
+      const op = { ...limpia, persona: autor, ...(autor !== quien.nombre ? { enviadaPor: quien.nombre } : {}), en: Math.min(ahora, Math.max(ahora - DIA, v.op.en)) } as Operacion;
       delete op.seq;
       this.traerPara(op);
-      const motivo = this.permiso(op, quien, ahora);
+      const motivo = this.permiso(op, quien, ahora) ?? this.yaCobrada(op);
       if (motivo) { rechazar(op.id, op.t, crudo, motivo); continue; }
       // El precio fijado solo lo pone el servidor: lo que mande el celular se descarta.
       if (op.t === "anotar") op.lineas = op.lineas.map(({ precioFijado: _, ...l }) => l);
@@ -538,7 +581,7 @@ export class Barra extends DurableObject<Env> {
       const { ops, base, seq } = await cuerpo<{ ops?: unknown[]; base?: unknown; seq?: unknown }>();
       const lista = Array.isArray(ops) ? ops : [];
       if (lista.length && this.esDeOtraBase(base, q.nombre, lista.length)) return json({ error: "base", ok: [], rechazadas: [], ...this.foto() }, 409);
-      const { aceptadas, rechazadas } = this.recibir(lista, q);
+      const { aceptadas, rechazadas } = this.recibir(lista, q, await this.autores(lista, q));
       // Con `seq`, solo lo nuevo (el respaldo HTTP pregunta cada 5 s); sin él, la foto.
       return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()) });
     }
@@ -686,7 +729,7 @@ export class Barra extends DurableObject<Env> {
     else if (m.tipo === "ops" && Array.isArray(m.ops)) {
       if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto()));
       else {
-        const { aceptadas, rechazadas } = this.recibir(m.ops, quien);
+        const { aceptadas, rechazadas } = this.recibir(m.ops, quien, await this.autores(m.ops, quien));
         ws.send(JSON.stringify({ tipo: "ok", ids: aceptadas, rechazadas }));
         // Lo que reportó el celular incluía este lote: ya no le falta enviarlo.
         const a = (ws.deserializeAttachment() ?? {}) as DeConexion;

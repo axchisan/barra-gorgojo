@@ -47,7 +47,10 @@ CREATE TABLE intentos_vincular (ventana, fallos);
 
 ### Operaciones (`Operacion` en `src/dominio/estado.ts`)
 
-Todas llevan `id`, `persona`, `en` (hora del celular) y, ya en el servidor, `seq`.
+Todas llevan `id`, `persona` (quién la hizo), `en` (hora del celular) y, ya en el
+servidor, `seq`; y `enviadaPor` si la envió otra persona del mismo celular (ADR-14). En el
+celular llevan además `firma`, la sesión de quien la anotó, que el servidor verifica y no
+guarda.
 
 | `t` | Datos | Qué hace |
 |---|---|---|
