@@ -21,12 +21,10 @@ Se construyó con atajos para salir rápido. **El trabajo actual sigue
 `docs/12-plan-de-trabajo.md`**, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.
 
-Hechas (2026-11-03): fases A a F completas, más la revisión técnica de
-`docs/13-revision-tecnica.md` (validación con Zod en el Worker, proyección por cuenta,
-novedades al reconectar) y el dominio propio. Sigue la **fase G** (base limpia definitiva,
-con autorización del negocio), en la dirección nueva.
-**Desde el 2026-11-03 producción tiene datos de prueba**; al terminar todo, la fase G la
-deja otra vez limpia, solo con las ventas reales.
+Hechas: fases A a G (la G el 2026-11-04: producción en la base `reten-del-gorgojo-v3`,
+solo con las ventas reales), más la revisión técnica de `docs/13-revision-tecnica.md` y
+el dominio propio. **Producción vuelve a tener solo datos reales: no probar ahí**; para
+probar, el entorno de pruebas. Lo siguiente es lo de fases 3 y 4 de `docs/07`.
 
 ## Reglas no negociables
 
