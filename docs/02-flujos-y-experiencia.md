@@ -307,6 +307,14 @@ cuánto va de comida); las demás de la barra quedan plegadas debajo. La pestañ
 (mesas pasadas a comida por cobrar allá) se quitó: si queda alguna, sale como aviso
 plegable arriba de las cuentas.
 
+### Chico o adicional en las canchas (2026-11-08)
+
+Toda pedida de cancha es un **chico** por defecto. Al agregar a una cancha, junto al botón
+sale **Chico | Adicional** (en el teléfono, en el lugar de «Limpiar»): «Adicional» es algo
+suelto después del chivo, que no cuenta como chico. En el detalle cada pedida tiene «Es
+adicional» / «Es chico» para cambiarlo después. Se numeran aparte: Chico 1, Chico 2,
+Adicional 1. No suma toques al caso común.
+
 ## Reglas visuales
 
 - **Modo claro**, alto contraste, igual que el sitio: se usa con sol y bajo luz

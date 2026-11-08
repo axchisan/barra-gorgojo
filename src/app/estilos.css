@@ -853,3 +853,9 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .pasadas-a-comida { background: #dcebee; border-radius: var(--radio); padding: 8px 12px; margin-bottom: 10px; }
 .pasadas-a-comida summary { font-weight: 700; color: var(--azul-comida); cursor: pointer; min-height: 32px; display: flex; align-items: center; }
 .cuentas-barra { margin-top: 14px; }
+/* Canchas: chico o adicional al anotar y en cada pedida. */
+.segmentos.tipo-ronda { flex: 0 0 auto; }
+.segmentos.tipo-ronda button { min-height: 56px; padding: 0 12px; }
+/* En el teléfono no caben los tres: el selector toma el lugar de «Limpiar» (el − de cada producto sigue). */
+@media (max-width: 699px) { .pie-fijo.con-tipo-ronda > .secundario.chico { display: none; } .segmentos.tipo-ronda button { padding: 0 10px; } }
+.marcar-ronda { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }

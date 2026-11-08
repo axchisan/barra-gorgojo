@@ -62,6 +62,8 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
   const cervezas = productos.filter((p) => p.activo && p.categoria === "cerveza" && !p.libre);
   const pasoDe = (p: Producto) => (p.categoria === "cerveza" ? paso : 1);
   const [paquetes, setPaquetes] = useState<PaqueteEnArmado[]>([]);
+  // Canchas: por defecto la pedida es un chico; «Adicional» si es algo suelto después del chivo.
+  const [adicional, setAdicional] = useState(false);
   const enPaquetes = (id: string) => paquetes.reduce((s, pq) => s + (pq.items[id] ?? 0), 0);
 
   const cargarUltima = () => {
@@ -182,7 +184,8 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
       });
     }
     const ls = lineas();
-    sinc.emitir({ t: "anotar", cuenta: id, ronda: crypto.randomUUID(), lineas: ls, area: sinc.panel });
+    const esAdicional = adicional && (cuenta?.tipo ?? tipo) === "cancha";
+    sinc.emitir({ t: "anotar", cuenta: id, ronda: crypto.randomUUID(), lineas: ls, area: sinc.panel, ...(esAdicional ? { adicional: true } : {}) });
     const cuentaFinal = id;
     if (cobrarYa) return nav.ir({ v: "cobrar", id: cuentaFinal }, true);
     if (cuentaId) nav.volver();
@@ -362,7 +365,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
 
 
       {error && <p className="error flotante">{error}</p>}
-      <div className="pie-fijo">
+      <div className={cuenta?.tipo === "cancha" ? "pie-fijo con-tipo-ronda" : "pie-fijo"}>
         {/* Solo se ve en horizontal, donde el pie pasa a ser un panel a la derecha. */}
         <div className="resumen-pedida" aria-hidden={enLaPedida.length === 0}>
           <h2 className="seccion">{cuenta ? `Esta ${palabra}` : "La cuenta nueva"}</h2>
@@ -374,8 +377,15 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
           <button className="secundario" onClick={() => confirmar(true)} disabled={n === 0}>Cobrar ya</button>
         )}
         {n > 0 && <button className="secundario chico" onClick={() => { setCant({}); setLibres([]); setPaquetes([]); }}>Limpiar</button>}
+        {/* El primer pedido de una cancha siempre es chico: el selector sale al agregar. */}
+        {cuenta?.tipo === "cancha" && (
+          <div className="segmentos tipo-ronda" role="group" aria-label="Chico o adicional">
+            <button className={adicional ? "" : "activo"} aria-pressed={!adicional} onClick={() => setAdicional(false)}>Chico</button>
+            <button className={adicional ? "activo" : ""} aria-pressed={adicional} onClick={() => setAdicional(true)}>Adicional</button>
+          </div>
+        )}
         <button className="principal grande" onClick={() => confirmar(false)} disabled={n === 0}>
-          <span>{cuenta ? `Anotar ${palabra}` : "Abrir y anotar"}</span>
+          <span>{cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
           {n > 0 && <small className="detalle-boton">{n} · {pesos(valor)}</small>}
         </button>
       </div>

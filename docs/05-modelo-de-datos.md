@@ -57,7 +57,8 @@ guarda.
 |---|---|---|
 | `abrir` | `cuenta, nombre, tipo, mesa?, cancha?` | Abre una cuenta (grupo, persona, mesa, cancha o rápida) |
 | `renombrar` | `cuenta, nombre` | Cambia el nombre |
-| `anotar` | `cuenta, ronda, lineas[], area?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado` y el `area` (barra o comida). Desde comida, las bebidas quedan `porDespachar` |
+| `marcar_ronda` | `cuenta, ronda, adicional` | En las canchas: la pedida es un chico o un adicional (no cambia el valor) |
+| `anotar` | `cuenta, ronda, lineas[], area?, adicional?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado` y el `area` (barra o comida). Desde comida, las bebidas quedan `porDespachar` |
 | `juntar` | `cuenta, desde` | Suma la cuenta `desde` a `cuenta`: sus pedidas, productos y abonos pasan allá (marcados `de`); `desde` queda «juntada» |
 | `separar` | `cuenta, desde` | Deshace `juntar`, si después no se cobró nada en `cuenta` |
 | `despachar` | `cuenta, lineas?` | La barra entregó bebidas pedidas desde comida (las dichas, o todas las de la cuenta) |

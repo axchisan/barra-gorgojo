@@ -68,3 +68,22 @@ describe("juntar cuentas", () => {
     expect(saldo(e.cuentas.a)).toBe(16_500);
   });
 });
+
+describe("chico o adicional (canchas)", () => {
+  it("por defecto es chico; un adicional se anota así o se cambia después, sin tocar el valor", async () => {
+    const { nombreRonda, cuantasRondas } = await import("../src/dominio/formato");
+    let e = correr([
+      op({ t: "abrir", cuenta: "k", nombre: "Cancha 1", tipo: "cancha", cancha: "1" }),
+      op({ t: "anotar", cuenta: "k", ronda: "r1", lineas: [{ id: "k1", producto: "rubia", cantidad: 10 }] }),
+      op({ t: "anotar", cuenta: "k", ronda: "r2", adicional: true, lineas: [{ id: "k2", producto: "rubia", cantidad: 1 }] }),
+      op({ t: "anotar", cuenta: "k", ronda: "r3", lineas: [{ id: "k3", producto: "rubia", cantidad: 10 }] }),
+    ]);
+    const c = () => e.cuentas.k;
+    expect(c().rondas.map((r) => nombreRonda(c(), r))).toEqual(["Chico 1", "Adicional 1", "Chico 2"]);
+    expect(cuantasRondas(c())).toBe("2 chicos · 1 adicional");
+    const antes = saldo(c());
+    e = correr([op({ t: "marcar_ronda", cuenta: "k", ronda: "r3", adicional: true }), op({ t: "marcar_ronda", cuenta: "k", ronda: "r2", adicional: false })], e);
+    expect(c().rondas.map((r) => nombreRonda(c(), r))).toEqual(["Chico 1", "Chico 2", "Adicional 1"]);
+    expect(saldo(c())).toBe(antes);
+  });
+});

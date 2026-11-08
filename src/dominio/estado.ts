@@ -46,6 +46,8 @@ export interface Ronda {
   en: number;
   /** Vino de otra cuenta que se juntó con esta: su id, su nombre y el número que tenía allá. */
   de?: { cuenta: string; nombre: string; numero: number };
+  /** En las canchas: un pedido suelto que no cuenta como chico (una cerveza más después del chivo). */
+  adicional?: true;
 }
 
 export interface Pago {
@@ -171,7 +173,8 @@ export type Operacion = Base &
   (
     | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha }
     | { t: "renombrar"; cuenta: string; nombre: string }
-    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
+    | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean }
+    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
@@ -358,7 +361,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
-      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en });
+      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}) });
       c.lineas.push(...nuevas);
       c.ultima = op.en;
       if (c.anulada) c.anulada = false; // si alguien anotó, había clientes
@@ -429,6 +432,14 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         delete l.porDespachar;
         l.despachada = { por: op.persona, en: op.en };
       }
+      return estado;
+    }
+    case "marcar_ronda": {
+      // Chico o adicional (canchas): solo cambia cómo se llama la pedida, no lo que vale.
+      const r = c?.rondas.find((x) => x.id === op.ronda);
+      if (!r) return estado;
+      if (op.adicional === true) r.adicional = true;
+      else delete r.adicional;
       return estado;
     }
     case "juntar": {

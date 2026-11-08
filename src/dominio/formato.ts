@@ -19,4 +19,24 @@ export function haceCuanto(en: number, ahora = Date.now()): string {
 /** En el local, cada ronda es un «chico» en las canchas y una «pedida» en lo demás. */
 export const palabraRonda = (c?: Pick<Cuenta, "tipo">) => (c?.tipo === "cancha" ? "chico" : "pedida");
 
+/**
+ * Cómo se llama una pedida en pantalla. En las canchas, los chicos y los adicionales se
+ * cuentan aparte: «Chico 2», «Adicional 1». En las demás, «Pedida N».
+ */
+export function nombreRonda(c: Pick<Cuenta, "tipo" | "rondas">, r: Pick<Cuenta["rondas"][number], "id" | "numero" | "adicional">): string {
+  if (c.tipo !== "cancha") return `Pedida ${r.numero}`;
+  const iguales = c.rondas.filter((x) => !!x.adicional === !!r.adicional);
+  const n = iguales.findIndex((x) => x.id === r.id) + 1 || r.numero;
+  return `${r.adicional ? "Adicional" : "Chico"} ${n}`;
+}
+
+/** «3 chicos · 1 adicional», o «2 pedidas». */
+export function cuantasRondas(c: Pick<Cuenta, "tipo" | "rondas">): string {
+  const n = c.rondas.length;
+  if (c.tipo !== "cancha") return `${n} ${n === 1 ? "pedida" : "pedidas"}`;
+  const ad = c.rondas.filter((r) => r.adicional).length;
+  const ch = n - ad;
+  return `${ch} ${ch === 1 ? "chico" : "chicos"}${ad ? ` · ${ad} ${ad === 1 ? "adicional" : "adicionales"}` : ""}`;
+}
+
 export const nombreCancha = (c: string) => (c === "pequena" ? "Pequeña" : c);

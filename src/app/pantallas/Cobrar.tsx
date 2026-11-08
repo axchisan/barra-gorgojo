@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { abonos, porPagarPorLinea, saldo, totalComida, type Cuenta, type Medio } from "../../dominio/estado";
-import { horaDe, palabraRonda, pesos } from "../../dominio/formato";
+import { horaDe, nombreRonda, pesos } from "../../dominio/formato";
 import { sugerirPago } from "../../dominio/pago";
 import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
@@ -180,7 +180,6 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
 function EscogerProductos({ c, porPagar, escogidas, setEscogidas }: {
   c: Cuenta; porPagar: Map<string, number>; escogidas: Record<string, number>; setEscogidas: (e: Record<string, number>) => void;
 }) {
-  const palabra = palabraRonda(c);
   const rondas = c.rondas
     .map((r) => ({ r, lineas: c.lineas.filter((l) => l.ronda === r.id && porPagar.has(l.id)) }))
     .filter((x) => x.lineas.length);
@@ -194,7 +193,7 @@ function EscogerProductos({ c, porPagar, escogidas, setEscogidas }: {
           <div key={r.id} className="abono-ronda">
             <button className={todas ? "abono-ronda-cabeza activa" : "abono-ronda-cabeza"} aria-pressed={todas}
               onClick={() => { const e = { ...escogidas }; for (const l of lineas) e[l.id] = todas ? 0 : porPagar.get(l.id)!; setEscogidas(e); }}>
-              <span>{todas ? "☑" : "☐"} {palabra === "chico" ? "Chico" : "Pedida"} {r.numero}</span>
+              <span>{todas ? "☑" : "☐"} {nombreRonda(c, r)}</span>
               <small>{horaDe(r.en)} · {r.persona}</small>
             </button>
             {lineas.map((l) => {

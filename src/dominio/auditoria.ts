@@ -69,6 +69,10 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const ls = cuenta?.lineas.filter((l) => l.despachada && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];
       return { texto: `Despachó ${ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : "las bebidas"} pedidas desde comida`, atencion: false };
     }
+    case "marcar_ronda": {
+      const r = cuenta?.rondas.find((x) => x.id === op.ronda);
+      return { texto: `Marcó ${r ? `la pedida ${r.numero}` : "una pedida"} como ${op.adicional ? "adicional" : "chico"}`, atencion: false };
+    }
     case "juntar": {
       const j = cuenta?.juntadas?.find((x) => x.cuenta === op.desde);
       return { texto: `Juntó ${j ? `«${j.nombre}»` : "otra cuenta"} con esta para cobrarlas juntas`, atencion: false };

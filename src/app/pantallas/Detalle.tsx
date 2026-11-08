@@ -3,7 +3,7 @@ import {
   abonos, porPagarPorLinea, producto as productoDe, puedeEditarLinea, saldo, situacion, total, totalComida, unidades,
   type Cuenta, type Linea,
 } from "../../dominio/estado";
-import { horaDe, palabraRonda, pesos } from "../../dominio/formato";
+import { cuantasRondas, horaDe, nombreRonda, palabraRonda, pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
 import { EditarLinea } from "../componentes/EditarLinea";
@@ -30,7 +30,6 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
 
   const s = situacion(c);
   const palabra = palabraRonda(c);
-  const plural = palabra === "chico" ? "chicos" : "pedidas";
   const tipo = iconoTipo(c);
   // Productos ya pagados del todo con un abono por productos (se marcan con ✓).
   const porPagar = porPagarPorLinea(c);
@@ -103,7 +102,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
       <section className="cabeza-total">
         {tipo && <span className="tipo">{tipo}</span>}
         <span className="total">{pesos(s === "abierta" ? saldo(c) : total(c))}</span>
-        <span className="meta">{unidades(c)} productos · {c.rondas.length} {c.rondas.length === 1 ? palabra : plural}</span>
+        <span className="meta">{unidades(c)} productos · {cuantasRondas(c)}</span>
         {totalComida(c) > 0 && <Desglose c={c} />}
         {s === "cobrada" && <span className="estado cobrada">Cobrada · {c.pagos.filter((p) => !p.deshecho).map((p) => `${p.medio} por ${p.persona}`).join(", ")}</span>}
         {s === "comida" && <span className="estado comida">Pasada a comida{c.comidaCobrada ? " · ya cobrada allá" : " · falta cobrar en comida"}</span>}
@@ -160,7 +159,12 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
             return (
               <section key={r.id} className="ronda-tarjeta">
                 <header>
-                  <strong>{palabra === "chico" ? "Chico" : "Pedida"} {r.numero}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
+                  <strong>{nombreRonda(c, r)}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
+                  {c.tipo === "cancha" && s === "abierta" && (
+                    <button className="chip marcar-ronda" onClick={() => sinc.emitir({ t: "marcar_ronda", cuenta: c.id, ronda: r.id, adicional: !r.adicional })}>
+                      {r.adicional ? "Es chico" : "Es adicional"}
+                    </button>
+                  )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}</span>
                   <strong className="sub">{pesos(sub)}</strong>
                 </header>
