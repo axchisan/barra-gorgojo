@@ -49,6 +49,8 @@ export interface Pago {
   parcial?: boolean;
   /** Qué productos pagó (abono por productos): línea y unidades. */
   lineas?: { linea: string; cantidad: number }[];
+  /** Quién del grupo pagó (opcional, escrito al cobrar): para saber quién abonó qué. */
+  pagador?: string;
 }
 
 export interface Cuenta {
@@ -150,7 +152,7 @@ export type Operacion = Base &
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "anotar"; cuenta: string; ronda: string; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number }[] }
     | { t: "anular"; cuenta: string; linea: string }
-    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[] }
+    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string }
     | { t: "deshacer_pago"; cuenta: string; pago: string }
     | { t: "reabrir"; cuenta: string }
     | { t: "comida_cobrada"; cuenta: string; valor: boolean }
@@ -346,6 +348,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         monto = Math.min(m, falta);
       }
       const parcial = monto < falta;
+      const pagador = typeof op.pagador === "string" ? op.pagador.trim().slice(0, 40) : "";
       c.pagos.push({
         id: op.pago,
         medio: op.medio,
@@ -355,6 +358,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         en: op.en,
         ...(parcial ? { parcial } : {}),
         ...(cubre?.length ? { lineas: cubre } : {}),
+        ...(pagador ? { pagador } : {}),
       });
       c.ultima = op.en;
       if (!parcial) c.reabierta = false;

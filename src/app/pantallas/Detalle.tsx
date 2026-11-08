@@ -107,7 +107,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
             const puede = sinc.esAdministrador || (p.persona === sinc.sesion?.persona && Date.now() - p.en < 5 * 60_000);
             return (
               <div key={p.id} className="abono-fila">
-                <span><b>{pesos(p.monto)}</b> {p.medio === "efectivo" ? "en efectivo" : p.medio === "nequi" ? "por Nequi" : "por Breve"}{que ? ` · ${que}` : ""}</span>
+                <span>{p.pagador && <b className="pagador">{p.pagador}: </b>}<b>{pesos(p.monto)}</b> {p.medio === "efectivo" ? "en efectivo" : p.medio === "nequi" ? "por Nequi" : "por Breve"}{que ? ` · ${que}` : ""}</span>
                 <small className="tenue">{horaDe(p.en)} · {p.persona}</small>
                 {puede && <button className="chip" onClick={() => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago: p.id })}>Deshacer</button>}
               </div>

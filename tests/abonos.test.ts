@@ -92,4 +92,9 @@ describe("abonos", () => {
     expect(situacion(e.cuentas.g)).toBe("abierta");
     expect(e.cuentas.g.reabierta).toBe(false); // no estaba cobrada: solo abonada
   });
+
+  it("guarda quién pagó, si lo dicen (opcional, recortado)", () => {
+    const e = correr([...cuenta(), cobrar({ monto: 5_000, pagador: "  Juan el del sombrero  " }), cobrar({ monto: 5_000 })]);
+    expect(e.cuentas.g.pagos.map((p) => p.pagador)).toEqual(["Juan el del sombrero", undefined]);
+  });
 });

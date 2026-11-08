@@ -232,7 +232,9 @@ o reparten entre varios con medios distintos.
   Permisos en el servidor: quien lo cobró, en los 5 minutos siguientes, o el
   administrador; reabrir una cuenta con abonos de otros o viejos es del administrador.
 - «El día», el cierre y el CSV ya suman pagos por día y medio: cada abono cuenta el día en
-  que entró. El doble cobro (tabla de conflictos) sigue igual: sin saldo, se rechaza.
+  que entró.
+- Quién pagó (opcional): `cobrar` puede traer `pagador` (texto libre, hasta 40). Queda en
+  el pago, se ve en el detalle, en «Mostrar al cliente» y en la auditoría. El doble cobro (tabla de conflictos) sigue igual: sin saldo, se rechaza.
 
 Pruebas: `tests/abonos.test.ts`, `tests/servidor/barra.test.ts` «abonos en el servidor» y
 `tests/e2e/abonos.spec.ts`.

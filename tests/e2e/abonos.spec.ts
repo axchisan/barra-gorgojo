@@ -31,8 +31,15 @@ test("un grupo paga por partes: una pedida, la mitad de lo que falta y el resto"
   await expect(boton).toHaveText(/^Abonar /);
   const pedida1 = soloDigitos(await boton.innerText());
   await p.getByRole("button", { name: "Exacto" }).click();
+  await p.getByPlaceholder("¿Quién paga? (opcional)").fill("Juan");
+  await p.keyboard.press("Enter"); // ✓ del teclado: lo baja y vuelve el botón
   await boton.click();
-  await expect(p.locator(".aviso")).toContainText("abono");
+  await expect(p.locator(".aviso")).toContainText("abono de Juan");
+  await expect(p.locator(".cobrar .abonado")).toContainText("Juan");
+  // En el siguiente abono, «Juan» sale para tocarlo sin escribir.
+  await p.getByRole("button", { name: "Valor" }).click();
+  await expect(p.locator(".quien-paga .chip", { hasText: "Juan" })).toBeVisible();
+  await p.getByRole("button", { name: "Todo" }).click();
   await expect(p.locator(".cobrar .total")).toHaveText(new RegExp((total - pedida1).toLocaleString("es-CO")));
   await expect(p.locator(".cobrar .abonado")).toContainText(pedida1.toLocaleString("es-CO"));
 

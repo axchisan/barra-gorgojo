@@ -62,7 +62,8 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
         ? ` por ${p.lineas.map((x) => `${x.cantidad} ${linea(x.linea)?.nombre ?? "producto"}`).join(", ")}`
         : "";
       const verbo = p?.parcial ? "Abonó" : "Cobró";
-      return { texto: `${verbo}${valor} ${medio(op.medio)}${que}${cambio}${p?.deshecho ? " · después se deshizo" : ""}`, atencion: false };
+      const quien = p?.pagador ? ` · pagó ${p.pagador}` : "";
+      return { texto: `${verbo}${valor} ${medio(op.medio)}${que}${quien}${cambio}${p?.deshecho ? " · después se deshizo" : ""}`, atencion: false };
     }
     case "deshacer_pago": {
       const p = cuenta?.pagos.find((x) => x.id === op.pago);

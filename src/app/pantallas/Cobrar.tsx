@@ -25,6 +25,8 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   /** Abono por productos: línea → unidades escogidas. */
   const [escogidas, setEscogidas] = useState<Record<string, number>>({});
   const [valorLibre, setValorLibre] = useState("");
+  /** Quién del grupo paga (opcional): queda en el pago para saber quién abonó. */
+  const [pagador, setPagador] = useState("");
   // Mostrar al cliente (F3): el medio y el billete escogidos siguen aquí al volver.
   const [cliente, setCliente] = useState(false);
   useAtrasCierra(cliente, () => setCliente(false));
@@ -45,7 +47,7 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
 
   if (cliente) return <VistaCliente c={c} recibido={medio === "efectivo" ? recibido : null} cerrar={() => setCliente(false)} />;
 
-  const limpiar = () => { setEscogidas({}); setValorLibre(""); setRecibido(null); setOtro(""); };
+  const limpiar = () => { setEscogidas({}); setValorLibre(""); setRecibido(null); setOtro(""); setPagador(""); };
 
   const cobrar = (m: Medio) => {
     if (m !== "comida" && !(valor > 0)) return;
@@ -57,14 +59,16 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       recibido: m === "efectivo" ? recibido ?? undefined : undefined,
       ...(m !== "comida" && lineas?.length ? { lineas } : {}),
       ...(monto ? { monto } : {}),
+      ...(m !== "comida" && pagador.trim() ? { pagador: pagador.trim() } : {}),
     });
     const cobrado = m === "comida" ? falta : valor;
+    const de = m !== "comida" && pagador.trim() ? ` de ${pagador.trim()}` : "";
     const deshacer = () => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago });
     if (m !== "comida" && esAbono) {
       // Abono: se queda aquí con lo que falta, para el siguiente que pague.
       limpiar();
       setModo("todo");
-      ponerAviso({ texto: `${c.nombre}: abono ${pesos(cobrado)} · falta ${pesos(falta - cobrado)}`, deshacer });
+      ponerAviso({ texto: `${c.nombre}: abono${de} ${pesos(cobrado)} · falta ${pesos(falta - cobrado)}`, deshacer });
       return;
     }
     nav.aInicio();
@@ -85,7 +89,11 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
         </button>
       </header>
       <p className="total">{pesos(falta)}</p>
-      {abonado > 0 && <p className="abonado">Ya abonaron {pesos(abonado)} · falta {pesos(falta)}</p>}
+      {abonado > 0 && (
+        <p className="abonado">
+          Ya abonaron {pesos(abonado)}{yaAbonado.some((p) => p.pagador) ? ` (${yaAbonado.map((p) => `${p.pagador ?? "sin nombre"} ${pesos(p.monto)}`).join(", ")})` : ""} · falta {pesos(falta)}
+        </p>
+      )}
       {totalComida(c) > 0 && <Desglose c={c} />}
 
       <div className="segmentos modo-cobro" role="group" aria-label="Qué se cobra">
@@ -109,6 +117,16 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
         </section>
       )}
 
+      {(modo !== "todo" || yaAbonado.length > 0) && (
+        <div className="quien-paga">
+          <input placeholder="¿Quién paga? (opcional)" aria-label="Quién paga" value={pagador} maxLength={40}
+            enterKeyHint="done" onKeyDown={cerrarConEnter} onChange={(e) => setPagador(e.target.value)} />
+          {/* Los que ya abonaron en esta cuenta, para no volver a escribirlos. */}
+          {[...new Set(yaAbonado.map((p) => p.pagador).filter((x): x is string => !!x))].map((n) => (
+            <button key={n} className={pagador === n ? "chip activo" : "chip"} onClick={() => setPagador(n)}>{n}</button>
+          ))}
+        </div>
+      )}
       <div className="opciones medios">
         {(["efectivo", "nequi", "breve"] as const).map((m) => (
           <button key={m} className={medio === m ? "chip activo" : "chip"} onClick={() => setMedio(m)}>

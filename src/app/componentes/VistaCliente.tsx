@@ -25,7 +25,9 @@ export function VistaCliente({ c, recibido, cerrar }: { c: Cuenta; recibido?: nu
         {abonos(c).length > 0 && (
           <>
             <p className="parte"><span>Cuenta</span><span>{pesos(total(c))}</span></p>
-            <p className="parte"><span>Ya abonado</span><span>− {pesos(abonos(c).reduce((t, p) => t + p.monto, 0))}</span></p>
+            {abonos(c).map((p) => (
+              <p key={p.id} className="parte"><span>Abonó{p.pagador ? ` ${p.pagador}` : ""}</span><span>− {pesos(p.monto)}</span></p>
+            ))}
           </>
         )}
         <p className="total-cliente"><span>{abonos(c).length > 0 ? "Falta" : "Total"}</span><span>{pesos(valor)}</span></p>

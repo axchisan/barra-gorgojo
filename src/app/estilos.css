@@ -778,4 +778,9 @@ html.apaisada-baja main.cobrar:not(.parte) .recibido > p { display: none; }
 .abono-fila .chip { min-height: 40px; padding: 6px 12px; }
 .ficha.pagada { opacity: 0.6; }
 @media (min-width: 700px) { .abonos-lista { max-width: 720px; margin-left: auto; margin-right: auto; } }
+.cobrar .quien-paga { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.cobrar .quien-paga input { flex: 1 1 100%; }
+.cobrar .quien-paga .chip { min-height: 40px; padding: 6px 12px; }
+@media (min-width: 700px) { .cobrar .quien-paga { max-width: 720px; width: 100%; margin-left: auto; margin-right: auto; } }
+html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 

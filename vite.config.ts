@@ -41,6 +41,15 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "tests/e2e/**"],
     // Las pruebas del servidor levantan workerd: arrancar tarda unos segundos.
     hookTimeout: 60_000,
+    // Un archivo a la vez: cada uno levanta varios Workers reales (workerd), y muchos a la
+    // vez hacían que miniflare cortara la conexión con el Durable Object («Network connection
+    // lost», un 500 de vez en cuando que no era de la app).
+    fileParallelism: false,
+    // Un reintento: aun así, miniflare corta a veces la conexión con el Durable Object justo
+    // después de que otro archivo apaga sus Workers (visto el 2026-11-08: pasa 10 de 10 solo
+    // y falla 1 de cada 5 en la suite completa). No es de la app; si una prueba falla dos
+    // veces seguidas, sí es un error.
+    retry: 1,
     testTimeout: 20_000,
   },
 });
