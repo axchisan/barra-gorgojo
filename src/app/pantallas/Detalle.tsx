@@ -167,7 +167,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                       {r.adicional ? "Es chico" : "Es adicional"}
                     </button>
                   )}
-                  <span className="tenue">{horaDe(r.en)} · {r.persona}</span>
+                  <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
                   <strong className="sub">{pesos(sub)}</strong>
                 </header>
                 {(() => {

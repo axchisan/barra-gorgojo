@@ -48,6 +48,8 @@ export interface Ronda {
   de?: { cuenta: string; nombre: string; numero: number };
   /** En las canchas: un pedido suelto que no cuenta como chico (una cerveza más después del chivo). */
   adicional?: true;
+  /** Detalles de un pedido a la barra: para dónde o para quién («para el limón»). */
+  detalle?: string;
 }
 
 export interface Pago {
@@ -181,7 +183,7 @@ export type Operacion = Base &
     | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha }
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean }
-    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
+    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; detalle?: string; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
@@ -368,7 +370,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
-      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}) });
+      const detalle = typeof op.detalle === "string" ? op.detalle.trim().slice(0, 80) : "";
+      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}), ...(detalle ? { detalle } : {}) });
       c.lineas.push(...nuevas);
       c.ultima = op.en;
       if (c.anulada) c.anulada = false; // si alguien anotó, había clientes

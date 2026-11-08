@@ -39,7 +39,8 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       if (!ls.length) return { texto: `Anotó ${op.lineas.length} producto${op.lineas.length === 1 ? "" : "s"} (no quedó en la cuenta)`, atencion: true };
       const partes = ls.map((l) => `${op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad} ${l.nombre}${l.nota ? ` (${l.nota})` : ""}`);
       const valor = ls.reduce((s, l) => s + l.precio * (op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad), 0);
-      return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}${op.area === "comida" ? " · desde comida" : ""}`, atencion: false };
+      const detalle = cuenta?.rondas.find((r) => r.id === op.ronda)?.detalle;
+      return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}${op.area === "comida" ? " · desde comida" : ""}${detalle ? ` · «${detalle}»` : ""}`, atencion: false };
     }
     case "anular": {
       const l = linea(op.linea);

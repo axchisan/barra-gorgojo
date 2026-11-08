@@ -99,3 +99,30 @@ test("el administrador crea la carta de una vez: un plato en varios precios", as
   await p.getByRole("button", { name: /Bandeja e2e \$\s?21\.000 con nota/ }).click();
   await expect(p.locator(".hoja").getByRole("button", { name: "sin arroz" })).toBeVisible();
 });
+
+test("pedido rápido a la barra: bebidas con detalles, a una cuenta nueva, y la barra lo despacha", async ({ browser }) => {
+  const barra = await celular(browser, "Administrador");
+  const { token } = await sesionApi(barra.context().request);
+  const api = (ruta: string, data: unknown) => barra.context().request.post(ruta, { headers: { authorization: `Bearer ${token}` }, data });
+  const creada = await api("/api/admin/personas", { accion: "crear", nombre: "Apoyo e2e", rol: "operador" });
+  const id = ((await creada.json()) as { persona?: { id: string } }).persona?.id;
+  await api("/api/admin/personas", { accion: "areas", id, areas: ["comida"] });
+
+  const apoyo = await celular(browser, "Apoyo e2e");
+  await apoyo.getByRole("button", { name: "🔔 Pedir a la barra" }).click();
+  await apoyo.getByLabel("Detalles del pedido").fill("para el limón");
+  await apoyo.keyboard.press("Enter");
+  const rubia = apoyo.locator(".producto", { hasText: "RUBIA" }).first();
+  await rubia.click(); await rubia.click();
+  await apoyo.locator(".pie-fijo .principal").click();
+  await expect(apoyo.locator(".aviso")).toContainText("Pedido enviado a la barra");
+  await expect(apoyo.locator(".tarjeta", { hasText: "para el limón" })).toContainText("Por despachar");
+
+  const aviso = barra.locator(".aviso-despacho");
+  await expect(aviso).toContainText("2 Rubia · para el limón");
+  await aviso.click();
+  const tarjeta = barra.locator(".por-despachar .despacho", { hasText: "para el limón" });
+  await expect(tarjeta.locator(".detalle-pedido")).toHaveText("📝 para el limón");
+  await tarjeta.getByRole("button", { name: "Despachado" }).click();
+  await expect(barra.locator(".por-despachar .despacho", { hasText: "para el limón" })).toHaveCount(0);
+});

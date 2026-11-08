@@ -73,3 +73,11 @@ describe("comida y barra en una cuenta", () => {
     expect(efectivoDeJornada(Object.values(e.cuentas), fecha, "comida")).toBe(0);
   });
 });
+
+describe("pedido rápido a la barra", () => {
+  it("guarda los detalles en la pedida (recortados) y las bebidas quedan por despachar", () => {
+    const e = correr([...base(), op({ t: "anotar", cuenta: "m4", ronda: "rp", area: "comida", detalle: "  para el limón  ", lineas: [{ id: "x", producto: "rubia", cantidad: 2 }] }, "Apoyo")]);
+    expect(e.cuentas.m4.rondas.find((r) => r.id === "rp")?.detalle).toBe("para el limón");
+    expect(porDespachar(Object.values(e.cuentas))[0].lineas.map((l) => l.id)).toEqual(["x"]);
+  });
+});

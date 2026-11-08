@@ -48,7 +48,7 @@ const producto = z.object({
 const operacion = z.discriminatedUnion("t", [
   z.object({ ...comun, t: z.literal("abrir"), cuenta: id, nombre: texto(200), tipo: z.enum(["grupo", "persona", "mesa", "cancha", "rapida"]), mesa: opcional(numero), cancha: opcional(z.enum(["1", "2", "pequena"])) }),
   z.object({ ...comun, t: z.literal("renombrar"), cuenta: id, nombre: texto(200) }),
-  z.object({ ...comun, t: z.literal("anotar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), adicional: opcional(z.boolean()), lineas: z.array(linea).min(1).max(300) }),
+  z.object({ ...comun, t: z.literal("anotar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), adicional: opcional(z.boolean()), detalle: opcional(z.string().max(200)), lineas: z.array(linea).min(1).max(300) }),
   z.object({ ...comun, t: z.literal("despachar"), cuenta: id, lineas: opcional(z.array(id).max(300)) }),
   z.object({ ...comun, t: z.literal("juntar"), cuenta: id, desde: id }),
   z.object({ ...comun, t: z.literal("marcar_ronda"), cuenta: id, ronda: id, adicional: z.boolean() }),

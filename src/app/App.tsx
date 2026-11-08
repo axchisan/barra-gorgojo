@@ -33,7 +33,7 @@ export function App() {
     <>
       <AvisoDespacho nav={nav} />
       {vista.v === "inicio" && <Inicio nav={nav} pestana={vista.pestana} />}
-      {vista.v === "anotar" && <Anotar nav={nav} cuentaId={vista.cuenta} repetir={vista.repetir} />}
+      {vista.v === "anotar" && <Anotar key={vista.despacho ? "despacho" : vista.cuenta ?? "nueva"} nav={nav} cuentaId={vista.cuenta} repetir={vista.repetir} despacho={vista.despacho} />}
       {vista.v === "cuenta" && <Detalle nav={nav} id={vista.id} />}
       {vista.v === "cobrar" && <Cobrar nav={nav} id={vista.id} />}
       {vista.v === "productos" && <Productos nav={nav} />}

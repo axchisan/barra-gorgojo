@@ -47,6 +47,9 @@ function sonar() {
 }
 
 const textoLineas = (ls: { cantidad: number; nombre: string }[]) => ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ");
+/** Los detalles de los pedidos a la barra de esas líneas («para el limón»). */
+const detallesDe = (c: Cuenta, ls: { ronda: string }[]) =>
+  [...new Set(ls.map((l) => c.rondas.find((r) => r.id === l.ronda)?.detalle).filter((d): d is string => !!d))];
 
 /** Lo que ve la barra arriba de cualquier pantalla mientras haya bebidas por despachar. */
 export function AvisoDespacho({ nav }: { nav: Nav }) {
@@ -76,7 +79,7 @@ export function AvisoDespacho({ nav }: { nav: Nav }) {
   return (
     <button className="aviso-despacho" role="alert" onClick={() => nav.ir({ v: "inicio", pestana: "despacho" })}>
       <strong>🔔 {pendientes.length === 1 ? "Bebidas por despachar" : `${pendientes.length} cuentas con bebidas por despachar`}</strong>
-      <span>{primera.cuenta.nombre}: {textoLineas(primera.lineas)}{pendientes.length > 1 ? " · …" : ""}</span>
+      <span>{primera.cuenta.nombre}: {textoLineas(primera.lineas)}{detallesDe(primera.cuenta, primera.lineas).map((d) => ` · ${d}`).join("")}{pendientes.length > 1 ? " · …" : ""}</span>
     </button>
   );
 }
@@ -99,6 +102,7 @@ export function PorDespachar({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) 
               <strong>{c.nombre}</strong>
               <span className="tenue">{haceCuanto(primera)}</span>
             </header>
+            {detallesDe(c, lineas).map((d) => <p key={d} className="detalle-pedido">📝 {d}</p>)}
             <ul>{lineas.map((l) => <li key={l.id}><b>{l.cantidad}</b> {l.nombre}</li>)}</ul>
             {quienes && <p className="tenue">Lo pidió {quienes}</p>}
             {puede && (

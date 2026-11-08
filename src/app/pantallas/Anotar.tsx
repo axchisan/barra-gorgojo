@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MEDIO_PETACO, PETACO, SECCIONES, SECCIONES_COMIDA, type Producto } from "../../dominio/catalogo";
 import {
-  catalogo, jornada, precioPara, producto as productoDe, saldo,
+  catalogo, jornada, precioPara, producto as productoDe, saldo, situacion,
   type Cancha, type TipoCuenta,
 } from "../../dominio/estado";
 import { nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
@@ -22,7 +22,7 @@ const notaDe = (clave: string) => (clave.includes("|") ? clave.slice(clave.index
 
 const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mesa", "🍽", "Mesa"], ["cancha", "🎯", "Cancha"]] as const;
 
-export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string; repetir?: boolean }) {
+export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav; cuentaId?: string; repetir?: boolean; despacho?: boolean }) {
   const cuenta = cuentaId ? sinc.visible.cuentas[cuentaId] : undefined;
   // «Repetir» trae la última pedida. En las canchas, el último chico: los adicionales
   // (algo suelto después del chivo) solo si no hay ningún chico.
@@ -44,7 +44,11 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
   // en el de la barra en Bebidas. Quien solo tiene barra ve las bebidas, como siempre.
   const enComida = sinc.panel === "comida";
   const conComida = sinc.tieneArea("comida");
-  const [vista, setVista] = useState<"comida" | "bebidas">(enComida ? "comida" : "bebidas");
+  const [vista, setVista] = useState<"comida" | "bebidas">(enComida && !despacho ? "comida" : "bebidas");
+  // Pedido rápido a la barra (docs/14): solo bebidas, con detalles, a una cuenta nueva o abierta.
+  const [detalle, setDetalle] = useState("");
+  const [destino, setDestino] = useState<string | null>(null);
+  const destinoCuenta = despacho && destino ? sinc.visible.cuentas[destino] : undefined;
   const secciones = !conComida ? SECCIONES : vista === "comida" ? SECCIONES_COMIDA.filter((x) => x.categorias.includes("comida")) : SECCIONES;
   const [conNota, setConNota] = useState<Producto | null>(null);
   const [platoLibre, setPlatoLibre] = useState(false);
@@ -103,7 +107,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
     setCant((c) => ({ ...c, [id]: Math.max(0, (c[id] ?? 0) + d) }));
   };
   // En las canchas rige el precio de cancha de cada producto (si lo tiene).
-  const tipoCuenta = cuenta?.tipo ?? tipo;
+  const tipoCuenta = cuenta?.tipo ?? destinoCuenta?.tipo ?? (despacho ? "grupo" : tipo);
   const precioVisto = (p: Producto) => precioPara(p, tipoCuenta);
   const precioDe = (id: string) => { const p = productoDe(sinc.visible, idDe(id)); return p ? precioVisto(p) ?? 0 : 0; };
   /** Cuántos de un producto van, con nota o sin ella. */
@@ -172,7 +176,11 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
 
   const confirmar = (cobrarYa = false) => {
     if (n === 0) return setError(`Toque los productos de la ${palabra}.`);
-    let id = cuentaId;
+    let id = cuentaId ?? destinoCuenta?.id;
+    if (!id && despacho) {
+      id = crypto.randomUUID();
+      sinc.emitir({ t: "abrir", cuenta: id, nombre: detalle.trim().slice(0, 40) || "Pedido a la barra", tipo: "grupo" });
+    }
     if (!id) {
       if (tipo === "mesa" && !(Number(mesa) > 0)) return setError("Escriba el número de la mesa.");
       if (tipo === "cancha" && !cancha) return setError("Escoja la cancha.");
@@ -191,14 +199,20 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
     }
     const ls = lineas();
     const esAdicional = adicional && (cuenta?.tipo ?? tipo) === "cancha";
-    sinc.emitir({ t: "anotar", cuenta: id, ronda: crypto.randomUUID(), lineas: ls, area: sinc.panel, ...(esAdicional ? { adicional: true } : {}) });
+    sinc.emitir({
+      t: "anotar", cuenta: id, ronda: crypto.randomUUID(), lineas: ls,
+      // Un pedido a la barra va siempre como de comida: así queda por despachar.
+      area: despacho ? "comida" : sinc.panel,
+      ...(esAdicional ? { adicional: true } : {}),
+      ...(despacho && detalle.trim() ? { detalle: detalle.trim() } : {}),
+    });
     const cuentaFinal = id;
     if (cobrarYa) return nav.ir({ v: "cobrar", id: cuentaFinal }, true);
     if (cuentaId) nav.volver();
     else nav.aInicio();
-    const bebidas = enComida && ls.some((l) => productoDe(sinc.visible, l.producto)?.categoria !== "comida" && !("comida" in l && l.comida));
+    const bebidas = (enComida || despacho) && ls.some((l) => productoDe(sinc.visible, l.producto)?.categoria !== "comida" && !("comida" in l && l.comida));
     ponerAviso({
-      texto: `Anotado · ${n} · ${pesos(valor)}${bebidas ? " · bebidas avisadas a la barra" : ""}`,
+      texto: despacho ? `Pedido enviado a la barra · ${n} · ${pesos(valor)}` : `Anotado · ${n} · ${pesos(valor)}${bebidas ? " · bebidas avisadas a la barra" : ""}`,
       deshacer: () => { for (const l of ls) sinc.emitir({ t: "anular", cuenta: cuentaFinal, linea: l.id }); },
     });
   };
@@ -207,10 +221,10 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
     <main className="anotar">
       <header className="barra-superior">
         <button className="atras" onClick={nav.volver} aria-label="Volver">←</button>
-        <strong>{cuenta ? cuenta.nombre : "Nueva cuenta"}</strong>
+        <strong>{despacho ? "🔔 Pedir a la barra" : cuenta ? cuenta.nombre : "Nueva cuenta"}</strong>
         {cuenta && <span className="valor-chico">{pesos(saldo(cuenta))}</span>}
         {/* Comida | Bebidas en la cabecera: no le quita espacio a los botones (C2). */}
-        {conComida && (
+        {conComida && !despacho && (
           <div className="segmentos pestanas-anotar" role="tablist" aria-label="Qué anotar">
             <button role="tab" aria-selected={vista === "comida"} aria-label={`Comida${nPlatos ? `: ${nPlatos}` : ""}`} className={vista === "comida" ? "activo comida-chip" : ""} onClick={() => setVista("comida")}>
               🍽<span className="largo"> Comida</span>{nPlatos ? <small> {nPlatos}</small> : null}
@@ -222,7 +236,23 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         )}
       </header>
 
-      {!cuenta && (
+      {despacho && (
+        <section className="pedido-barra">
+          <input placeholder="Detalles: para el limón, para la mesa del fondo…" aria-label="Detalles del pedido" enterKeyHint="done" autoCapitalize="sentences"
+            maxLength={80} onKeyDown={cerrarConEnter} value={detalle} onChange={(e) => setDetalle(e.target.value)} />
+          <div className="chips destinos" role="group" aria-label="A qué cuenta va">
+            <button className={destino === null ? "chip activo" : "chip"} aria-pressed={destino === null} onClick={() => setDestino(null)}>＋ Cuenta nueva</button>
+            {Object.values(sinc.visible.cuentas)
+              .filter((c) => situacion(c) === "abierta" && c.lineas.length > 0)
+              .sort((a, b) => b.ultima - a.ultima)
+              .slice(0, 12)
+              .map((c) => (
+                <button key={c.id} className={destino === c.id ? "chip activo" : "chip"} aria-pressed={destino === c.id} onClick={() => setDestino(c.id)}>{c.nombre}</button>
+              ))}
+          </div>
+        </section>
+      )}
+      {!cuenta && !despacho && (
         <section className="nueva">
           {/* Tipo y lo que el tipo pide, en una sola fila (C3 de la revisión en teléfono). */}
           <div className="fila-nueva">
@@ -256,7 +286,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         </section>
       )}
 
-      {ultima && (
+      {ultima && !despacho && (
         <button className="repetir" onClick={cargarUltima} title={describir(ultima)}>
           ↻ Repetir {palabra}: {describir(ultima)}
         </button>
@@ -271,7 +301,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
       {secciones.map((s) => (
         <section key={s.titulo}>
           <h2 className="seccion">{s.titulo}</h2>
-          {enComida && s.categorias.includes("cerveza") && <p className="nota despacho-nota">🔔 Las bebidas que anote aquí le llegan a la barra para despacharlas.</p>}
+          {enComida && !despacho && s.categorias.includes("cerveza") && <p className="nota despacho-nota">🔔 Las bebidas que anote aquí le llegan a la barra para despacharlas.</p>}
           {s.categorias.includes("cerveza") && (
             <div className="segmentos petacos" role="group" aria-label="Cómo se anotan las cervezas">
               <button className={paso === 1 ? "activo" : ""} aria-pressed={paso === 1} onClick={() => setPaso(1)}>Unidad</button>
@@ -379,7 +409,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
             <ul>{enLaPedida.map((x) => <li key={x.clave}>{x.texto}</li>)}</ul>
           )}
         </div>
-        {!cuenta && (
+        {!cuenta && !despacho && (
           <button className="secundario" onClick={() => confirmar(true)} disabled={n === 0}>Cobrar ya</button>
         )}
         {n > 0 && <button className="secundario chico" onClick={() => { setCant({}); setLibres([]); setPaquetes([]); }}>Limpiar</button>}
@@ -391,7 +421,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
           </div>
         )}
         <button className="principal grande" onClick={() => confirmar(false)} disabled={n === 0}>
-          <span>{cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
+          <span>{despacho ? "🔔 Pedir a la barra" : cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
           {n > 0 && <small className="detalle-boton">{n} · {pesos(valor)}</small>}
         </button>
       </div>

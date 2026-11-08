@@ -319,6 +319,14 @@ adicional solo si la cancha no tiene ningún chico.
 Una pedida con todo anulado (por «Deshacer» o a mano) no se cuenta ni se numera, y en el
 detalle queda plegada al final en «▸ Pedidas anuladas (n)». Sigue en la auditoría.
 
+### Pedido rápido a la barra (2026-11-08)
+
+En el panel de comida, «🔔 Pedir a la barra» abre el panel de bebidas con **Detalles**
+(«para el limón») y a qué cuenta va: una nueva (por defecto, con el detalle de nombre) o
+una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso con
+sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
+como cualquier otra.
+
 ## Reglas visuales
 
 - **Modo claro**, alto contraste, igual que el sitio: se usa con sol y bajo luz

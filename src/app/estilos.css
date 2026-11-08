@@ -861,3 +861,9 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .marcar-ronda { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }
 .ronda-tarjeta.anulada { opacity: 0.6; }
 .enlace.ver-anuladas { display: block; margin: 8px auto; }
+/* Pedido rápido a la barra (docs/14). */
+.pedido-barra { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.chips.destinos { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips.destinos .chip { flex: 0 0 auto; min-height: 44px; padding: 6px 14px; }
+.detalle-pedido { margin: 6px 0 0; font-size: 1.15rem; font-weight: 800; color: var(--marron); background: #fff3cf; border-radius: 10px; padding: 6px 10px; }
+.pie-fijo .pedir-barra { flex: 0 0 auto; }

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type Vista =
   | { v: "inicio"; pestana: "cuentas" | "cocina" | "despacho" | "dia" }
-  | { v: "anotar"; cuenta?: string; repetir?: boolean }
+  | { v: "anotar"; cuenta?: string; repetir?: boolean; despacho?: boolean }
   | { v: "cuenta"; id: string }
   | { v: "cobrar"; id: string }
   | { v: "productos" }
