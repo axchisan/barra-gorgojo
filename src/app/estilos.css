@@ -859,3 +859,5 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 /* En el teléfono no caben los tres: el selector toma el lugar de «Limpiar» (el − de cada producto sigue). */
 @media (max-width: 699px) { .pie-fijo.con-tipo-ronda > .secundario.chico { display: none; } .segmentos.tipo-ronda button { padding: 0 10px; } }
 .marcar-ronda { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }
+.ronda-tarjeta.anulada { opacity: 0.6; }
+.enlace.ver-anuladas { display: block; margin: 8px auto; }

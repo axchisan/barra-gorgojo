@@ -31,3 +31,24 @@ test("en la cancha se anota un adicional sin que cuente como chico", async ({ br
   await p.locator(".ronda-tarjeta", { hasText: "Adicional 1" }).getByRole("button", { name: "Es chico" }).click();
   await expect(p.locator(".cabeza-total .meta")).toContainText("2 chicos");
 });
+
+test("una pedida anulada del todo queda plegada y no cuenta", async ({ browser }) => {
+  const p = await celular(browser);
+  await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+  await p.getByRole("button", { name: "Cancha", exact: true }).click();
+  await p.getByRole("button", { name: "Cancha Pequeña" }).click();
+  await p.locator("main > section .producto").first().click();
+  await p.locator(".pie-fijo .principal").click();
+  await p.locator(".tarjeta", { hasText: "Cancha Pequeña" }).click();
+  await p.getByRole("button", { name: "＋ Chico" }).click();
+  await p.locator("main > section .producto").first().click();
+  await p.getByRole("button", { name: "Adicional", exact: true }).click();
+  await p.locator(".pie-fijo .principal").click();
+  await p.getByRole("button", { name: "Deshacer" }).click(); // anula lo recién anotado
+  await expect(p.locator(".cabeza-total .meta")).toContainText("1 chico");
+  await expect(p.locator(".cabeza-total .meta")).not.toContainText("adicional");
+  await p.getByRole("button", { name: "Chicos" }).click();
+  await expect(p.locator(".ronda-tarjeta")).toHaveCount(1);
+  await p.getByRole("button", { name: "▸ Pedidas anuladas (1)" }).click();
+  await expect(p.locator(".ronda-tarjeta.anulada")).toContainText("Anulada");
+});

@@ -142,6 +142,13 @@ export function catalogo(estado: Estado): Producto[] {
  */
 export const PRECIO_CANCHA_DESDE = Date.parse("2026-11-01T20:48:00Z");
 
+/**
+ * Desde cuándo, al juntar una cuenta que no es cancha con una cancha, sus pedidas llegan
+ * como adicionales (una pedida suelta no es un chico). Lo juntado antes queda como quedó:
+ * el registro viejo da el mismo estado (regla 0).
+ */
+export const JUNTAR_ADICIONAL_DESDE = Date.parse("2026-11-08T21:00:00Z");
+
 /** El precio que aplica según el tipo de cuenta: en las canchas, el de cancha si lo tiene. */
 export function precioPara(p: Producto, tipo?: TipoCuenta): number | null {
   if (tipo === "cancha" && p.precioCancha && p.precioCancha > 0) return p.precioCancha;
@@ -450,7 +457,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       if (situacion(c) !== "abierta" || situacion(o) !== "abierta" || !o.lineas.length) return estado;
       // Si la de origen ya tenía otras juntadas, todo pasa como suyo: separar después la
       // devuelve entera, y esas juntas internas ya no se separan.
-      for (const r of o.rondas) c.rondas.push({ ...r, numero: c.rondas.length + 1, de: { cuenta: o.id, nombre: o.nombre, numero: r.numero } });
+      const comoAdicional = c.tipo === "cancha" && o.tipo !== "cancha" && op.en >= JUNTAR_ADICIONAL_DESDE;
+      for (const r of o.rondas) c.rondas.push({ ...r, numero: c.rondas.length + 1, de: { cuenta: o.id, nombre: o.nombre, numero: r.numero }, ...(comoAdicional ? { adicional: true as const } : {}) });
       for (const l of o.lineas) c.lineas.push({ ...l, de: o.id });
       for (const p of o.pagos) c.pagos.push({ ...p, de: o.id });
       delete o.juntadas;

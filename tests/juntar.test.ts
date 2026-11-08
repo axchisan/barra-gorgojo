@@ -87,3 +87,35 @@ describe("chico o adicional (canchas)", () => {
     expect(saldo(c())).toBe(antes);
   });
 });
+
+describe("juntar con una cancha y pedidas anuladas", () => {
+  const abrirAmbas = (en: number) => [
+    { id: `x1-${en}`, persona: "Ana", en, t: "abrir", cuenta: "k", nombre: "Cancha 2", tipo: "cancha", cancha: "2" },
+    { id: `x2-${en}`, persona: "Ana", en, t: "anotar", cuenta: "k", ronda: "kr1", lineas: [{ id: "kl1", producto: "rubia", cantidad: 10 }] },
+    { id: `x3-${en}`, persona: "Ana", en, t: "abrir", cuenta: "p", nombre: "Señor de gafas", tipo: "persona" },
+    { id: `x4-${en}`, persona: "Ana", en, t: "anotar", cuenta: "p", ronda: "pr1", lineas: [{ id: "pl1", producto: "rubia", cantidad: 1 }] },
+    { id: `x5-${en}`, persona: "Ana", en, t: "juntar", cuenta: "k", desde: "p" },
+  ] as Operacion[];
+
+  it("lo que llega a una cancha desde una cuenta normal es adicional (desde que rige); antes, como quedó", async () => {
+    const { JUNTAR_ADICIONAL_DESDE } = await import("../src/dominio/estado");
+    const ahora = correr(abrirAmbas(JUNTAR_ADICIONAL_DESDE + 1000));
+    expect(ahora.cuentas.k.rondas.map((r) => !!r.adicional)).toEqual([false, true]);
+    const antes = correr(abrirAmbas(JUNTAR_ADICIONAL_DESDE - 1000));
+    expect(antes.cuentas.k.rondas.map((r) => !!r.adicional)).toEqual([false, false]);
+  });
+
+  it("una pedida anulada del todo no cuenta ni se numera", async () => {
+    const { nombreRonda, cuantasRondas } = await import("../src/dominio/formato");
+    const e = correr([
+      op({ t: "abrir", cuenta: "q", nombre: "Cancha 1", tipo: "cancha", cancha: "1" }),
+      op({ t: "anotar", cuenta: "q", ronda: "q1", lineas: [{ id: "a", producto: "rubia", cantidad: 10 }] }),
+      op({ t: "anotar", cuenta: "q", ronda: "q2", adicional: true, lineas: [{ id: "b", producto: "rubia", cantidad: 1 }] }),
+      op({ t: "anular", cuenta: "q", linea: "b" }),
+      op({ t: "anotar", cuenta: "q", ronda: "q3", adicional: true, lineas: [{ id: "c", producto: "rubia", cantidad: 1 }] }),
+    ]);
+    const c = e.cuentas.q;
+    expect(cuantasRondas(c)).toBe("1 chico · 1 adicional");
+    expect(nombreRonda(c, c.rondas[2])).toBe("Adicional 1");
+  });
+});

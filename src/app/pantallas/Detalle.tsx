@@ -3,7 +3,7 @@ import {
   abonos, porPagarPorLinea, producto as productoDe, puedeEditarLinea, saldo, situacion, total, totalComida, unidades,
   type Cuenta, type Linea,
 } from "../../dominio/estado";
-import { cuantasRondas, horaDe, nombreRonda, palabraRonda, pesos } from "../../dominio/formato";
+import { cuantasRondas, horaDe, nombreRonda, palabraRonda, pesos, rondaViva } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
 import { EditarLinea } from "../componentes/EditarLinea";
@@ -25,6 +25,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const [renombrar, setRenombrar] = useState<string | null>(null);
   const [cliente, setCliente] = useState(false);
   const [juntar, setJuntar] = useState(false);
+  const [verAnuladas, setVerAnuladas] = useState(false);
   useAtrasCierra(cliente, () => setCliente(false));
   if (!c) return <NoExiste nav={nav} />;
 
@@ -152,15 +153,16 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
       ) : (
         <>
           {s === "abierta" && <p className="nota centrada">{sinc.tieneArea("barra") ? "Toque un producto para cambiar la cantidad o anularlo." : "Toque un plato (o una bebida que pidió comida) para cambiar la cantidad o anularlo. Lo de la barra solo se ve."}</p>}
-          {[...c.rondas].reverse().map((r) => {
+          {/* Las pedidas anuladas del todo van plegadas al final: no estorban (siguen en la auditoría). */}
+          {[...c.rondas].reverse().filter((r) => verAnuladas || rondaViva(c, r.id)).sort((a, b) => Number(rondaViva(c, b.id)) - Number(rondaViva(c, a.id))).map((r) => {
             const lineas = c.lineas.filter((l) => l.ronda === r.id);
             const sub = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.cantidad * l.precio), 0);
             const elegida = lineas.find((l) => l.id === anulando);
             return (
-              <section key={r.id} className="ronda-tarjeta">
+              <section key={r.id} className={rondaViva(c, r.id) ? "ronda-tarjeta" : "ronda-tarjeta anulada"}>
                 <header>
-                  <strong>{nombreRonda(c, r)}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
-                  {c.tipo === "cancha" && s === "abierta" && (
+                  <strong>{rondaViva(c, r.id) ? nombreRonda(c, r) : "Anulada"}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
+                  {c.tipo === "cancha" && s === "abierta" && rondaViva(c, r.id) && (
                     <button className="chip marcar-ronda" onClick={() => sinc.emitir({ t: "marcar_ronda", cuenta: c.id, ronda: r.id, adicional: !r.adicional })}>
                       {r.adicional ? "Es chico" : "Es adicional"}
                     </button>
@@ -201,6 +203,11 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
               </section>
             );
           })}
+          {c.rondas.some((r) => !rondaViva(c, r.id)) && (
+            <button className="enlace ver-anuladas" onClick={() => setVerAnuladas(!verAnuladas)}>
+              {verAnuladas ? "▾ Esconder las anuladas" : `▸ Pedidas anuladas (${c.rondas.filter((r) => !rondaViva(c, r.id)).length})`}
+            </button>
+          )}
         </>
       )}
 

@@ -316,6 +316,9 @@ adicional» / «Es chico» para cambiarlo después. Se numeran aparte: Chico 1, 
 Adicional 1. No suma toques al caso común. «Repetir» trae el último **chico**; un
 adicional solo si la cancha no tiene ningún chico.
 
+Una pedida con todo anulado (por «Deshacer» o a mano) no se cuenta ni se numera, y en el
+detalle queda plegada al final en «▸ Pedidas anuladas (n)». Sigue en la auditoría.
+
 ## Reglas visuales
 
 - **Modo claro**, alto contraste, igual que el sitio: se usa con sol y bajo luz

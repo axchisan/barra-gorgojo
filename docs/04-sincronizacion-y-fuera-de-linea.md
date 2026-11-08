@@ -272,6 +272,10 @@ mismo antes y después: nada se cobra dos veces ni se pierde. Pruebas en
 | Otro celular anota en la de origen ya juntada | Se anota ahí: la cuenta revive con la alerta de «se anotó después» |
 | Separar después de un cobro o abono en la de destino | Se rechaza: el pago ya pudo incluir lo juntado |
 
+Al juntar una cuenta que no es cancha con una cancha, sus pedidas llegan como
+**adicionales** (no son chicos); desde `JUNTAR_ADICIONAL_DESDE`, para que lo juntado antes
+quede igual (regla 0).
+
 `separar` devuelve todo a la de origen con sus números de pedida. Si la de origen ya
 tenía otras juntas, al juntarla todo pasa como suyo.
 

@@ -23,18 +23,23 @@ export const palabraRonda = (c?: Pick<Cuenta, "tipo">) => (c?.tipo === "cancha" 
  * Cómo se llama una pedida en pantalla. En las canchas, los chicos y los adicionales se
  * cuentan aparte: «Chico 2», «Adicional 1». En las demás, «Pedida N».
  */
-export function nombreRonda(c: Pick<Cuenta, "tipo" | "rondas">, r: Pick<Cuenta["rondas"][number], "id" | "numero" | "adicional">): string {
+export function nombreRonda(c: Pick<Cuenta, "tipo" | "rondas" | "lineas">, r: Pick<Cuenta["rondas"][number], "id" | "numero" | "adicional">): string {
   if (c.tipo !== "cancha") return `Pedida ${r.numero}`;
-  const iguales = c.rondas.filter((x) => !!x.adicional === !!r.adicional);
+  // Las anuladas del todo no cuentan: «Chico 3» sigue siendo el tercero que sí se vendió.
+  const iguales = c.rondas.filter((x) => !!x.adicional === !!r.adicional && (x.id === r.id || rondaViva(c, x.id)));
   const n = iguales.findIndex((x) => x.id === r.id) + 1 || r.numero;
   return `${r.adicional ? "Adicional" : "Chico"} ${n}`;
 }
 
-/** «3 chicos · 1 adicional», o «2 pedidas». */
-export function cuantasRondas(c: Pick<Cuenta, "tipo" | "rondas">): string {
-  const n = c.rondas.length;
+/** Si a la pedida le queda algún producto sin anular. */
+export const rondaViva = (c: Pick<Cuenta, "lineas">, ronda: string) => c.lineas.some((l) => l.ronda === ronda && !l.anulada);
+
+/** «3 chicos · 1 adicional», o «2 pedidas». Sin contar las anuladas del todo. */
+export function cuantasRondas(c: Pick<Cuenta, "tipo" | "rondas" | "lineas">): string {
+  const vivas = c.rondas.filter((r) => rondaViva(c, r.id));
+  const n = vivas.length;
   if (c.tipo !== "cancha") return `${n} ${n === 1 ? "pedida" : "pedidas"}`;
-  const ad = c.rondas.filter((r) => r.adicional).length;
+  const ad = vivas.filter((r) => r.adicional).length;
   const ch = n - ad;
   return `${ch} ${ch === 1 ? "chico" : "chicos"}${ad ? ` · ${ad} ${ad === 1 ? "adicional" : "adicionales"}` : ""}`;
 }
