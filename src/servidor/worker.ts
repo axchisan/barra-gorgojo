@@ -436,7 +436,16 @@ export class Barra extends DurableObject<Env> {
         const vivos = c.pagos.filter((p) => !p.deshecho);
         const ultimo = vivos[vivos.length - 1];
         if (!(ultimo && ultimo.persona === quien.nombre && ahora - ultimo.en < VENTANA_DESHACER)) return "Solo el administrador reabre una cuenta cobrada.";
+      } else {
+        // Abierta con abonos: reabrir deshace todos; solo si son de quien reabre y recientes.
+        const ajenos = c.pagos.filter((p) => !p.deshecho && !(p.persona === quien.nombre && ahora - p.en < VENTANA_DESHACER));
+        if (ajenos.length) return "Solo el administrador deshace abonos de otros o de hace rato.";
       }
+    }
+    if (op.t === "deshacer_pago" && c) {
+      // Deshacer un abono: quien lo cobró, unos minutos; si no, el administrador.
+      const p = c.pagos.find((x) => x.id === op.pago);
+      if (p && !p.deshecho && !(p.persona === quien.nombre && ahora - p.en < VENTANA_DESHACER)) return "Solo el administrador deshace un abono de otro o de hace rato.";
     }
     return null;
   }

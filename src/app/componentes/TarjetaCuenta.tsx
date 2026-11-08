@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { saldo, unidades, type Cuenta } from "../../dominio/estado";
+import { abonos, saldo, unidades, type Cuenta } from "../../dominio/estado";
 import { haceCuanto, pesos } from "../../dominio/formato";
 import { iconoTipo } from "../cuentas";
 import type { Nav } from "../navegacion";
@@ -28,7 +28,8 @@ export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
       <span className="nombre">{c.nombre}</span>
       {tipo && c.nombre !== tipo.slice(3) && <span className="tipo">{tipo}</span>}
       <span className="valor">{pesos(saldo(c))}</span>
-      <span className="meta">{unidades(c)} · {haceCuanto(c.ultima)}</span>
+      {/* Con abonos, el valor es lo que falta. */}
+      <span className="meta">{unidades(c)} · {haceCuanto(c.ultima)}{abonos(c).length > 0 && !c.reabierta ? " · con abono" : ""}</span>
       {c.reabierta && <span className="alerta">Anotaron después del cobro</span>}
     </button>
   );

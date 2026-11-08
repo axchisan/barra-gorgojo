@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { saldo, totalComida, type Medio } from "../../dominio/estado";
-import { pesos } from "../../dominio/formato";
+import { abonos, porPagarPorLinea, saldo, totalComida, type Cuenta, type Medio } from "../../dominio/estado";
+import { horaDe, palabraRonda, pesos } from "../../dominio/formato";
 import { sugerirPago } from "../../dominio/pago";
 import { ponerAviso } from "../avisos";
 import { Desglose } from "../componentes/Desglose";
@@ -10,51 +10,113 @@ import { useAtrasCierra, type Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
 import { sinc } from "../sincronizacion";
 
+/** Qué se cobra: todo lo que falta (como siempre), unos productos o un valor (abonos). */
+type Modo = "todo" | "productos" | "valor";
+
+/** Una parte para cada uno, redondeada hacia arriba a los cien. */
+export const parteDe = (falta: number, entre: number) => Math.ceil(falta / entre / 100) * 100;
+
 export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   const c = sinc.visible.cuentas[id];
   const [medio, setMedio] = useState<Exclude<Medio, "comida">>("efectivo");
   const [recibido, setRecibido] = useState<number | null>(null);
   const [otro, setOtro] = useState("");
+  const [modo, setModo] = useState<Modo>("todo");
+  /** Abono por productos: línea → unidades escogidas. */
+  const [escogidas, setEscogidas] = useState<Record<string, number>>({});
+  const [valorLibre, setValorLibre] = useState("");
   // Mostrar al cliente (F3): el medio y el billete escogidos siguen aquí al volver.
   const [cliente, setCliente] = useState(false);
   useAtrasCierra(cliente, () => setCliente(false));
   if (!c) return <NoExiste nav={nav} />;
-  const valor = saldo(c);
-  if (valor <= 0) return <NoExiste nav={nav} />;
+  const falta = saldo(c);
+  if (falta <= 0) return <NoExiste nav={nav} />;
 
-  const billetes = sugerirPago(valor);
-  const cambio = medio === "efectivo" && recibido != null ? recibido - valor : null;
+  const porPagar = porPagarPorLinea(c);
+  const valorEscogido = Object.entries(escogidas).reduce((s, [l, k]) => s + (c.lineas.find((x) => x.id === l)?.precio ?? 0) * k, 0);
+  const valor =
+    modo === "todo" ? falta :
+    modo === "productos" ? Math.min(valorEscogido, falta) :
+    Math.min(Number(valorLibre) || 0, falta);
+  const esAbono = modo !== "todo" && valor < falta;
+
+  const billetes = valor > 0 ? sugerirPago(valor) : [];
+  const cambio = medio === "efectivo" && recibido != null && valor > 0 ? recibido - valor : null;
 
   if (cliente) return <VistaCliente c={c} recibido={medio === "efectivo" ? recibido : null} cerrar={() => setCliente(false)} />;
 
+  const limpiar = () => { setEscogidas({}); setValorLibre(""); setRecibido(null); setOtro(""); };
+
   const cobrar = (m: Medio) => {
-    sinc.emitir({ t: "cobrar", cuenta: c.id, pago: crypto.randomUUID(), medio: m, recibido: m === "efectivo" ? recibido ?? undefined : undefined });
-    nav.aInicio();
-    ponerAviso({
-      texto: m === "comida" ? `${c.nombre}: pasada a comida · ${pesos(valor)}` : `${c.nombre}: cobrada · ${pesos(valor)}`,
-      deshacer: () => sinc.emitir({ t: "reabrir", cuenta: c.id }),
+    if (m !== "comida" && !(valor > 0)) return;
+    const pago = crypto.randomUUID();
+    const lineas = modo === "productos" ? Object.entries(escogidas).filter(([, k]) => k > 0).map(([linea, cantidad]) => ({ linea, cantidad })) : undefined;
+    const monto = m !== "comida" && modo === "valor" ? valor : undefined;
+    sinc.emitir({
+      t: "cobrar", cuenta: c.id, pago, medio: m,
+      recibido: m === "efectivo" ? recibido ?? undefined : undefined,
+      ...(m !== "comida" && lineas?.length ? { lineas } : {}),
+      ...(monto ? { monto } : {}),
     });
+    const cobrado = m === "comida" ? falta : valor;
+    const deshacer = () => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago });
+    if (m !== "comida" && esAbono) {
+      // Abono: se queda aquí con lo que falta, para el siguiente que pague.
+      limpiar();
+      setModo("todo");
+      ponerAviso({ texto: `${c.nombre}: abono ${pesos(cobrado)} · falta ${pesos(falta - cobrado)}`, deshacer });
+      return;
+    }
+    nav.aInicio();
+    ponerAviso({ texto: m === "comida" ? `${c.nombre}: pasada a comida · ${pesos(cobrado)}` : `${c.nombre}: cobrada · ${pesos(cobrado)}`, deshacer });
   };
 
+  const yaAbonado = abonos(c);
+  const abonado = yaAbonado.reduce((s, p) => s + p.monto, 0);
+
   return (
-    <main className="cobrar">
+    <main className={modo === "todo" ? "cobrar" : "cobrar parte"}>
       <header className="barra-superior">
         <button className="atras" onClick={nav.volver} aria-label="Volver">←</button>
         <strong>Cobrar · {c.nombre}</strong>
-        {/* En pantallas anchas va arriba, donde sobra espacio; en el celular vertical, bajo el total. */}
-        <button className="mostrar-cliente arriba" onClick={() => setCliente(true)}>Mostrar al cliente</button>
+        {/* Arriba: en el celular dice «Ver cliente», para dejar la fila de abajo a «qué se cobra». */}
+        <button className="mostrar-cliente arriba" aria-label="Mostrar al cliente" onClick={() => setCliente(true)}>
+          <span className="largo">Mostrar al cliente</span><span className="corto">Ver cliente</span>
+        </button>
       </header>
-      <p className="total">{pesos(valor)}</p>
+      <p className="total">{pesos(falta)}</p>
+      {abonado > 0 && <p className="abonado">Ya abonaron {pesos(abonado)} · falta {pesos(falta)}</p>}
       {totalComida(c) > 0 && <Desglose c={c} />}
-      <button className="secundario mostrar-cliente abajo" onClick={() => setCliente(true)}>Mostrar al cliente</button>
-      <div className="opciones">
+
+      <div className="segmentos modo-cobro" role="group" aria-label="Qué se cobra">
+        {([["todo", "Todo"], ["productos", "Productos"], ["valor", "Valor"]] as const).map(([m, texto]) => (
+          <button key={m} className={modo === m ? "activo" : ""} aria-pressed={modo === m} onClick={() => { setModo(m); setRecibido(null); setOtro(""); }}>{texto}</button>
+        ))}
+      </div>
+
+      {modo === "productos" && <EscogerProductos c={c} porPagar={porPagar} escogidas={escogidas} setEscogidas={setEscogidas} />}
+      {modo === "valor" && (
+        <section className="abono-valor">
+          <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Valor del abono" aria-label="Valor del abono"
+            value={valorLibre} onChange={(e) => { setValorLibre(e.target.value.replace(/\D/g, "")); setRecibido(null); setOtro(""); }} />
+          <div className="opciones dividir">
+            {[2, 3, 4, 5].map((n) => (
+              <button key={n} className={Number(valorLibre) === parteDe(falta, n) ? "chip activo" : "chip"} onClick={() => { setValorLibre(String(parteDe(falta, n))); setRecibido(null); setOtro(""); }}>
+                Entre {n}<small>{pesos(parteDe(falta, n))}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="opciones medios">
         {(["efectivo", "nequi", "breve"] as const).map((m) => (
           <button key={m} className={medio === m ? "chip activo" : "chip"} onClick={() => setMedio(m)}>
             {m === "efectivo" ? "Efectivo" : m === "nequi" ? "Nequi" : "Breve"}
           </button>
         ))}
       </div>
-      {medio === "efectivo" && (
+      {medio === "efectivo" && valor > 0 && (
         <section className="recibido">
           <p>¿Con cuánto paga?</p>
           <div className="opciones">
@@ -77,15 +139,64 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
         </p>
       )}
       <div className="pie-fijo">
-        {c.tipo === "mesa" ? (
+        {modo !== "todo" ? (
+          <button className="principal grande" onClick={() => cobrar(medio)} disabled={!(valor > 0) || (cambio != null && cambio < 0)}>
+            {esAbono ? `Abonar ${pesos(valor)}` : `Cobrar ${pesos(valor)}`}
+          </button>
+        ) : c.tipo === "mesa" ? (
           <>
             <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar aquí</button>
             <button className="comida grande" onClick={() => cobrar("comida")}>Pasar a comida</button>
           </>
         ) : (
-          <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar {pesos(valor)}</button>
+          <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar {pesos(falta)}</button>
         )}
       </div>
     </main>
+  );
+}
+
+/** Abono por productos: cada pedida con sus productos por pagar; se toca la pedida o el producto. */
+function EscogerProductos({ c, porPagar, escogidas, setEscogidas }: {
+  c: Cuenta; porPagar: Map<string, number>; escogidas: Record<string, number>; setEscogidas: (e: Record<string, number>) => void;
+}) {
+  const palabra = palabraRonda(c);
+  const rondas = c.rondas
+    .map((r) => ({ r, lineas: c.lineas.filter((l) => l.ronda === r.id && porPagar.has(l.id)) }))
+    .filter((x) => x.lineas.length);
+  if (!rondas.length) return <p className="vacio">Todo lo anotado ya está pagado: queda un saldo sin productos (cobre por valor).</p>;
+  const poner = (linea: string, k: number) => setEscogidas({ ...escogidas, [linea]: Math.max(0, Math.min(k, porPagar.get(linea) ?? 0)) });
+  return (
+    <section className="abono-productos">
+      {rondas.map(({ r, lineas }) => {
+        const todas = lineas.every((l) => (escogidas[l.id] ?? 0) === porPagar.get(l.id));
+        return (
+          <div key={r.id} className="abono-ronda">
+            <button className={todas ? "abono-ronda-cabeza activa" : "abono-ronda-cabeza"} aria-pressed={todas}
+              onClick={() => { const e = { ...escogidas }; for (const l of lineas) e[l.id] = todas ? 0 : porPagar.get(l.id)!; setEscogidas(e); }}>
+              <span>{todas ? "☑" : "☐"} {palabra === "chico" ? "Chico" : "Pedida"} {r.numero}</span>
+              <small>{horaDe(r.en)} · {r.persona}</small>
+            </button>
+            {lineas.map((l) => {
+              const max = porPagar.get(l.id)!;
+              const k = escogidas[l.id] ?? 0;
+              return (
+                <div key={l.id} className={k > 0 ? "abono-linea escogida" : "abono-linea"}>
+                  <button className="abono-linea-nombre" onClick={() => poner(l.id, k > 0 ? 0 : max)}>
+                    <span>{l.nombre}</span>
+                    <small>{max}{max < l.cantidad ? ` de ${l.cantidad}` : ""} × {pesos(l.precio)}</small>
+                  </button>
+                  <div className="cantidad">
+                    <button aria-label={`Una ${l.nombre} menos`} onClick={() => poner(l.id, k - 1)} disabled={k <= 0}>−</button>
+                    <strong>{k}</strong>
+                    <button aria-label={`Una ${l.nombre} más`} onClick={() => poner(l.id, k + 1)} disabled={k >= max}>+</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </section>
   );
 }

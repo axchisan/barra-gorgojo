@@ -652,3 +652,48 @@ describe("dirección propia", () => {
   });
 });
 
+
+// Abonos (pagos parciales): forma de las operaciones y quién puede deshacerlos.
+describe("abonos en el servidor", () => {
+  let s: Servidor;
+  let ana: string;
+  let beto: string;
+  let admin: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    beto = await s.token("Beto");
+    admin = await s.token("Administrador");
+  });
+  afterAll(() => s?.apagar());
+  type R = { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any };
+
+  it("acepta abonos por valor y por productos, y el último cobro cierra la cuenta", async () => {
+    const cuenta = `abono-${Date.now()}`;
+    await s.ops(ana, [op({ t: "abrir", cuenta, nombre: "Grupo que divide", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: [{ id: "a1", producto: "rubia", cantidad: 3 }] })]);
+    const r = (await s.ops(ana, [
+      op({ t: "cobrar", cuenta, pago: "p1", medio: "nequi", lineas: [{ linea: "a1", cantidad: 1 }] }),
+      op({ t: "cobrar", cuenta, pago: "p2", medio: "efectivo", monto: 4000, recibido: 5000 }),
+      op({ t: "cobrar", cuenta, pago: "p3", medio: "breve" }),
+    ])) as R;
+    expect(r.rechazadas ?? []).toEqual([]);
+    expect(r.estado.cuentas[cuenta].pagos.map((p: any) => [p.medio, p.monto, !!p.parcial])).toEqual([["nequi", RUBIA, true], ["efectivo", RUBIA, true], ["breve", RUBIA, false]]);
+  });
+
+  it("un operador deshace su abono reciente, no el de otro; reabrir con abonos de otro es del administrador", async () => {
+    const cuenta = `deshacer-${Date.now()}`;
+    await s.ops(ana, [op({ t: "abrir", cuenta, nombre: "Con abonos", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 3]]) })]);
+    await s.ops(ana, [op({ t: "cobrar", cuenta, pago: "de-ana", medio: "efectivo", monto: 4000 })]);
+    await s.ops(beto, [op({ t: "cobrar", cuenta, pago: "de-beto", medio: "nequi", monto: 4000 })]);
+
+    const ajeno = (await s.ops(ana, [op({ t: "deshacer_pago", cuenta, pago: "de-beto" })])) as R;
+    expect(ajeno.rechazadas?.[0].motivo).toMatch(/administrador/);
+    const reabrir = (await s.ops(ana, [op({ t: "reabrir", cuenta })])) as R;
+    expect(reabrir.rechazadas?.[0].motivo).toMatch(/administrador/);
+    const propio = (await s.ops(ana, [op({ t: "deshacer_pago", cuenta, pago: "de-ana" })])) as R;
+    expect(propio.rechazadas ?? []).toEqual([]);
+    expect(propio.estado.cuentas[cuenta].pagos.filter((p: any) => !p.deshecho).map((p: any) => p.id)).toEqual(["de-beto"]);
+    const delAdmin = (await s.ops(admin, [op({ t: "deshacer_pago", cuenta, pago: "de-beto" })])) as R;
+    expect(delAdmin.rechazadas ?? []).toEqual([]);
+  });
+});

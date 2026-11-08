@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  producto as productoDe, saldo, situacion, total, totalComida, unidades,
+  abonos, porPagarPorLinea, producto as productoDe, saldo, situacion, total, totalComida, unidades,
   type Linea,
 } from "../../dominio/estado";
 import { horaDe, palabraRonda, pesos } from "../../dominio/formato";
@@ -31,6 +31,9 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const palabra = palabraRonda(c);
   const plural = palabra === "chico" ? "chicos" : "pedidas";
   const tipo = iconoTipo(c);
+  // Productos ya pagados del todo con un abono por productos (se marcan con ✓).
+  const porPagar = porPagarPorLinea(c);
+  const pagadas = new Set(c.lineas.filter((l) => !l.anulada && !porPagar.has(l.id) && c.pagos.some((p) => !p.deshecho && p.lineas?.some((x) => x.linea === l.id))).map((l) => l.id));
 
   if (cliente) return <VistaCliente c={c} cerrar={() => setCliente(false)} />;
 
@@ -92,7 +95,26 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         {s === "comida" && <span className="estado comida">Pasada a comida{c.comidaCobrada ? " · ya cobrada allá" : " · falta cobrar en comida"}</span>}
         {s === "anulada" && <span className="estado anulada">Anulada</span>}
         {c.reabierta && <span className="alerta">Se anotó después del cobro. Falta cobrar {pesos(saldo(c))}</span>}
+        {s === "abierta" && abonos(c).length > 0 && (
+          <span className="estado abonada">Abonado {pesos(abonos(c).reduce((t, p) => t + p.monto, 0))} · falta {pesos(saldo(c))}</span>
+        )}
       </section>
+
+      {s === "abierta" && abonos(c).length > 0 && (
+        <section className="abonos-lista">
+          {abonos(c).map((p) => {
+            const que = p.lineas?.map((x) => `${x.cantidad} ${c.lineas.find((l) => l.id === x.linea)?.nombre ?? ""}`).join(", ");
+            const puede = sinc.esAdministrador || (p.persona === sinc.sesion?.persona && Date.now() - p.en < 5 * 60_000);
+            return (
+              <div key={p.id} className="abono-fila">
+                <span><b>{pesos(p.monto)}</b> {p.medio === "efectivo" ? "en efectivo" : p.medio === "nequi" ? "por Nequi" : "por Breve"}{que ? ` · ${que}` : ""}</span>
+                <small className="tenue">{horaDe(p.en)} · {p.persona}</small>
+                {puede && <button className="chip" onClick={() => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago: p.id })}>Deshacer</button>}
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       <div className="chips centro">
         <button className={modo === "resumen" ? "chip activo" : "chip"} onClick={() => setModo("resumen")}>Resumen</button>
@@ -124,12 +146,12 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                   const ficha = (l: Linea) => (
                     <button
                       key={l.id}
-                      className={`ficha${l.anulada ? " anulada" : ""}${anulando === l.id ? " elegida" : ""}`}
+                      className={`ficha${l.anulada ? " anulada" : ""}${!l.anulada && pagadas.has(l.id) ? " pagada" : ""}${anulando === l.id ? " elegida" : ""}`}
                       style={l.anulada ? undefined : colorDe(l.producto)}
                       disabled={!!l.anulada || (s !== "abierta" && !productoDe(sinc.visible, l.producto)?.conNombre)}
                       onClick={() => setAnulando(anulando === l.id ? null : l.id)}
                     >
-                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.editada && !l.anulada ? " ✎" : ""}
+                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.editada && !l.anulada ? " ✎" : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
                     </button>
                   );
                   const { sueltas, grupos } = porPaquete(lineas);

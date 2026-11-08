@@ -51,7 +51,7 @@ tejo trae su ronda) y **«pedida»** en las demás.
 | RF-25 | **Venta rápida**: alguien compra y paga en el momento, sin cuenta con nombre. Es abrir, anotar y cobrar en un solo recorrido | M | ✅ «Cobrar ya» |
 | RF-26 | Si llegan rondas a una cuenta ya cobrada (porque otro celular anotó sin señal), la cuenta **se reabre sola con saldo pendiente** y avisa en todos los celulares | M | ✅ aviso en la tarjeta y el detalle |
 | RF-27 | Modo **«mostrar al cliente»**: pantalla limpia con el resumen y el total en letra grande, para girar el celular y enseñarlo. Desde el menú ⋮ del detalle y, a la vista, desde Cobrar (con cuánto paga y el cambio) | D | ✅ |
-| RF-28 | Pago en varias partes (dividir la cuenta o abonos) | F | ⬜ |
+| RF-28 | Pago en varias partes (dividir la cuenta o abonos) | F | ✅ 2026-11-08: abono por productos (pedida o unidades) o por valor, dividir entre 2–5, varios medios, deshacer un abono |
 | RF-29 | Fiado: cuenta a nombre de un cliente conocido que se paga otro día | F | ⬜ |
 
 ### Agregados con el uso (octubre y noviembre de 2026)

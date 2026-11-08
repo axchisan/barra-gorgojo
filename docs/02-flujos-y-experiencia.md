@@ -207,6 +207,18 @@ que los productos empiecen arriba en un teléfono pequeño. Los toques son los m
   «atrás» vuelve al cobro con el medio y el billete escogidos.
 - Girado, el cambio sale en la columna izquierda, bajo los medios de pago, para que no
   lo tapen los billetes.
+- **Abonos (2026-11-08).** Debajo del total, «**Todo** · Productos · Valor». «Todo» es el
+  cobro de siempre, por defecto, sin toques nuevos. «**Productos**»: cada pedida con sus
+  productos por pagar; tocar la pedida la toma entera, tocar un producto lo toma, y − / +
+  escogen cuántas unidades. «**Valor**»: un valor libre, o «Entre 2 / 3 / 4 / 5», que
+  pone la parte de cada uno (redondeada hacia arriba a los cien). El botón dice «Abonar
+  $ X». Después de un abono la pantalla se queda con lo que falta, para el siguiente que
+  pague; cuando no falta nada, la cuenta queda cobrada. Cada quien escoge su medio. El
+  aviso «Deshacer» deshace solo ese abono. En el detalle: «Abonado $ X · falta $ Y», la
+  lista de abonos (con «Deshacer» para el administrador o para quien lo cobró hace menos
+  de 5 minutos) y los productos ya pagados con ✓. La tarjeta dice «con abono». «Mostrar al
+  cliente» muestra la cuenta, lo abonado y lo que falta. En el celular, «Mostrar al
+  cliente» pasó a la barra de arriba («Ver cliente») para dejar la fila a «qué se cobra».
 - En una cuenta de **mesa**, en vez de cobrar directo aparecen dos botones del mismo
   tamaño: **«Cobrar aquí»** y **«Pasar a comida»**. No hay opción por defecto, a
   propósito: obliga a decidir (RF-42).

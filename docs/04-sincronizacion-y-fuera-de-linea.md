@@ -215,6 +215,28 @@ fila, y la propiedad de convergencia con 200 secuencias al azar),
 (tres celulares). El doble cobro se rechaza en el servidor con el mensaje de la tabla
 (`yaCobrada` en `worker.ts`).
 
+## Abonos (2026-11-08)
+
+Un grupo paga por partes: alguien paga su pedida o unas cervezas, alguien deja un valor,
+o reparten entre varios con medios distintos.
+
+- `cobrar` puede traer `lineas` (qué productos y cuántas unidades paga) o `monto` (un
+  valor). Sin ellos, como siempre: todo lo que falta. Así el registro viejo da el mismo
+  estado (reglas 0 y 4) y no hace falta subir `VERSION_PROYECCION`.
+- Por productos, el abono vale lo que valen las unidades **aún no pagadas** de esas líneas
+  (`porPagarPorLinea`): nada se paga dos veces. Por valor, el entero que diga.
+- **Nunca más que el saldo**: un abono mayor cobra solo lo que falta. Si el abono no cubre
+  todo, el pago queda `parcial` y la cuenta sigue abierta; el último cobro la cierra.
+- Pasar a comida es siempre por todo lo que falta (regla 9).
+- `deshacer_pago { cuenta, pago }` deshace **un** pago; `reabrir` sigue deshaciendo todos.
+  Permisos en el servidor: quien lo cobró, en los 5 minutos siguientes, o el
+  administrador; reabrir una cuenta con abonos de otros o viejos es del administrador.
+- «El día», el cierre y el CSV ya suman pagos por día y medio: cada abono cuenta el día en
+  que entró. El doble cobro (tabla de conflictos) sigue igual: sin saldo, se rechaza.
+
+Pruebas: `tests/abonos.test.ts`, `tests/servidor/barra.test.ts` «abonos en el servidor» y
+`tests/e2e/abonos.spec.ts`.
+
 ## Cómo se prueba
 
 La sincronización no se prueba a mano. Pruebas obligatorias antes de usarlo en el local:

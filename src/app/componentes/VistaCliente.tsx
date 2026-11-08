@@ -1,6 +1,6 @@
 // «Mostrar al cliente» (RF-27): pantalla limpia con lo que se le cobra, para voltear el
 // celular o la tablet hacia el cliente. Se abre desde el detalle (menú ⋮) y desde Cobrar.
-import { saldo, total, totalComida, type Cuenta } from "../../dominio/estado";
+import { abonos, saldo, total, totalComida, type Cuenta } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import { resumen } from "../cuentas";
 
@@ -22,7 +22,13 @@ export function VistaCliente({ c, recibido, cerrar }: { c: Cuenta; recibido?: nu
             <p className="parte"><span>🍽 Comida</span><span>{pesos(totalComida(c))}</span></p>
           </>
         )}
-        <p className="total-cliente"><span>Total</span><span>{pesos(valor)}</span></p>
+        {abonos(c).length > 0 && (
+          <>
+            <p className="parte"><span>Cuenta</span><span>{pesos(total(c))}</span></p>
+            <p className="parte"><span>Ya abonado</span><span>− {pesos(abonos(c).reduce((t, p) => t + p.monto, 0))}</span></p>
+          </>
+        )}
+        <p className="total-cliente"><span>{abonos(c).length > 0 ? "Falta" : "Total"}</span><span>{pesos(valor)}</span></p>
         {cambio != null && recibido !== valor && (
           <>
             <p className="parte"><span>Paga con</span><span>{pesos(recibido!)}</span></p>

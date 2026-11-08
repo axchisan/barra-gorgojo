@@ -45,6 +45,10 @@ export interface Pago {
   persona: string;
   en: number;
   deshecho?: boolean;
+  /** Abono: no cubrió todo lo que faltaba en ese momento. */
+  parcial?: boolean;
+  /** Qué productos pagó (abono por productos): línea y unidades. */
+  lineas?: { linea: string; cantidad: number }[];
 }
 
 export interface Cuenta {
@@ -146,7 +150,8 @@ export type Operacion = Base &
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "anotar"; cuenta: string; ronda: string; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number }[] }
     | { t: "anular"; cuenta: string; linea: string }
-    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number }
+    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[] }
+    | { t: "deshacer_pago"; cuenta: string; pago: string }
     | { t: "reabrir"; cuenta: string }
     | { t: "comida_cobrada"; cuenta: string; valor: boolean }
     | { t: "anular_cuenta"; cuenta: string; motivo?: string }
@@ -172,6 +177,31 @@ export function pagado(c: Cuenta): number {
 }
 
 export const saldo = (c: Cuenta) => total(c) - pagado(c);
+
+/** Unidades ya pagadas de cada línea, por abonos que dijeron qué productos pagaban. */
+export function pagadoPorLinea(c: Cuenta): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const p of c.pagos) {
+    if (p.deshecho) continue;
+    for (const x of p.lineas ?? []) m.set(x.linea, (m.get(x.linea) ?? 0) + x.cantidad);
+  }
+  return m;
+}
+
+/** Lo que falta pagar de cada línea viva (unidades), para escoger qué paga un abono. */
+export function porPagarPorLinea(c: Cuenta): Map<string, number> {
+  const pagadas = pagadoPorLinea(c);
+  const m = new Map<string, number>();
+  for (const l of c.lineas) {
+    if (l.anulada) continue;
+    const falta = l.cantidad - (pagadas.get(l.id) ?? 0);
+    if (falta > 0) m.set(l.id, falta);
+  }
+  return m;
+}
+
+/** Abonos vivos de una cuenta que no la terminaron de pagar (para mostrar «abonado»). */
+export const abonos = (c: Cuenta) => c.pagos.filter((p) => !p.deshecho);
 
 export type Situacion = "abierta" | "cobrada" | "comida" | "anulada";
 
@@ -288,9 +318,34 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
     }
     case "cobrar": {
       if (!c || c.pagos.some((p) => p.id === op.pago)) return estado;
-      const monto = saldo(c);
-      if (monto <= 0) return estado; // otro celular ya la cobró
+      const falta = saldo(c);
+      if (falta <= 0) return estado; // otro celular ya la cobró
       if (op.medio === "comida" && c.tipo !== "mesa") return estado;
+      // Abono (docs/04 «Abonos»): por productos (lo que valen las unidades que aún no se
+      // han pagado) o por un valor. Sin nada de eso, como siempre: todo lo que falta. Pasar
+      // a comida es siempre por todo lo que falta (regla 9). Nunca más que el saldo.
+      let monto = falta;
+      let cubre: { linea: string; cantidad: number }[] | undefined;
+      if (op.medio !== "comida" && Array.isArray(op.lineas) && op.lineas.length) {
+        const porPagar = porPagarPorLinea(c);
+        cubre = [];
+        let valor = 0;
+        for (const x of op.lineas) {
+          const l = c.lineas.find((y) => y.id === x?.linea);
+          const cantidad = Math.min(Math.floor(Number(x?.cantidad)), porPagar.get(x?.linea) ?? 0);
+          if (!l || !(cantidad > 0)) continue;
+          porPagar.set(l.id, (porPagar.get(l.id) ?? 0) - cantidad);
+          cubre.push({ linea: l.id, cantidad });
+          valor += l.precio * cantidad;
+        }
+        if (!cubre.length) return estado;
+        monto = Math.min(valor, falta);
+      } else if (op.medio !== "comida" && op.monto != null) {
+        const m = Math.floor(Number(op.monto));
+        if (!(m > 0)) return estado;
+        monto = Math.min(m, falta);
+      }
+      const parcial = monto < falta;
       c.pagos.push({
         id: op.pago,
         medio: op.medio,
@@ -298,9 +353,20 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         recibido: op.medio === "efectivo" && op.recibido && op.recibido >= monto ? Math.floor(op.recibido) : undefined,
         persona: op.persona,
         en: op.en,
+        ...(parcial ? { parcial } : {}),
+        ...(cubre?.length ? { lineas: cubre } : {}),
       });
       c.ultima = op.en;
-      c.reabierta = false;
+      if (!parcial) c.reabierta = false;
+      return estado;
+    }
+    case "deshacer_pago": {
+      // Deshace un solo abono o cobro (no todos, como «reabrir»).
+      const p = c?.pagos.find((x) => x.id === op.pago);
+      if (!c || !p || p.deshecho) return estado;
+      p.deshecho = true;
+      if (p.medio === "comida") c.comidaCobrada = false;
+      c.ultima = op.en;
       return estado;
     }
     case "reabrir": {

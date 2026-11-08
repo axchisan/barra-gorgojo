@@ -58,7 +58,15 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const valor = p ? ` ${pesos(p.monto)}` : "";
       if (op.medio === "comida") return { texto: `Pasó a comida${valor}`, atencion: false };
       const cambio = p?.recibido && p.recibido > p.monto ? ` (pagó con ${pesos(p.recibido)})` : "";
-      return { texto: `Cobró${valor} ${medio(op.medio)}${cambio}${p?.deshecho ? " · después se deshizo" : ""}`, atencion: false };
+      const que = p?.lineas?.length
+        ? ` por ${p.lineas.map((x) => `${x.cantidad} ${linea(x.linea)?.nombre ?? "producto"}`).join(", ")}`
+        : "";
+      const verbo = p?.parcial ? "Abonó" : "Cobró";
+      return { texto: `${verbo}${valor} ${medio(op.medio)}${que}${cambio}${p?.deshecho ? " · después se deshizo" : ""}`, atencion: false };
+    }
+    case "deshacer_pago": {
+      const p = cuenta?.pagos.find((x) => x.id === op.pago);
+      return { texto: `Deshizo ${p ? `un ${p.parcial ? "abono" : "cobro"} de ${pesos(p.monto)} (${p.persona})` : "un abono"}`, atencion: true };
     }
     case "reabrir":
       return { texto: "Reabrió la cuenta (deshizo el cobro o la anulación)", atencion: true };
