@@ -35,8 +35,11 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   await cocina.getByRole("button", { name: /Otro valor/ }).click();
   await cocina.getByLabel("Valor del plato").fill("12000");
   await cocina.locator(".hoja").getByRole("button", { name: /Agregar/ }).click();
-  // Y una cerveza: le llega a la barra.
+  // Y una cerveza, en la pestaña de bebidas: le llega a la barra.
+  await expect(cocina.locator(".producto", { hasText: "RUBIA" })).toHaveCount(0);
+  await cocina.getByRole("tab", { name: /Bebidas/ }).click();
   await cocina.locator(".producto", { hasText: "RUBIA" }).first().click();
+  await expect(cocina.getByRole("tab", { name: /Comida/ })).toContainText("4");
   await cocina.locator(".pie-fijo .principal").click();
   await expect(cocina.locator(".aviso")).toContainText("bebidas avisadas a la barra");
   const mesa = cocina.locator(".tarjeta", { hasText: "Mesa 7" });
@@ -75,4 +78,24 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   await expect(cocina.locator(".caja").first()).toContainText(total.toLocaleString("es-CO"));
   // Doble cobro imposible: en la barra la cuenta ya no está abierta.
   await expect(barra.locator(".tarjetas .tarjeta", { hasText: "Mesa 7" })).toHaveCount(0);
+});
+
+test("el administrador crea la carta de una vez: un plato en varios precios", async ({ browser }) => {
+  const p = await celular(browser, "Administrador");
+  await p.getByRole("button", { name: /Administrador ▾/ }).click();
+  await p.getByRole("button", { name: "Productos y precios" }).click();
+  await p.getByRole("button", { name: "🍽 Crear platos" }).click();
+  await p.getByLabel("Nombre del plato", { exact: true }).fill("Bandeja e2e");
+  await p.getByLabel("Precios").fill("21 26");
+  await p.getByLabel("Notas rápidas de esos platos").fill("sin arroz, doble");
+  await p.getByRole("button", { name: "Agregar a la lista" }).click();
+  await p.getByRole("button", { name: "Crear 2 platos" }).click();
+  await expect(p.locator(".aviso")).toContainText("2 platos creados");
+  await p.goBack();
+  // En «Anotar», pestaña Comida: un botón por precio, con sus notas rápidas.
+  await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+  await p.getByRole("tab", { name: /Comida/ }).click();
+  await expect(p.locator(".productos.platos .producto", { hasText: "BANDEJA E2E" })).toHaveCount(2);
+  await p.getByRole("button", { name: /Bandeja e2e \$\s?21\.000 con nota/ }).click();
+  await expect(p.locator(".hoja").getByRole("button", { name: "sin arroz" })).toBeVisible();
 });

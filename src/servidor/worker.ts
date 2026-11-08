@@ -4,7 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esOperacion, esVigente, estadoVacio, jornada, producto as productoDe, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, esOperacion, esVigente, estadoVacio, jornada, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
@@ -444,6 +444,10 @@ export class Barra extends DurableObject<Env> {
     // Áreas (docs/14): despachar es de la barra; anotar platos, de la comida.
     if (op.t === "despachar" && !quien.areas.includes("barra")) return "Solo la barra despacha las bebidas.";
     if (op.t === "anotar" && !quien.areas.includes("comida") && op.lineas.some((l) => productoDe(this.estado, l.producto)?.categoria === "comida")) return "Solo el área de comida anota platos.";
+    if (op.t === "anular" || op.t === "cantidad" || op.t === "comida_linea") {
+      const l = this.estado.cuentas[op.cuenta]?.lineas.find((x) => x.id === op.linea);
+      if (l && !puedeEditarLinea(quien.areas, l)) return "Desde comida solo se cambian los platos y las bebidas pedidas desde comida que no se han despachado.";
+    }
     const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
     if (op.t === "anular_cuenta" && c && total(c) > 0) return "Solo el administrador anula una cuenta con productos.";
     if (op.t === "reabrir" && c) {

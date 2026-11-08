@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  abonos, porPagarPorLinea, producto as productoDe, saldo, situacion, total, totalComida, unidades,
+  abonos, porPagarPorLinea, producto as productoDe, puedeEditarLinea, saldo, situacion, total, totalComida, unidades,
   type Cuenta, type Linea,
 } from "../../dominio/estado";
 import { horaDe, palabraRonda, pesos } from "../../dominio/formato";
@@ -152,7 +152,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         </>
       ) : (
         <>
-          {s === "abierta" && <p className="nota centrada">Toque un producto para cambiar la cantidad o anularlo.</p>}
+          {s === "abierta" && <p className="nota centrada">{sinc.tieneArea("barra") ? "Toque un producto para cambiar la cantidad o anularlo." : "Toque un plato (o una bebida que pidió comida) para cambiar la cantidad o anularlo. Lo de la barra solo se ve."}</p>}
           {[...c.rondas].reverse().map((r) => {
             const lineas = c.lineas.filter((l) => l.ronda === r.id);
             const sub = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.cantidad * l.precio), 0);
@@ -170,7 +170,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                       key={l.id}
                       className={`ficha${l.anulada ? " anulada" : ""}${!l.anulada && pagadas.has(l.id) ? " pagada" : ""}${anulando === l.id ? " elegida" : ""}`}
                       style={l.anulada ? undefined : colorDe(l.producto)}
-                      disabled={!!l.anulada || (s !== "abierta" && !productoDe(sinc.visible, l.producto)?.conNombre)}
+                      // Quien solo tiene comida ve lo de la barra, pero solo toca lo de comida (docs/14).
+                      disabled={!!l.anulada || !puedeEditarLinea(sinc.areas, l) || (s !== "abierta" && !productoDe(sinc.visible, l.producto)?.conNombre)}
                       onClick={() => setAnulando(anulando === l.id ? null : l.id)}
                     >
                       <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}

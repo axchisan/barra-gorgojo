@@ -252,6 +252,9 @@ Cada pago guarda su `area` (la caja); lo registrado antes cuenta como de la barr
 - El servidor revisa el área en cada operación: anotar platos exige comida; despachar,
   barra; anotar, cobrar o cerrar en un área que la persona no tiene hoy se rechaza (regla
   8). Las áreas de hoy son las fijas más las dadas para ese día; el administrador, todas.
+- Quien solo tiene comida **ve y cobra** toda la cuenta, pero solo cambia o anula los
+  platos y las bebidas que pidió comida mientras no se despachen (`puedeEditarLinea`);
+  lo de la barra lo ve sin tocarlo. La barra cambia todo.
 
 ## Juntar cuentas (2026-11-08)
 

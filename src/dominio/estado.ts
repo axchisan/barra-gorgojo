@@ -268,6 +268,15 @@ export function efectivoDeJornada(cuentas: Iterable<Cuenta>, fecha: string, area
   return s;
 }
 
+/**
+ * Si alguien con estas áreas puede cambiar o anular un producto ya anotado (docs/14): la
+ * barra, todo; quien solo tiene comida, los platos y las bebidas que pidió comida mientras
+ * la barra no las despache. Lo demás lo ve pero no lo toca.
+ */
+export function puedeEditarLinea(areas: readonly Area[], l: Linea): boolean {
+  return areas.includes("barra") || !!l.comida || !!l.porDespachar;
+}
+
 /** Bebidas pedidas desde comida que la barra no ha despachado, de todas las cuentas vivas. */
 export function porDespachar(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; lineas: Linea[] }[] {
   const r: { cuenta: Cuenta; lineas: Linea[] }[] = [];

@@ -292,8 +292,11 @@ ahora, quién lo usa, su versión de la app y si le queda algo por enviar.
 
 ### Panel de comida (2026-11-08)
 
-Igual que anotar en la barra: platos primero, después las bebidas; la cuenta nueva
-empieza en «Mesa». El caso común no suma toques. Una **nota** («solo carne») suma dos
+Igual que anotar en la barra, con dos pestañas en la cabecera, **🍽 Comida | 🍺 Bebidas**
+(cada una con cuántos lleva la pedida): en el panel de comida abre en Comida, con los
+platos en botones grandes; en el de la barra, en Bebidas. Quien solo tiene barra no ve
+las pestañas. La cuenta nueva empieza en «Mesa». La carta se crea de una vez en
+«Productos y precios → Crear platos» (un plato en varios precios = un botón por precio). El caso común no suma toques. Una **nota** («solo carne») suma dos
 toques (✎ nota → la nota → Agregar) y solo cuando la hay. El plato de otro valor: «Otro
 valor» → valor → Agregar. Las bebidas anotadas aquí le llegan a la barra con aviso
 (sonido, vibración y franja arriba) hasta que se despachan; la pestaña «Despachar» sale

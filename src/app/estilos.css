@@ -833,3 +833,20 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .fila-dia { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .estado.juntada { border: 0; font: inherit; font-weight: 700; background: #e7e0f3; color: #4a3577; }
 .estado.juntas { background: #e7e0f3; color: #4a3577; }
+/* Anotar con pestañas Comida | Bebidas, y platos grandes (docs/14). */
+.segmentos.pestanas-anotar { flex: 0 0 auto; background: transparent; border-color: rgb(250 244 232 / 0.4); }
+.segmentos.pestanas-anotar button { min-height: 40px; padding: 0 12px; color: var(--crema); border-left-color: rgb(250 244 232 / 0.4); }
+.segmentos.pestanas-anotar button.activo { background: var(--crema); color: var(--marron); }
+.segmentos.pestanas-anotar button.activo.comida-chip { background: var(--azul-comida); color: #fff; }
+.segmentos.pestanas-anotar small { margin-left: 4px; background: var(--amarillo); color: var(--marron); border-radius: 999px; padding: 0 6px; opacity: 1; }
+@media (max-width: 459px) { .segmentos.pestanas-anotar .largo { display: none; } }
+.productos.platos { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 18px 10px; padding-top: 10px; }
+.productos.platos .producto { min-height: 92px; padding-top: 18px; }
+.productos.platos .producto .corto { font-size: 1.02rem; }
+.productos.platos .producto .precio { font-size: 0.98rem; font-weight: 700; }
+.productos.platos .con-nota { top: -14px; left: -4px; height: 30px; padding: 0 8px; font-size: 0.8rem; }
+.sin-platos { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.platos-admin .caja { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.fila-plato { display: grid; grid-template-columns: 1fr 110px; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--neutro-200); }
+.fila-plato .notas { grid-column: 1 / -1; }
+.platos-admin { max-width: 720px; }

@@ -737,6 +737,24 @@ describe("áreas por persona", () => {
     expect(b.estado.cuentas[cuenta].lineas.find((l: any) => l.id === "b1").despachada.por).toBe("Beto");
   });
 
+  it("comida ve y cobra toda la cuenta, pero solo cambia platos y bebidas suyas sin despachar", async () => {
+    const cuenta = `editar-${Date.now()}`;
+    await s.ops(beto, [op({ t: "abrir", cuenta, nombre: "Mesa 5", tipo: "mesa", mesa: 5 }), op({ t: "anotar", cuenta, ronda: "r1", lineas: [{ id: "de-barra", producto: "rubia", cantidad: 2 }] })]);
+    await s.ops(ana, [op({ t: "anotar", cuenta, ronda: "r2", area: "comida", lineas: [{ id: "plato", producto: "sopa", cantidad: 2 }, { id: "pedida", producto: "rubia", cantidad: 1 }] })]);
+    const r = (await s.ops(ana, [
+      op({ t: "anular", cuenta, linea: "de-barra" }),
+      op({ t: "cantidad", cuenta, linea: "de-barra", cantidad: 1 }),
+      op({ t: "cantidad", cuenta, linea: "plato", cantidad: 1 }),
+      op({ t: "anular", cuenta, linea: "pedida" }),
+    ])) as R;
+    expect(r.rechazadas?.map((x) => x.motivo.slice(0, 40))).toEqual(["Desde comida solo se cambian los platos ", "Desde comida solo se cambian los platos "]);
+    const ls = r.estado.cuentas[cuenta].lineas;
+    expect(ls.map((l: any) => [l.id, l.cantidad, !!l.anulada])).toEqual([["de-barra", 2, false], ["plato", 1, false], ["pedida", 1, true]]);
+    // La barra sí cambia lo de comida.
+    const b = (await s.ops(beto, [op({ t: "cantidad", cuenta, linea: "plato", cantidad: 3 })])) as R;
+    expect(b.rechazadas ?? []).toEqual([]);
+  });
+
   it("cada cobro queda en la caja de quien cobra; nadie cobra en una caja que no tiene", async () => {
     const cuenta = `caja-${Date.now()}`;
     await s.ops(beto, [op({ t: "abrir", cuenta, nombre: "Caja", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 3]]) })]);

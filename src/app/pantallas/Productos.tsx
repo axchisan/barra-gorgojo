@@ -62,6 +62,7 @@ export function Productos({ nav }: { nav: Nav }) {
         </section>
       ))}
       <div className="pie-fijo">
+        <button className="secundario" onClick={() => nav.ir({ v: "platos" })}>🍽 Crear platos</button>
         <button className="principal grande" onClick={() => nav.ir({ v: "producto" })}>＋ Nuevo producto</button>
       </div>
     </main>

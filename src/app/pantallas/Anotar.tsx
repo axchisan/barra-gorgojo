@@ -34,8 +34,12 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
   }, [cuenta]);
 
   // El panel de comida (docs/14): platos primero, con notas; las bebidas quedan por despachar.
+  // Quien tiene comida anota con dos pestañas, Comida y Bebidas: en su panel abre en Comida,
+  // en el de la barra en Bebidas. Quien solo tiene barra ve las bebidas, como siempre.
   const enComida = sinc.panel === "comida";
-  const secciones = enComida ? SECCIONES_COMIDA : SECCIONES;
+  const conComida = sinc.tieneArea("comida");
+  const [vista, setVista] = useState<"comida" | "bebidas">(enComida ? "comida" : "bebidas");
+  const secciones = !conComida ? SECCIONES : vista === "comida" ? SECCIONES_COMIDA.filter((x) => x.categorias.includes("comida")) : SECCIONES;
   const [conNota, setConNota] = useState<Producto | null>(null);
   const [platoLibre, setPlatoLibre] = useState(false);
   const [cant, setCant] = useState<Record<string, number>>({});
@@ -103,6 +107,11 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
     Object.entries(cant).reduce((s, [id, k]) => s + precioDe(id) * k, 0) +
     libres.reduce((a, b) => a + b.precio, 0) +
     paquetes.reduce((s, pq) => s + Object.entries(pq.items).reduce((t, [id, k]) => t + precioDe(id) * k, 0), 0);
+
+  const esPlato = (clave: string) => productoDe(sinc.visible, idDe(clave))?.categoria === "comida";
+  const nPlatos = Object.entries(cant).reduce((t, [k, v]) => t + (esPlato(k) ? v : 0), 0) + libres.filter((x) => x.comida && x.producto === "otro").length;
+  const nBebidas = n - nPlatos;
+  const hayPlatos = productos.some((p) => p.activo && p.categoria === "comida");
 
   const agregarPaquete = (id: string) => {
     vibrar();
@@ -191,6 +200,17 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         <button className="atras" onClick={nav.volver} aria-label="Volver">←</button>
         <strong>{cuenta ? cuenta.nombre : "Nueva cuenta"}</strong>
         {cuenta && <span className="valor-chico">{pesos(saldo(cuenta))}</span>}
+        {/* Comida | Bebidas en la cabecera: no le quita espacio a los botones (C2). */}
+        {conComida && (
+          <div className="segmentos pestanas-anotar" role="tablist" aria-label="Qué anotar">
+            <button role="tab" aria-selected={vista === "comida"} aria-label={`Comida${nPlatos ? `: ${nPlatos}` : ""}`} className={vista === "comida" ? "activo comida-chip" : ""} onClick={() => setVista("comida")}>
+              🍽<span className="largo"> Comida</span>{nPlatos ? <small> {nPlatos}</small> : null}
+            </button>
+            <button role="tab" aria-selected={vista === "bebidas"} aria-label={`Bebidas${nBebidas ? `: ${nBebidas}` : ""}`} className={vista === "bebidas" ? "activo" : ""} onClick={() => setVista("bebidas")}>
+              🍺<span className="largo"> Bebidas</span>{nBebidas ? <small> {nBebidas}</small> : null}
+            </button>
+          </div>
+        )}
       </header>
 
       {!cuenta && (
@@ -233,6 +253,12 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         </button>
       )}
 
+      {conComida && vista === "comida" && !hayPlatos && (
+        <div className="caja sin-platos">
+          <p>Todavía no hay platos en la carta. {sinc.esAdministrador ? "Créelos una vez y quedan para todos." : "Pídale al administrador que cree los platos."}</p>
+          {sinc.esAdministrador && <button className="principal" onClick={() => nav.ir({ v: "platos" })}>Crear los platos</button>}
+        </div>
+      )}
       {secciones.map((s) => (
         <section key={s.titulo}>
           <h2 className="seccion">{s.titulo}</h2>
@@ -246,7 +272,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
             </div>
           )}
           {/* En modo petaco un toque suma 15 o 30: la cuadrícula de cervezas se marca (C4). */}
-          <div className={s.categorias.includes("cerveza") && paso > 1 ? "productos modo-paquete" : "productos"}>
+          <div className={s.categorias.includes("comida") ? "productos platos" : s.categorias.includes("cerveza") && paso > 1 ? "productos modo-paquete" : "productos"}>
             {productos.filter((p) => p.activo && s.categorias.includes(p.categoria)).map((p) => {
               const k = p.libre ? libres.filter((x) => x.producto === p.id && !(enComida && x.comida)).length : cantDe(p.id) + enPaquetes(p.id);
               return (
