@@ -879,3 +879,8 @@ html.apaisada .anotar .total-pedida strong { font-size: 1.5rem; font-variant-num
 html.apaisada .anotar .total-pedida small { grid-column: 1 / -1; color: var(--neutro-600); font-weight: 600; }
 .ronda-tarjeta .sub .cuantos { font-size: 0.85rem; font-weight: 600; color: var(--neutro-600); }
 html.apaisada .anotar .total-pedida > span { white-space: nowrap; }
+/* Panel de comida: «Pedir a la barra» y «Nueva cuenta» en el pie. En horizontal el panel
+   de la derecha se ensancha para los dos (y las pestañas se corren con él). */
+html.apaisada main.inicio.con-pedido.pestana-cuentas { --panel: clamp(360px, 36vw, 460px); }
+html.apaisada .inicio .pie-fijo .pedir-barra { min-height: 46px; padding: 8px 12px; flex: 0 0 auto; }
+@media (max-width: 419px) { .pie-fijo .pedir-barra .largo { display: none; } }

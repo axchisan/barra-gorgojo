@@ -161,14 +161,9 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
           <button className="principal grande" onClick={() => cobrar(medio)} disabled={!(valor > 0) || (cambio != null && cambio < 0)}>
             {esAbono ? `Abonar ${pesos(valor)}` : `Cobrar ${pesos(valor)}`}
           </button>
-        ) : c.tipo === "mesa" && sinc.panel === "barra" ? (
-          // «Pasar a comida» queda para la barra mientras la cocina no anote en la app; desde
-          // comida se cobra la cuenta entera aquí mismo (docs/14).
-          <>
-            <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar aquí</button>
-            <button className="comida grande" onClick={() => cobrar("comida")}>Pasar a comida</button>
-          </>
         ) : (
+          // «Pasar a comida» se quitó (2026-11-08): la cocina anota y cobra la misma cuenta.
+          // Lo pasado antes sigue valiendo (regla 4); el dominio aún lo acepta.
           <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar {pesos(falta)}</button>
         )}
       </div>

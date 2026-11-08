@@ -24,7 +24,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   useAtrasCierra(cambiar, () => setCambiar(false));
 
   return (
-    <main className={`inicio pestana-${pestana}`}>
+    <main className={`inicio pestana-${pestana}${sinc.panel === "comida" ? " con-pedido" : ""}`}>
       <header className="barra-superior">
         {sinc.areas.length > 1 ? (
           <div className="segmentos panel" role="group" aria-label="Área">
@@ -150,7 +150,11 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
       )}
       <div className="pie-fijo">
         {/* Pedido rápido a la barra (docs/14): lo que necesitan llevar, sin ir hasta allá. */}
-        {sinc.panel === "comida" && <button className="secundario pedir-barra" onClick={() => nav.ir({ v: "anotar", despacho: true })}>🔔 Pedir a la barra</button>}
+        {sinc.panel === "comida" && (
+          <button className="secundario pedir-barra" aria-label="Pedir a la barra" onClick={() => nav.ir({ v: "anotar", despacho: true })}>
+            🔔 Pedir<span className="largo"> a la barra</span>
+          </button>
+        )}
         <button className="principal grande" onClick={() => nav.ir({ v: "anotar" })}>＋ Nueva cuenta</button>
       </div>
     </>

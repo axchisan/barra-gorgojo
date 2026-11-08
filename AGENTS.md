@@ -51,8 +51,8 @@ probar, el entorno de pruebas. Lo siguiente es lo de fases 3 y 4 de `docs/07`.
    líneas guardan copia del nombre y el precio.
 8. **Nunca descartar en silencio** una operación rechazada: se registra y se avisa.
 9. **Comida y barra comparten la cuenta** (ADR-15): un solo saldo, cobrado desde
-   cualquiera de las dos cajas; cada pago guarda su área. «Pasar a comida» queda solo
-   en la barra para lo que la cocina no anote en la app.
+   cualquiera de las dos cajas; cada pago guarda su área. «Pasar a comida» ya no está
+   en la pantalla (lo registrado antes sigue valiendo).
 10. **Usable con una mano y legible al sol.** Botones principales de 56 px o más,
     contraste 7:1 en totales. Solo modo claro.
 11. **Nunca inventar datos del negocio.** Catálogo y precios salen de

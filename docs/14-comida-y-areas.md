@@ -16,7 +16,8 @@ dos veces lo mismo: el servidor ya rechaza un cobro sin saldo y los abonos nunca
 saldo. Cada pago guarda **quién y desde qué área** lo cobró, para el cuadre de cada caja.
 
 «Pasar a comida» sigue funcionando para lo ya registrado (regla 4), pero deja de hacer
-falta: la cocina cobra la cuenta completa (comida y bebidas) en su caja.
+falta: la cocina cobra la cuenta completa (comida y bebidas) en su caja. El botón se
+quitó de la pantalla de cobro el 2026-11-08 (el dominio aún acepta la operación).
 
 ## Piezas
 

@@ -109,7 +109,7 @@ test("pedido rápido a la barra: bebidas con detalles, a una cuenta nueva, y la 
   await api("/api/admin/personas", { accion: "areas", id, areas: ["comida"] });
 
   const apoyo = await celular(browser, "Apoyo e2e");
-  await apoyo.getByRole("button", { name: "🔔 Pedir a la barra" }).click();
+  await apoyo.getByRole("button", { name: "Pedir a la barra" }).click();
   await apoyo.getByLabel("Detalles del pedido").fill("para el limón");
   await apoyo.keyboard.press("Enter");
   const rubia = apoyo.locator(".producto", { hasText: "RUBIA" }).first();
@@ -126,3 +126,13 @@ test("pedido rápido a la barra: bebidas con detalles, a una cuenta nueva, y la 
   await tarjeta.getByRole("button", { name: "Despachado" }).click();
   await expect(barra.locator(".por-despachar .despacho", { hasText: "para el limón" })).toHaveCount(0);
 });
+
+for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular girado", 768, 301], ["celular", 360, 740]] as const) {
+  test(`panel de comida · el pie cabe entero · ${nombre}`, async ({ browser }) => {
+    const p = await celular(browser, "Administrador", { viewport: { width, height } });
+    await p.getByRole("button", { name: /Comida/ }).first().click();
+    for (const b of [p.getByRole("button", { name: "Pedir a la barra" }), p.getByRole("button", { name: "＋ Nueva cuenta" }), p.locator(".pestanas button").last()]) {
+      await expect(b).toBeInViewport({ ratio: 1 });
+    }
+  });
+}
