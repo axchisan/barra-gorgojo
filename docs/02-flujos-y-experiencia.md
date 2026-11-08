@@ -290,6 +290,15 @@ ahora, quién lo usa, su versión de la app y si le queda algo por enviar.
 | La Cancha 2 terminó otro chico y pide lo mismo | Mantener tarjeta → Repetir → Anotar = **3** |
 | Un paquete de mecato de 2 mil a la cuenta de Don Pedro | Mantener tarjeta → Mecato → $ 2.000 → Anotar = **4** |
 
+### Panel de comida (2026-11-08)
+
+Igual que anotar en la barra: platos primero, después las bebidas; la cuenta nueva
+empieza en «Mesa». El caso común no suma toques. Una **nota** («solo carne») suma dos
+toques (✎ nota → la nota → Agregar) y solo cuando la hay. El plato de otro valor: «Otro
+valor» → valor → Agregar. Las bebidas anotadas aquí le llegan a la barra con aviso
+(sonido, vibración y franja arriba) hasta que se despachan; la pestaña «Despachar» sale
+solo cuando hay algo pendiente, para no quitar espacio.
+
 ## Reglas visuales
 
 - **Modo claro**, alto contraste, igual que el sitio: se usa con sol y bajo luz

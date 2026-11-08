@@ -161,7 +161,9 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
           <button className="principal grande" onClick={() => cobrar(medio)} disabled={!(valor > 0) || (cambio != null && cambio < 0)}>
             {esAbono ? `Abonar ${pesos(valor)}` : `Cobrar ${pesos(valor)}`}
           </button>
-        ) : c.tipo === "mesa" ? (
+        ) : c.tipo === "mesa" && sinc.panel === "barra" ? (
+          // «Pasar a comida» queda para la barra mientras la cocina no anote en la app; desde
+          // comida se cobra la cuenta entera aquí mismo (docs/14).
           <>
             <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar aquí</button>
             <button className="comida grande" onClick={() => cobrar("comida")}>Pasar a comida</button>

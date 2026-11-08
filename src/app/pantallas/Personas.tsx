@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import { AREAS, nombreArea, type Area } from "../../dominio/areas";
+import { jornada } from "../../dominio/estado";
 import { haceCuanto, horaDe } from "../../dominio/formato";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
 import { cerrarConEnter } from "../teclado";
 
-interface PersonaAdmin { id: string; nombre: string; rol: string; color: string; activa: boolean; tienePin: boolean; pin: string | null }
+interface PersonaAdmin {
+  id: string; nombre: string; rol: string; color: string; activa: boolean; tienePin: boolean; pin: string | null;
+  areas?: Area[]; dias?: { area: Area; fecha: string }[];
+}
 interface Celular { id: string; nombre: string; creado: number; por: string; ultimo_uso: number | null; revocado: number | null }
 interface Rechazada { id: string; persona: string; motivo: string; en: number }
 /** Un WebSocket abierto ahora (E4): quién lo usa, con qué versión y cuánto le falta enviar. */
@@ -21,6 +26,7 @@ export function Personas({ nav }: { nav: Nav }) {
   const [cambiando, setCambiando] = useState<string | null>(null);
   const [pinNuevo, setPinNuevo] = useState("");
   const [nuevaPersona, setNuevaPersona] = useState("");
+  const [permisos, setPermisos] = useState<string | null>(null);
   const [codigo, setCodigo] = useState<{ codigo: string; vence: number } | null>(null);
   const [error, setError] = useState("");
   const [, refrescar] = useState(0);
@@ -77,6 +83,10 @@ export function Personas({ nav }: { nav: Nav }) {
             </button>
             <button className="chip" onClick={() => { setCambiando(cambiando === p.id ? null : p.id); setPinNuevo(""); }}>Cambiar PIN</button>
             <button className="chip" onClick={() => accion({ accion: "activa", id: p.id, activa: !p.activa })}>{p.activa ? "Desactivar" : "Activar"}</button>
+            <button className={permisos === p.id ? "chip activo" : "chip"} aria-expanded={permisos === p.id} onClick={() => setPermisos(permisos === p.id ? null : p.id)}>
+              {p.rol === "admin" ? "Todo" : (p.areas ?? ["barra"]).map(nombreArea).join(" y ")} ▾
+            </button>
+            {permisos === p.id && <Permisos p={p} accion={accion} />}
             {cambiando === p.id && (
               <form className="fila-pin" onSubmit={(e) => { e.preventDefault(); if (/^\d{4}$/.test(pinNuevo)) { void accion({ accion: "pin", id: p.id, pin: pinNuevo }); setCambiando(null); } else setError("El PIN tiene 4 números."); }}>
                 <input inputMode="numeric" enterKeyHint="done" maxLength={4} placeholder="PIN nuevo" aria-label={`PIN nuevo de ${p.nombre}`}
@@ -172,5 +182,57 @@ export function MiPin({ nav }: { nav: Nav }) {
         </form>
       )}
     </main>
+  );
+}
+
+/**
+ * Rol, áreas fijas (la primera es su pantalla principal) y accesos a un área por días
+ * (docs/14). El servidor revisa el área en cada operación.
+ */
+function Permisos({ p, accion }: { p: PersonaAdmin; accion: (cuerpo: unknown) => Promise<void> }) {
+  const areas = p.areas ?? ["barra"];
+  const [area, setArea] = useState<Area>(areas.includes("barra") ? "comida" : "barra");
+  const [fecha, setFecha] = useState(jornada(Date.now()));
+  const hoy = jornada(Date.now());
+  const ponerAreas = (nuevas: Area[]) => accion({ accion: "areas", id: p.id, areas: nuevas });
+  return (
+    <div className="permisos">
+      <label className="interruptor">
+        <input type="checkbox" checked={p.rol === "admin"} onChange={(e) => accion({ accion: "rol", id: p.id, rol: e.target.checked ? "admin" : "operador" })} />
+        Administrador: ve y hace todo, en todas las áreas
+      </label>
+      <p className="etiqueta">Áreas fijas {p.rol === "admin" ? "(y su pantalla principal)" : ""}</p>
+      <div className="chips">
+        {AREAS.map((a) => {
+          const tiene = areas.includes(a);
+          return (
+            <button key={a} className={tiene ? "chip activo" : "chip"} aria-pressed={tiene}
+              onClick={() => ponerAreas(tiene ? areas.filter((x) => x !== a) : [...areas, a])}>
+              {a === "comida" ? "🍽" : "🍺"} {nombreArea(a)}{tiene && areas[0] === a && areas.length > 1 ? " · principal" : ""}
+            </button>
+          );
+        })}
+        {areas.length > 1 && <button className="chip" onClick={() => ponerAreas([...areas].reverse())}>Cambiar la principal</button>}
+      </div>
+      {p.rol !== "admin" && (
+        <>
+          <p className="etiqueta">Acceso por un día</p>
+          <form className="fila-pin" onSubmit={(e) => { e.preventDefault(); void accion({ accion: "dia", id: p.id, area, fecha, dar: true }); }}>
+            <div className="segmentos" role="group" aria-label="Área del día">
+              {AREAS.map((a) => <button type="button" key={a} className={area === a ? "activo" : ""} aria-pressed={area === a} onClick={() => setArea(a)}>{nombreArea(a)}</button>)}
+            </div>
+            <input type="date" aria-label="Día" value={fecha} min={hoy} onChange={(e) => setFecha(e.target.value)} />
+            <button className="principal" disabled={!fecha}>Dar</button>
+          </form>
+          {(p.dias ?? []).filter((d) => d.fecha >= hoy).map((d) => (
+            <div key={`${d.area}-${d.fecha}`} className="fila-dia">
+              <span>{nombreArea(d.area)} · {d.fecha === hoy ? "hoy" : d.fecha}</span>
+              <button className="chip peligro-chip" onClick={() => accion({ accion: "dia", id: p.id, area: d.area, fecha: d.fecha, dar: false })}>Quitar</button>
+            </div>
+          ))}
+          <p className="nota">El día va de las 5:00 a. m. a las 5:00 a. m. del día siguiente.</p>
+        </>
+      )}
+    </div>
   );
 }

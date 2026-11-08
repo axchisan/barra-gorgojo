@@ -10,11 +10,13 @@
 // que aparezca, porque una pestaña con la versión vieja puede seguir escribiendo.
 // Si IndexedDB no abre (navegador muy viejo o bloqueado), se sigue con localStorage.
 
+import type { Area } from "../dominio/areas";
 import Dexie, { type Table } from "dexie";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { estadoVacio, type Estado, type Operacion } from "../dominio/estado";
 
-export interface Sesion { token: string; persona: string; rol?: string }
+/** `areas`: las de hoy según el servidor; `panel`: el área que se está usando en este celular. */
+export interface Sesion { token: string; persona: string; rol?: string; areas?: Area[]; panel?: Area }
 /** Una persona como la ve la entrada de un celular vinculado (sin PIN). */
 export interface PersonaPublica { id: string; nombre: string; color: string; admin: boolean; tienePin: boolean }
 export type Apartado = Operacion & { base: string };

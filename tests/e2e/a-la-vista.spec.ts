@@ -95,6 +95,8 @@ for (const [aparato, viewport] of Object.entries(APARATOS) as [Aparato, (typeof 
     m.nuevaCuenta = await medir(p, { tipo: ".segmentos.tipos button", productos: "main > section .producto", abrir: ".pie-fijo .principal", cobrarYa: ".pie-fijo .secundario" });
     // Hasta 8 letras nunca se parten (los nombres reales más largos: CORONITA, POSTOBÓN,
     // KENTUCKY). Más largas, en el celular girado no caben legibles: se sugiere abreviar.
+    // La app achica los nombres en el cuadro siguiente al pintar (ajustarNombres.ts): se espera.
+    await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     const partidas = await palabrasPartidas(p);
     m.nuevaCuenta.palabrasPartidas = partidas.filter((x) => x.length <= 8).join(", ") || "ninguna";
     m.nuevaCuenta.abreviar = [...new Set(partidas.filter((x) => x.length > 8))].join(", ") || "nada";

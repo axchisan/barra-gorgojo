@@ -239,6 +239,20 @@ o reparten entre varios con medios distintos.
 Pruebas: `tests/abonos.test.ts`, `tests/servidor/barra.test.ts` «abonos en el servidor» y
 `tests/e2e/abonos.spec.ts`.
 
+## Comida, despacho y cajas (2026-11-08)
+
+Ver `docs/14`. Una cuenta tiene líneas de barra y de comida y **un solo saldo**: la barra
+y la cocina cobran la misma cuenta, y el segundo cobro sin saldo se rechaza como siempre.
+Cada pago guarda su `area` (la caja); lo registrado antes cuenta como de la barra.
+
+- Una bebida anotada desde comida queda `porDespachar` **en el estado**, no en un mensaje:
+  el aviso de la barra sale de ahí, así que aparece al abrir la app aunque la tablet
+  estuviera apagada, y se queda hasta que alguien de la barra la despache. `despachar`
+  repetido no cambia nada.
+- El servidor revisa el área en cada operación: anotar platos exige comida; despachar,
+  barra; anotar, cobrar o cerrar en un área que la persona no tiene hoy se rechaza (regla
+  8). Las áreas de hoy son las fijas más las dadas para ese día; el administrador, todas.
+
 ## Cómo se prueba
 
 La sincronización no se prueba a mano. Pruebas obligatorias antes de usarlo en el local:

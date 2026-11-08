@@ -1,4 +1,6 @@
-# 14 · Comida y barra en una sola app: áreas, panel de comida y despacho (plan, 2026-11-08)
+# 14 · Comida y barra en una sola app: áreas, panel de comida y despacho (2026-11-08)
+
+**Estado:** pasos 1 a 4 construidos (ADR-15). Pendiente el paso 5 (push y cola de cocina).
 
 Pedido del negocio: que el área de comida anote como la barra (rápido, con botones), que
 desde comida se puedan pedir bebidas y la barra reciba el aviso para despacharlas, que la

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { jornada, saldo, situacion, type Cuenta } from "../../dominio/estado";
+import { areaDe, type Area } from "../../dominio/areas";
+import { efectivoDeJornada, jornada, saldo, situacion, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
 import { resumenJornada } from "../../dominio/jornada";
 import { ponerAviso } from "../avisos";
@@ -16,10 +17,14 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const [contado, setContado] = useState("");
   const r = resumenJornada(cuentas, hoy);
   const { vendido, vendidoComida, porMedio } = r;
-  const recibidoEfectivo = r.efectivo;
   const porProducto = r.porProducto;
-  const cierres = sinc.visible.jornadas?.[hoy] ?? [];
+  // Dos cajas (docs/14): la de la barra y la de la cocina. Cada una cuadra el efectivo que cobró.
+  const [caja, setCaja] = useState<Area>(sinc.panel);
+  const recibidoEfectivo = efectivoDeJornada(cuentas, hoy, caja);
+  const efectivoCocina = efectivoDeJornada(cuentas, hoy, "comida");
+  const cierres = (sinc.visible.jornadas?.[hoy] ?? []).filter((x) => areaDe(x.area) === caja);
   const ultimoCierre = cierres[cierres.length - 1];
+  const nombreCaja = caja === "comida" ? "caja de cocina" : "caja de barra";
   const paquetesHoy = contarPaquetes(
     cuentas.filter((c) => !c.anulada).flatMap((c) => {
       const rondasHoy = new Set(c.rondas.filter((r) => jornada(r.en) === hoy).map((r) => r.id));
@@ -31,9 +36,9 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const diferencia = contado ? Number(contado) - recibidoEfectivo : null;
   const cerrar = () => {
     if (!contado) return;
-    sinc.emitir({ t: "cerrar_jornada", fecha: hoy, contado: Number(contado) });
+    sinc.emitir({ t: "cerrar_jornada", fecha: hoy, contado: Number(contado), area: caja });
     setContado("");
-    ponerAviso({ texto: `Día cerrado · contado ${pesos(Number(contado))}` });
+    ponerAviso({ texto: `Día cerrado · ${nombreCaja} · contado ${pesos(Number(contado))}` });
   };
 
   return (
@@ -43,7 +48,16 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
 
       <article className="caja">
         <h2>Cuadre de caja</h2>
-        <p className="tenue">El efectivo que debería haber por ventas de hoy (sin contar la base): <strong>{pesos(recibidoEfectivo)}</strong></p>
+        {sinc.areas.length > 1 && (
+          <div className="segmentos cajas" role="group" aria-label="Qué caja">
+            {sinc.areas.map((a) => (
+              <button key={a} className={caja === a ? `activo${a === "comida" ? " comida-chip" : ""}` : ""} aria-pressed={caja === a} onClick={() => { setCaja(a); setContado(""); }}>
+                {a === "comida" ? "🍽 Cocina" : "🍺 Barra"}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="tenue">El efectivo que debería haber en la {nombreCaja} por lo cobrado hoy allí (sin contar la base): <strong>{pesos(recibidoEfectivo)}</strong></p>
         <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
         {diferencia != null && (
           <p className={diferencia === 0 ? "cambio" : "cambio falta"}>
@@ -65,6 +79,12 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
 
       <div className="cifras">
         <div className="cifra"><span>Efectivo</span><strong>{pesos(porMedio.efectivo)}</strong></div>
+        {efectivoCocina > 0 && (
+          <>
+            <div className="cifra"><span>Efectivo caja barra</span><strong>{pesos(efectivoDeJornada(cuentas, hoy, "barra"))}</strong></div>
+            <div className="cifra en-comida"><span>Efectivo caja cocina</span><strong>{pesos(efectivoCocina)}</strong></div>
+          </>
+        )}
         <div className="cifra"><span>Nequi</span><strong>{pesos(porMedio.nequi)}</strong></div>
         <div className="cifra"><span>Breve</span><strong>{pesos(porMedio.breve)}</strong></div>
         <div className="cifra en-comida"><span>Pasado a comida</span><strong>{pesos(porMedio.comida)}</strong></div>
@@ -74,7 +94,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
         {vendidoComida > 0 && (
           <>
             <div className="cifra"><span>🍺 Barra</span><strong>{pesos(vendido - vendidoComida)}</strong></div>
-            <div className="cifra en-comida"><span>🍽 Comida cobrada en barra</span><strong>{pesos(vendidoComida)}</strong></div>
+            <div className="cifra en-comida"><span>🍽 Comida</span><strong>{pesos(vendidoComida)}</strong></div>
           </>
         )}
         <div className="cifra pendiente"><span>Por cobrar · {abiertas.length} {abiertas.length === 1 ? "cuenta" : "cuentas"}</span><strong>{pesos(porCobrar)}</strong></div>

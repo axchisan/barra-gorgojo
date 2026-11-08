@@ -16,6 +16,8 @@ export function EditarProducto({ nav, id }: { nav: Nav; id?: string }) {
   const [precioCancha, setPrecioCancha] = useState(actual?.precioCancha ? String(actual.precioCancha) : "");
   const [fondo, setFondo] = useState(actual?.fondo ?? COLORES[0]);
   const [activo, setActivo] = useState(actual?.activo ?? true);
+  // Notas rápidas de un plato («solo carne», «más yuca»), separadas por comas.
+  const [notas, setNotas] = useState((actual?.notas ?? []).join(", "));
   const [error, setError] = useState("");
   const libre = !!actual?.libre;
 
@@ -42,6 +44,8 @@ export function EditarProducto({ nav, id }: { nav: Nav; id?: string }) {
       fondo,
       texto: textoPara(fondo),
     };
+    const listaNotas = [...new Set(notas.split(",").map((x) => x.trim()).filter(Boolean))].slice(0, 12).map((x) => x.slice(0, 30));
+    if (categoria === "comida" && listaNotas.length) p.notas = listaNotas;
     sinc.emitir({ t: "producto", producto: p });
     nav.volver();
     ponerAviso({ texto: actual ? `${n}: guardado` : `${n}: creado` });
@@ -85,6 +89,12 @@ export function EditarProducto({ nav, id }: { nav: Nav; id?: string }) {
           <button key={c.id} className={categoria === c.id ? "chip activo" : "chip"} onClick={() => setCategoria(c.id)}>{c.nombre}</button>
         ))}
       </div>
+      {categoria === "comida" && (
+        <label className="campo">Notas rápidas (opcional)
+          <input value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej.: solo carne, más yuca, sin ensalada" />
+          <small className="tenue">Separadas por comas. Salen como botones al anotar el plato «con nota».</small>
+        </label>
+      )}
       <p className="etiqueta">Color del botón</p>
       <div className="colores">
         {COLORES.map((c) => (

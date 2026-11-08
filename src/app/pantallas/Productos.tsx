@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { SECCIONES, type Producto } from "../../dominio/catalogo";
+import { SECCIONES_COMIDA as SECCIONES, type Producto } from "../../dominio/catalogo";
+// Con la sección de comida: todas las secciones del catálogo (docs/14).
 import { catalogo } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import type { Nav } from "../navegacion";

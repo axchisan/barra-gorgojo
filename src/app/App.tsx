@@ -1,6 +1,7 @@
 // La app: sesión y qué pantalla se ve. Cada pantalla vive en pantallas/.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Avisos } from "./avisos";
+import { AvisoDespacho } from "./componentes/Despacho";
 import { useNavegacion } from "./navegacion";
 import { Anotar } from "./pantallas/Anotar";
 import { Cobrar } from "./pantallas/Cobrar";
@@ -29,6 +30,7 @@ export function App() {
   const { vista } = nav;
   return (
     <>
+      <AvisoDespacho nav={nav} />
       {vista.v === "inicio" && <Inicio nav={nav} pestana={vista.pestana} />}
       {vista.v === "anotar" && <Anotar nav={nav} cuentaId={vista.cuenta} repetir={vista.repetir} />}
       {vista.v === "cuenta" && <Detalle nav={nav} id={vista.id} />}

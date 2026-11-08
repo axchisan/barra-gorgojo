@@ -373,6 +373,16 @@ export class Barra extends DurableObject<Env> {
   }
 
   /** Corta las conexiones de un celular quitado o de una persona desactivada. */
+  /** Cambió el rol o las áreas de una persona: sus celulares conectados lo saben ya. */
+  private avisarYo(id: string) {
+    const p = this.acceso.persona(id);
+    if (!p) return;
+    const yo = { rol: p.rol, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) };
+    for (const ws of this.ctx.getWebSockets(`p:${id}`)) {
+      try { ws.send(JSON.stringify({ tipo: "yo", yo })); } catch { /* ya cerrada */ }
+    }
+  }
+
   private cortar(etiqueta: string) {
     // Primero el aviso, para que el celular salga aunque el cierre tarde en llegarle.
     for (const ws of this.ctx.getWebSockets(etiqueta)) {
@@ -649,15 +659,18 @@ export class Barra extends DurableObject<Env> {
       }
       if (b.accion === "rol") {
         const e = this.acceso.ponerRol(p.id, b.rol === ADMIN ? ADMIN : "operador");
+        if (!e) this.avisarYo(p.id);
         return e ? json({ error: e }, 400) : json({ ok: true });
       }
       if (b.accion === "areas") {
         const e = this.acceso.ponerAreas(p.id, Array.isArray(b.areas) ? b.areas : []);
+        if (!e) this.avisarYo(p.id);
         return e ? json({ error: e }, 400) : json({ ok: true });
       }
       if (b.accion === "dia") {
         if (!esArea(b.area) || typeof b.fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.fecha)) return json({ error: "Escoja el área y el día." }, 400);
         this.acceso.accesoDia(p.id, b.area, b.fecha, b.dar !== false, q.nombre);
+        this.avisarYo(p.id);
         return json({ ok: true });
       }
       if (b.accion === "activa") {

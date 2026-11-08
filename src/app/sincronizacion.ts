@@ -7,6 +7,7 @@
 // demás anotan en la memoria y avisan por un BroadcastChannel; la del candado envía, y
 // todas releen la memoria cuando otra la cambia. Ver docs/04 «Varias pestañas».
 
+import { AREAS, esArea, type Area } from "../dominio/areas";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { aplicar, estadoVacio, recortar, type Estado, type Operacion } from "../dominio/estado";
 import { abrirMemoria, type Ajustes, type Apartado, type Cambio, type Confirmado, type Memoria, type PersonaPublica, type Sesion } from "./memoria";
@@ -212,6 +213,35 @@ class Sincronizador {
 
   get esAdministrador() { return this.sesion?.rol === "admin"; }
 
+  /** Las áreas de hoy. Una sesión de antes de las áreas: el administrador todas, los demás la barra. */
+  get areas(): Area[] {
+    const a = this.sesion?.areas?.filter(esArea);
+    if (a?.length) return a;
+    return this.esAdministrador ? [...AREAS] : ["barra"];
+  }
+  /** El área en uso: la escogida en este celular, o la principal de la persona. */
+  get panel(): Area {
+    const p = this.sesion?.panel;
+    return p && this.areas.includes(p) ? p : this.areas[0];
+  }
+  tieneArea(a: Area) { return this.areas.includes(a); }
+  ponerPanel(panel: Area) {
+    if (!this.sesion || !this.areas.includes(panel)) return;
+    this.sesion = { ...this.sesion, panel };
+    void this.guardar({ ajustes: { sesion: this.sesion } });
+    this.avisar();
+  }
+
+  /** El servidor dice el rol y las áreas de hoy (pueden cambiar sin volver a entrar). */
+  private tomarYo(yo: { rol?: string; areas?: unknown[] } | undefined) {
+    if (!yo || !this.sesion) return;
+    const areas = (yo.areas ?? []).filter(esArea);
+    if (yo.rol === this.sesion.rol && areas.join() === (this.sesion.areas ?? []).join()) return;
+    this.sesion = { ...this.sesion, rol: yo.rol, areas };
+    void this.guardar({ ajustes: { sesion: this.sesion } });
+    this.avisar();
+  }
+
   private ponerPersonas(personas: PersonaPublica[]) {
     this.personas = personas;
     void this.guardar({ ajustes: { personas } });
@@ -247,13 +277,13 @@ class Sincronizador {
    */
   async entrar(persona: string, pin: string, pinNuevo?: string): Promise<string | null> {
     try {
-      const { status, datos } = await pedir<{ token?: string; persona?: string; rol?: string; base?: string }>("/api/entrar", {
+      const { status, datos } = await pedir<{ token?: string; persona?: string; rol?: string; base?: string; areas?: unknown[] }>("/api/entrar", {
         method: "POST", body: JSON.stringify({ persona, pin, pinNuevo }),
       });
       if (status === 401 && datos.error === "dispositivo") { this.vinculado = false; this.avisar(); return "Este celular no está vinculado."; }
       if (!datos.token) return datos.error ?? "No se pudo entrar.";
       if (datos.base) this.cambiarDeBase(datos.base);
-      this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol };
+      this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol, areas: (datos.areas ?? []).filter(esArea) };
       void this.guardar({ ajustes: { sesion: this.sesion } });
       if (this.lider) { this.cerrarSocket(); this.conectar(); }
       this.avisar();
@@ -331,6 +361,8 @@ class Sincronizador {
     // `firma`: la sesión de quien anota, para que el servidor sepa con prueba quién fue aunque
     // la envíe otra persona después (anotada sin señal). Se queda solo en este celular y en
     // el envío; el servidor no la guarda.
+    // Anotar y cobrar dicen desde qué área (docs/14): la del panel en uso, si la pantalla no la dio.
+    if ((nueva.t === "anotar" || nueva.t === "cobrar") && !nueva.area) nueva = { ...nueva, area: this.panel };
     const op = { ...nueva, id: crypto.randomUUID(), persona: this.sesion?.persona ?? "?", en: Date.now(), ...(this.sesion ? { firma: this.sesion.token } : {}) } as Operacion;
     this.pendientes.push(op);
     this.recalcular(); // se ve al instante
@@ -418,6 +450,7 @@ class Sincronizador {
     this.ultimoMensaje = Date.now();
     if (texto === "pong") return;
     const m = JSON.parse(texto);
+    if (m.yo) this.tomarYo(m.yo);
     if (m.tipo === "foto" || m.tipo === "novedades") {
       if (m.tipo === "foto") this.recibirFoto(m.estado, m.seq, m.base);
       else this.recibirNovedades(m);
@@ -520,7 +553,8 @@ class Sincronizador {
         return this.salir();
       }
       if (!r.ok && r.status !== 409) throw new Error(); // 409: otra base; llega su foto
-      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios };
+      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios; yo?: { rol?: string; areas?: unknown[] } };
+      this.tomarYo(d.yo);
       this.quitarPendientes(d.ok);
       this.rechazar(d.rechazadas);
       if (d.tipo === "novedades") this.recibirNovedades(d);

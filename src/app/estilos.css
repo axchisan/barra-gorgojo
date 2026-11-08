@@ -784,3 +784,50 @@ html.apaisada-baja main.cobrar:not(.parte) .recibido > p { display: none; }
 @media (min-width: 700px) { .cobrar .quien-paga { max-width: 720px; width: 100%; margin-left: auto; margin-right: auto; } }
 html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 
+
+/* Panel de comida (docs/14) */
+.con-nota {
+  position: absolute; top: -12px; left: -6px; height: 32px; padding: 0 10px; border-radius: 16px;
+  background: var(--papel); color: var(--marron); border: 2px solid var(--marron); font-weight: 700; font-size: 0.85rem;
+}
+.producto.plato-libre { background: var(--papel); border-color: var(--azul-comida); color: var(--azul-comida); }
+.con-notas { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.con-notas li { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--papel); border: 2px solid var(--neutro-200); border-radius: var(--radio); padding: 6px 6px 6px 12px; }
+.con-notas button { min-width: 44px; min-height: 44px; border: 0; background: var(--neutro-100); border-radius: 10px; font-weight: 800; }
+.despacho-nota { margin: -4px 0 8px; color: var(--azul-comida); font-weight: 600; }
+.plato-valor .numero { flex: 1; min-width: 0; }
+/* El cambio de área va en la cabecera, sin hacerla más alta (C11: 52 px en teléfono). */
+.segmentos.panel { flex: 1; max-width: 280px; min-width: 0; }
+.segmentos.panel { background: transparent; border-color: rgb(250 244 232 / 0.4); }
+.segmentos.panel button { color: var(--crema); border-left-color: rgb(250 244 232 / 0.4); }
+.segmentos.panel button.activo { background: var(--crema); color: var(--marron); }
+.segmentos.panel button.activo.comida-chip { background: var(--azul-comida); color: #fff; }
+.segmentos.panel button { min-height: 40px; padding: 0 8px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.aviso-despacho {
+  position: sticky; top: 0; z-index: 15; width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  background: var(--amarillo); color: var(--marron); border: 0; border-bottom: 3px solid var(--marron);
+  padding: 10px 14px calc(10px); padding-top: calc(10px + env(safe-area-inset-top)); text-align: left;
+  animation: latido-despacho 1.2s ease-in-out infinite alternate;
+}
+.aviso-despacho strong { font-size: 1.05rem; }
+.aviso-despacho span { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+@keyframes latido-despacho { from { background: var(--amarillo); } to { background: #ffd35c; } }
+@media (prefers-reduced-motion: reduce) { .aviso-despacho { animation: none; } }
+.pestanas .con-pendientes { color: var(--amarillo); }
+.por-despachar .despacho header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; cursor: pointer; }
+.por-despachar .despacho ul { list-style: none; padding: 0; margin: 8px 0; font-size: 1.2rem; }
+.por-despachar .despacho li b { font-size: 1.4rem; margin-right: 4px; }
+.por-despachar { max-width: 720px; margin: 0 auto; }
+.tarjeta .alerta.despacho { background: var(--amarillo); color: var(--marron); }
+.marca { font-size: 0.8rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.marca.comida { background: #dcebee; color: var(--azul-comida); }
+.marca.despacho { background: var(--amarillo); color: var(--marron); }
+.fila-buscar { display: flex; gap: 8px; align-items: flex-start; }
+.fila-buscar .buscar { flex: 1; min-width: 0; }
+.chip.filtro-comida { flex: 0 0 auto; min-height: 44px; padding: 6px 14px; font-size: 1.1rem; }
+.chip.filtro-comida.activo { background: var(--azul-comida); border-color: var(--azul-comida); }
+.permisos { flex-basis: 100%; display: flex; flex-direction: column; gap: 8px; background: var(--papel); border: 2px solid var(--neutro-200); border-radius: var(--radio); padding: 10px 12px; }
+.permisos .etiqueta { margin: 4px 0 0; }
+.permisos .fila-pin { flex-wrap: wrap; }
+.permisos input[type="date"] { min-height: 48px; font: inherit; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--neutro-200); }
+.fila-dia { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

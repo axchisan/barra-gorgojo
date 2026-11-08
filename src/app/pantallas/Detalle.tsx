@@ -151,7 +151,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                       disabled={!!l.anulada || (s !== "abierta" && !productoDe(sinc.visible, l.producto)?.conNombre)}
                       onClick={() => setAnulando(anulando === l.id ? null : l.id)}
                     >
-                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.editada && !l.anulada ? " ✎" : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
+                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
+                      {!l.anulada && l.porDespachar && <span className="marca despacho">🔔 por despachar</span>}
                     </button>
                   );
                   const { sueltas, grupos } = porPaquete(lineas);

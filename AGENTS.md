@@ -50,8 +50,9 @@ probar, el entorno de pruebas. Lo siguiente es lo de fases 3 y 4 de `docs/07`.
 7. **Precios en enteros de pesos colombianos.** Nunca `float`, nunca decimales. Las
    líneas guardan copia del nombre y el precio.
 8. **Nunca descartar en silencio** una operación rechazada: se registra y se avisa.
-9. **Las bebidas de mesas de comida** se anotan en la barra y la cuenta se cierra como
-   «cobrada aquí» o «pasada a comida», nunca sin escoger.
+9. **Comida y barra comparten la cuenta** (ADR-15): un solo saldo, cobrado desde
+   cualquiera de las dos cajas; cada pago guarda su área. «Pasar a comida» queda solo
+   en la barra para lo que la cocina no anote en la app.
 10. **Usable con una mano y legible al sol.** Botones principales de 56 px o más,
     contraste 7:1 en totales. Solo modo claro.
 11. **Nunca inventar datos del negocio.** Catálogo y precios salen de

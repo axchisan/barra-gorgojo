@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MEDIO_PETACO, PETACO, SECCIONES, type Producto } from "../../dominio/catalogo";
+import { MEDIO_PETACO, PETACO, SECCIONES, SECCIONES_COMIDA, type Producto } from "../../dominio/catalogo";
 import {
   catalogo, jornada, precioPara, producto as productoDe, saldo,
   type Cancha, type TipoCuenta,
@@ -8,12 +8,17 @@ import { nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { HojaLibre, type Libre } from "../componentes/HojaLibre";
 import { HojaMixto } from "../componentes/HojaMixto";
+import { HojaNota, HojaPlato } from "../componentes/HojaNota";
 import { NoExiste } from "../componentes/NoExiste";
 import type { Nav } from "../navegacion";
 import { describir, nombrePaquete, type PaqueteEnArmado } from "../paquetes";
 import { sinc } from "../sincronizacion";
 import { cerrarConEnter } from "../teclado";
 import { vibrar } from "../vibrar";
+
+// En el carrito, un plato con nota va aparte: la clave es «producto|nota».
+const idDe = (clave: string) => clave.split("|")[0];
+const notaDe = (clave: string) => (clave.includes("|") ? clave.slice(clave.indexOf("|") + 1) : undefined);
 
 const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mesa", "🍽", "Mesa"], ["cancha", "🎯", "Cancha"]] as const;
 
@@ -28,6 +33,11 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
     return null;
   }, [cuenta]);
 
+  // El panel de comida (docs/14): platos primero, con notas; las bebidas quedan por despachar.
+  const enComida = sinc.panel === "comida";
+  const secciones = enComida ? SECCIONES_COMIDA : SECCIONES;
+  const [conNota, setConNota] = useState<Producto | null>(null);
+  const [platoLibre, setPlatoLibre] = useState(false);
   const [cant, setCant] = useState<Record<string, number>>({});
   // Productos de valor libre: el mecato (solo valor) y «Otro» (nombre y valor).
   const [libres, setLibres] = useState<Libre[]>([]);
@@ -36,7 +46,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
   const [otroValor, setOtroValor] = useState("");
   const [otroNombre, setOtroNombre] = useState("");
   const [nombre, setNombre] = useState("");
-  const [tipo, setTipo] = useState<TipoCuenta>("grupo");
+  const [tipo, setTipo] = useState<TipoCuenta>(enComida ? "mesa" : "grupo");
   const [mesa, setMesa] = useState("");
   const [cancha, setCancha] = useState<Cancha | null>(null);
   const [error, setError] = useState("");
@@ -62,9 +72,9 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         pq.items[x.producto] = (pq.items[x.producto] ?? 0) + x.cantidad;
         pqs.set(x.paquete.id, pq);
       } else if (productoDe(sinc.visible, x.producto)?.libre) {
-        for (let i = 0; i < x.cantidad; i++) l.push({ producto: x.producto, nombre: x.nombre, precio: x.precio });
+        for (let i = 0; i < x.cantidad; i++) l.push({ producto: x.producto, nombre: x.nombre, precio: x.precio, ...(x.comida ? { comida: true } : {}) });
       }
-      else c[x.producto] = (c[x.producto] ?? 0) + x.cantidad;
+      else { const k = x.nota ? `${x.producto}|${x.nota}` : x.producto; c[k] = (c[k] ?? 0) + x.cantidad; }
     }
     setCant(c);
     setLibres(l);
@@ -83,7 +93,9 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
   // En las canchas rige el precio de cancha de cada producto (si lo tiene).
   const tipoCuenta = cuenta?.tipo ?? tipo;
   const precioVisto = (p: Producto) => precioPara(p, tipoCuenta);
-  const precioDe = (id: string) => { const p = productoDe(sinc.visible, id); return p ? precioVisto(p) ?? 0 : 0; };
+  const precioDe = (id: string) => { const p = productoDe(sinc.visible, idDe(id)); return p ? precioVisto(p) ?? 0 : 0; };
+  /** Cuántos de un producto van, con nota o sin ella. */
+  const cantDe = (id: string) => Object.entries(cant).reduce((s, [k, v]) => s + (idDe(k) === id ? v : 0), 0);
   const n =
     Object.values(cant).reduce((a, b) => a + b, 0) + libres.length +
     paquetes.reduce((s, pq) => s + Object.values(pq.items).reduce((a, b) => a + b, 0), 0);
@@ -103,7 +115,9 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
       while (i >= 0 && !(!paquetes[i].mixto && (paquetes[i].items[p.id] ?? 0) > 0)) i--;
       if (i >= 0) { vibrar(); return setPaquetes((ps) => ps.filter((_, j) => j !== i)); }
     }
-    if ((cant[p.id] ?? 0) > 0) sumar(p.id, -1);
+    if ((cant[p.id] ?? 0) > 0) return sumar(p.id, -1);
+    const conNotas = Object.keys(cant).filter((k) => idDe(k) === p.id && cant[k] > 0);
+    if (conNotas.length) sumar(conNotas[conNotas.length - 1], -1);
   };
 
   const palabra = palabraRonda(cuenta ?? { tipo });
@@ -111,14 +125,17 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
   /** Lo que lleva la pedida, para el panel lateral en horizontal (C12). */
   const enLaPedida = [
     ...paquetes.map((pq) => ({ clave: pq.id, texto: `${nombrePaquete(pq)} · ${Object.entries(pq.items).map(([id, k]) => `${k} ${productoDe(sinc.visible, id)?.nombre ?? id}`).join(", ")}` })),
-    ...Object.entries(cant).filter(([, k]) => k > 0).map(([id, k]) => ({ clave: id, texto: `${k} ${productoDe(sinc.visible, id)?.nombre ?? id}` })),
+    ...Object.entries(cant).filter(([, k]) => k > 0).map(([id, k]) => ({ clave: id, texto: `${k} ${productoDe(sinc.visible, idDe(id))?.nombre ?? id}${notaDe(id) ? ` · ${notaDe(id)}` : ""}` })),
     ...libres.map((x, i) => ({ clave: `libre-${i}`, texto: `${x.comida ? "🍽 " : ""}${x.nombre ?? "Mecato"} ${pesos(x.precio)}` })),
   ];
 
   const lineas = () => {
     const ls = Object.entries(cant)
       .filter(([, k]) => k > 0)
-      .map(([producto, cantidad]) => ({ id: crypto.randomUUID(), producto, cantidad, precio: precioDe(producto) || undefined }));
+      .map(([clave, cantidad]) => {
+        const nota = notaDe(clave);
+        return { id: crypto.randomUUID(), producto: idDe(clave), cantidad, precio: precioDe(clave) || undefined, ...(nota ? { nota } : {}) };
+      });
     const agrupados = new Map<string, { producto: string; nombre?: string; precio: number; cantidad: number }>();
     for (const x of libres) {
       const k = `${x.producto}|${x.nombre ?? ""}|${x.precio}|${x.comida ? 1 : 0}`;
@@ -156,13 +173,14 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
       });
     }
     const ls = lineas();
-    sinc.emitir({ t: "anotar", cuenta: id, ronda: crypto.randomUUID(), lineas: ls });
+    sinc.emitir({ t: "anotar", cuenta: id, ronda: crypto.randomUUID(), lineas: ls, area: sinc.panel });
     const cuentaFinal = id;
     if (cobrarYa) return nav.ir({ v: "cobrar", id: cuentaFinal }, true);
     if (cuentaId) nav.volver();
     else nav.aInicio();
+    const bebidas = enComida && ls.some((l) => productoDe(sinc.visible, l.producto)?.categoria !== "comida" && !("comida" in l && l.comida));
     ponerAviso({
-      texto: `Anotado · ${n} · ${pesos(valor)}`,
+      texto: `Anotado · ${n} · ${pesos(valor)}${bebidas ? " · bebidas avisadas a la barra" : ""}`,
       deshacer: () => { for (const l of ls) sinc.emitir({ t: "anular", cuenta: cuentaFinal, linea: l.id }); },
     });
   };
@@ -215,9 +233,10 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         </button>
       )}
 
-      {SECCIONES.map((s) => (
+      {secciones.map((s) => (
         <section key={s.titulo}>
           <h2 className="seccion">{s.titulo}</h2>
+          {enComida && s.categorias.includes("cerveza") && <p className="nota despacho-nota">🔔 Las bebidas que anote aquí le llegan a la barra para despacharlas.</p>}
           {s.categorias.includes("cerveza") && (
             <div className="segmentos petacos" role="group" aria-label="Cómo se anotan las cervezas">
               <button className={paso === 1 ? "activo" : ""} aria-pressed={paso === 1} onClick={() => setPaso(1)}>Unidad</button>
@@ -229,7 +248,7 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
           {/* En modo petaco un toque suma 15 o 30: la cuadrícula de cervezas se marca (C4). */}
           <div className={s.categorias.includes("cerveza") && paso > 1 ? "productos modo-paquete" : "productos"}>
             {productos.filter((p) => p.activo && s.categorias.includes(p.categoria)).map((p) => {
-              const k = p.libre ? libres.filter((x) => x.producto === p.id).length : (cant[p.id] ?? 0) + enPaquetes(p.id);
+              const k = p.libre ? libres.filter((x) => x.producto === p.id && !(enComida && x.comida)).length : cantDe(p.id) + enPaquetes(p.id);
               return (
                 <div key={p.id} className="producto-celda">
                   <button
@@ -242,13 +261,17 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
                       {p.conNombre ? "nombre y valor" : p.libre ? "valor" : pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : pesos(precioVisto(p)!)}
                     </span>
                   </button>
+                  {p.categoria === "comida" && (
+                    <button className="con-nota" aria-label={`${p.nombre} con nota`} onClick={() => setConNota(p)}>✎ nota</button>
+                  )}
                   {k > 0 && (
                     <button
                       className="contador"
                       aria-label={`Quitar una ${p.nombre}`}
                       onClick={() => {
                         if (!p.libre) return quitar(p);
-                        const i = libres.map((x) => x.producto).lastIndexOf(p.id);
+                        // En comida, los platos de otro valor tienen su propio contador.
+                        const i = libres.map((x) => x.producto === p.id && !(enComida && x.comida)).lastIndexOf(true);
                         setLibres((l) => l.filter((_, j) => j !== i));
                       }}
                     >
@@ -258,7 +281,31 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
                 </div>
               );
             })}
+            {s.categorias.includes("comida") && (
+              <div className="producto-celda">
+                <button className="producto otro plato-libre" onClick={() => setPlatoLibre(true)}>
+                  <span className="corto">Otro valor</span>
+                  <span className="precio">plato</span>
+                </button>
+                {libres.some((x) => x.comida) && (
+                  <button className="contador" aria-label="Quitar un plato de otro valor" onClick={() => {
+                    const i = libres.map((x) => !!x.comida).lastIndexOf(true);
+                    setLibres((l) => l.filter((_, j) => j !== i));
+                  }}>{libres.filter((x) => x.comida).length}<small>−</small></button>
+                )}
+              </div>
+            )}
           </div>
+          {s.categorias.includes("comida") && Object.keys(cant).some((k) => notaDe(k) && cant[k] > 0) && (
+            <ul className="con-notas">
+              {Object.entries(cant).filter(([k, v]) => notaDe(k) && v > 0).map(([k, v]) => (
+                <li key={k}>
+                  <span>{v} {productoDe(sinc.visible, idDe(k))?.nombre} · <b>{notaDe(k)}</b></span>
+                  <button aria-label="Quitar uno" onClick={() => sumar(k, -1)}>✕</button>
+                </li>
+              ))}
+            </ul>
+          )}
           {s.categorias.includes("cerveza") && paquetes.length > 0 && (
             <div className="paquetes-armados">
               <h2 className="seccion">Petacos en esta {palabra}</h2>
@@ -275,6 +322,8 @@ export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string
         </section>
       ))}
 
+      {conNota && <HojaNota producto={conNota} cerrar={() => setConNota(null)} agregar={(nota) => sumar(`${conNota.id}|${nota}`, 1)} />}
+      {platoLibre && <HojaPlato cerrar={() => setPlatoLibre(false)} agregar={(nombre, precio) => setLibres((l) => [...l, { producto: "otro", nombre, precio, comida: true }])} />}
       {mixto && <HojaMixto mixto={mixto} setMixto={setMixto} mezcla={mezcla} setMezcla={setMezcla} cervezas={cervezas} setPaquetes={setPaquetes} />}
 
       {hoja && (

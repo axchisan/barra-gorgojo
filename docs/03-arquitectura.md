@@ -415,3 +415,19 @@ de quien envía, como antes. **Los permisos se revisan siempre con quien envía*
 firma no se guarda en el registro ni en los respaldos (ni en la descarga de apartados).
 Atribuirle algo a otra persona exige tener su sesión de ese celular, no solo su nombre.
 
+
+### ADR-15 · Comida y barra en la misma cuenta, con áreas por persona (2026-11-08)
+
+La cocina empieza a anotar en la app (docs/14). Dos cuentas separadas por mesa (una de
+barra, otra de comida) abrían la puerta a cobrar dos veces o a no cobrar.
+
+**Decisión.** Una cuenta, un saldo, con líneas de barra y de comida. `anotar`, `cobrar` y
+`cerrar_jornada` llevan el `area` desde donde se hicieron; cada pago la guarda y «El día»
+cuadra dos cajas (barra y cocina). Las bebidas pedidas desde comida quedan «por
+despachar» en el estado hasta una operación `despachar`, y de ahí sale el aviso de la
+barra: no depende de que la tablet estuviera prendida. Las personas tienen áreas fijas
+(columna `areas`) y accesos por día (`accesos_dia`); el servidor los revisa en cada
+operación, y avisa a los celulares conectados cuando cambian. Todo son campos opcionales
+y una operación nueva: el registro viejo da el mismo estado (sin subir
+`VERSION_PROYECCION`). Cambia la regla 9: «pasar a comida» se conserva para la barra.
+Las notificaciones con la app cerrada (push) quedan para después.

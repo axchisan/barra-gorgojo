@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { abonos, saldo, unidades, type Cuenta } from "../../dominio/estado";
+import { abonos, saldo, totalComida, unidades, type Cuenta } from "../../dominio/estado";
 import { haceCuanto, pesos } from "../../dominio/formato";
 import { iconoTipo } from "../cuentas";
 import type { Nav } from "../navegacion";
@@ -29,7 +29,12 @@ export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
       {tipo && c.nombre !== tipo.slice(3) && <span className="tipo">{tipo}</span>}
       <span className="valor">{pesos(saldo(c))}</span>
       {/* Con abonos, el valor es lo que falta. */}
-      <span className="meta">{unidades(c)} · {haceCuanto(c.ultima)}{abonos(c).length > 0 && !c.reabierta ? " · con abono" : ""}</span>
+      {/* Comida y bebidas por despachar, en la misma línea: la tarjeta no crece (C2). */}
+      <span className="meta">
+        {unidades(c)} · {haceCuanto(c.ultima)}{abonos(c).length > 0 && !c.reabierta ? " · con abono" : ""}
+        {totalComida(c) > 0 && <span className="marca-comida" title="Con comida"> · 🍽</span>}
+      </span>
+      {c.lineas.some((l) => l.porDespachar && !l.anulada) && <span className="alerta despacho">🔔 Por despachar</span>}
       {c.reabierta && <span className="alerta">Anotaron después del cobro</span>}
     </button>
   );

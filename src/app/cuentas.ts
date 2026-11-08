@@ -12,8 +12,9 @@ export function resumen(c: Cuenta): Renglon[] {
   const m = new Map<string, Renglon>();
   for (const l of c.lineas) {
     if (l.anulada) continue;
-    const k = `${l.producto}:${l.nombre}:${l.precio}:${l.comida ? 1 : 0}`;
-    const x = m.get(k) ?? { producto: l.producto, nombre: l.nombre, precio: l.precio, cantidad: 0, valor: 0, comida: l.comida };
+    // Un plato con nota va en su propio renglón, con la nota a la vista (docs/14).
+    const k = `${l.producto}:${l.nombre}:${l.precio}:${l.comida ? 1 : 0}:${l.nota ?? ""}`;
+    const x = m.get(k) ?? { producto: l.producto, nombre: l.nota ? `${l.nombre} · ${l.nota}` : l.nombre, precio: l.precio, cantidad: 0, valor: 0, comida: l.comida };
     x.cantidad += l.cantidad;
     x.valor += l.cantidad * l.precio;
     m.set(k, x);

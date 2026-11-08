@@ -38,7 +38,8 @@ CREATE TABLE cuenta_jornadas (fecha, cuenta, PRIMARY KEY (fecha, cuenta));  -- d
 CREATE TABLE proyeccion (clave PRIMARY KEY, valor);  -- version, seq, productos, orden, jornadas
 
 -- src/servidor/acceso.ts (fase D, ADR-10)
-CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada);  -- pin cifrado
+CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada, areas);  -- pin cifrado; areas «comida,barra» (la primera, la principal)
+CREATE TABLE accesos_dia (persona, area, fecha, por, PRIMARY KEY (persona, area, fecha));  -- un área solo ese día (docs/14)
 CREATE TABLE dispositivos (id, nombre, token_hash UNIQUE, creado, por, ultimo_uso, revocado);
 CREATE TABLE codigos (codigo_hash, vence, por, usado);      -- vinculación de 6 dígitos
 CREATE TABLE intentos (persona, dispositivo, fallos, hasta); -- bloqueo de PIN
@@ -56,18 +57,19 @@ guarda.
 |---|---|---|
 | `abrir` | `cuenta, nombre, tipo, mesa?, cancha?` | Abre una cuenta (grupo, persona, mesa, cancha o rápida) |
 | `renombrar` | `cuenta, nombre` | Cambia el nombre |
-| `anotar` | `cuenta, ronda, lineas[]` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`. El servidor agrega `precioFijado` |
+| `anotar` | `cuenta, ronda, lineas[], area?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado` y el `area` (barra o comida). Desde comida, las bebidas quedan `porDespachar` |
+| `despachar` | `cuenta, lineas?` | La barra entregó bebidas pedidas desde comida (las dichas, o todas las de la cuenta) |
 | `anular` | `cuenta, linea` | Anula un producto anotado (queda tachado) |
 | `cantidad` | `cuenta, linea, cantidad` | Cambia la cantidad; guarda la anterior y quién |
 | `comida_linea` | `cuenta, linea, valor` | Marca o desmarca un producto como comida |
-| `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |
+| `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?, pagador?, area?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |
 | `deshacer_pago` | `cuenta, pago` | Deshace un solo pago o abono |
 | `reabrir` | `cuenta` | Deshace el último cobro o la anulación |
 | `comida_cobrada` | `cuenta, valor` | La cocina marca cobrada (o no) una cuenta pasada a comida |
 | `anular_cuenta` | `cuenta, motivo?` | Anula la cuenta; con productos, solo el administrador y con motivo |
 | `producto` | `producto` | Crea o cambia un producto (administrador) |
 | `orden` | `ids[]` | Orden de los botones (administrador) |
-| `cerrar_jornada` | `fecha, contado, notas?` | Cierre del día con el efectivo contado (E1) |
+| `cerrar_jornada` | `fecha, contado, notas?, area?` | Cierre del día con el efectivo contado (E1); con `area`, el de esa caja (barra o cocina) |
 
 ### El estado
 
