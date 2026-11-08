@@ -37,9 +37,9 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
     case "anotar": {
       const ls = cuenta?.lineas.filter((l) => l.ronda === op.ronda) ?? [];
       if (!ls.length) return { texto: `Anotó ${op.lineas.length} producto${op.lineas.length === 1 ? "" : "s"} (no quedó en la cuenta)`, atencion: true };
-      const partes = ls.map((l) => `${op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad} ${l.nombre}`);
+      const partes = ls.map((l) => `${op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad} ${l.nombre}${l.nota ? ` (${l.nota})` : ""}`);
       const valor = ls.reduce((s, l) => s + l.precio * (op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad), 0);
-      return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}`, atencion: false };
+      return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}${op.area === "comida" ? " · desde comida" : ""}`, atencion: false };
     }
     case "anular": {
       const l = linea(op.linea);
@@ -64,6 +64,10 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const verbo = p?.parcial ? "Abonó" : "Cobró";
       const quien = p?.pagador ? ` · pagó ${p.pagador}` : "";
       return { texto: `${verbo}${valor} ${medio(op.medio)}${que}${quien}${cambio}${p?.deshecho ? " · después se deshizo" : ""}`, atencion: false };
+    }
+    case "despachar": {
+      const ls = cuenta?.lineas.filter((l) => l.despachada && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];
+      return { texto: `Despachó ${ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : "las bebidas"} pedidas desde comida`, atencion: false };
     }
     case "deshacer_pago": {
       const p = cuenta?.pagos.find((x) => x.id === op.pago);

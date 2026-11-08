@@ -4,8 +4,9 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esOperacion, esVigente, estadoVacio, jornada, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, esOperacion, esVigente, estadoVacio, jornada, producto as productoDe, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
+import { esArea, nombreArea, type Area } from "../dominio/areas";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
 import { describirConEnvio, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
@@ -106,7 +107,7 @@ interface Cambios {
 }
 /** Hasta cuántas operaciones atrás se mandan novedades al reconectar; más, la foto completa. */
 const MAX_NOVEDADES = 500;
-interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string }
+interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string; areas: Area[] }
 interface Rechazo { id: string; motivo: string }
 
 /** La base a la que el celular dice mandar sus operaciones. Sin decirlo: la original. */
@@ -425,6 +426,9 @@ export class Barra extends DurableObject<Env> {
       return null;
     }
     if (op.t === "producto" || op.t === "orden") return "Solo el administrador cambia productos y precios.";
+    // Áreas (docs/14): despachar es de la barra; anotar platos, de la comida.
+    if (op.t === "despachar" && !quien.areas.includes("barra")) return "Solo la barra despacha las bebidas.";
+    if (op.t === "anotar" && !quien.areas.includes("comida") && op.lineas.some((l) => productoDe(this.estado, l.producto)?.categoria === "comida")) return "Solo el área de comida anota platos.";
     const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
     if (op.t === "anular_cuenta" && c && total(c) > 0) return "Solo el administrador anula una cuenta con productos.";
     if (op.t === "reabrir" && c) {
@@ -505,6 +509,12 @@ export class Barra extends DurableObject<Env> {
       const { firma: _f, ...limpia } = v.op;
       const op = { ...limpia, persona: autor, ...(autor !== quien.nombre ? { enviadaPor: quien.nombre } : {}), en: Math.min(ahora, Math.max(ahora - DIA, v.op.en)) } as Operacion;
       delete op.seq;
+      // El área de lo anotado o cobrado: la que diga, si la tiene hoy; si no dice, su principal.
+      if (op.t === "anotar" || op.t === "cobrar" || op.t === "cerrar_jornada") {
+        const pedida = (op as { area?: unknown }).area;
+        if (esArea(pedida) && !quien.areas.includes(pedida)) { rechazar(op.id, op.t, crudo, `Hoy no tiene acceso a ${nombreArea(pedida).toLowerCase()}.`); continue; }
+        if (op.t !== "cerrar_jornada" || esArea(pedida)) (op as { area?: Area }).area = esArea(pedida) ? pedida : quien.areas[0];
+      }
       this.traerPara(op);
       const motivo = this.permiso(op, quien, ahora) ?? this.yaCobrada(op);
       if (motivo) { rechazar(op.id, op.t, crudo, motivo); continue; }
@@ -554,7 +564,7 @@ export class Barra extends DurableObject<Env> {
     if (!s || s.dispositivo !== disp.id) return json({ error: "sesion" }, 401);
     const p = this.acceso.persona(s.persona);
     if (!p || !p.activa) return json({ error: "sesion" }, 401);
-    return { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo: disp.id };
+    return { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo: disp.id, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) };
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -609,7 +619,7 @@ export class Barra extends DurableObject<Env> {
       if (lista.length && this.esDeOtraBase(base, q.nombre, lista.length)) return json({ error: "base", ok: [], rechazadas: [], ...this.foto() }, 409);
       const { aceptadas, rechazadas } = this.recibir(lista, q, await this.autores(lista, q));
       // Con `seq`, solo lo nuevo (el respaldo HTTP pregunta cada 5 s); sin él, la foto.
-      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()) });
+      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()), yo: { rol: q.rol, areas: q.areas } });
     }
     if (ruta === "/api/foto") return json(this.foto());
     if (ruta === "/api/mi-pin" && req.method === "POST") {
@@ -625,7 +635,7 @@ export class Barra extends DurableObject<Env> {
     if (ruta.startsWith("/api/admin/") && q.rol !== ADMIN) return json({ error: "Solo el administrador." }, 403);
     if (ruta === "/api/admin/personas" && req.method === "GET") return json({ personas: await this.acceso.personasConPin() });
     if (ruta === "/api/admin/personas" && req.method === "POST") {
-      const b = await cuerpo<{ accion?: string; id?: string; nombre?: string; rol?: string; pin?: string | null; activa?: boolean }>();
+      const b = await cuerpo<{ accion?: string; id?: string; nombre?: string; rol?: string; pin?: string | null; activa?: boolean; areas?: unknown[]; area?: unknown; fecha?: unknown; dar?: boolean }>();
       if (b.accion === "crear") {
         const r = this.acceso.crearPersona(String(b.nombre ?? ""), b.rol === ADMIN ? ADMIN : "operador");
         return "error" in r ? json(r, 400) : json({ persona: r });
@@ -635,6 +645,19 @@ export class Barra extends DurableObject<Env> {
       if (b.accion === "pin") {
         if (b.pin !== null && !esPin(b.pin)) return json({ error: "El PIN debe tener 4 números." }, 400);
         await this.acceso.ponerPin(p.id, b.pin ?? null);
+        return json({ ok: true });
+      }
+      if (b.accion === "rol") {
+        const e = this.acceso.ponerRol(p.id, b.rol === ADMIN ? ADMIN : "operador");
+        return e ? json({ error: e }, 400) : json({ ok: true });
+      }
+      if (b.accion === "areas") {
+        const e = this.acceso.ponerAreas(p.id, Array.isArray(b.areas) ? b.areas : []);
+        return e ? json({ error: e }, 400) : json({ ok: true });
+      }
+      if (b.accion === "dia") {
+        if (!esArea(b.area) || typeof b.fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.fecha)) return json({ error: "Escoja el área y el día." }, 400);
+        this.acceso.accesoDia(p.id, b.area, b.fecha, b.dar !== false, q.nombre);
         return json({ ok: true });
       }
       if (b.accion === "activa") {
@@ -734,7 +757,7 @@ export class Barra extends DurableObject<Env> {
         return json({ error: `El PIN no es correcto.${r.quedan ? ` Quedan ${r.quedan} ${r.quedan === 1 ? "intento" : "intentos"}.` : ""}` }, 401);
       }
     }
-    return json({ token: await firmarSesion(this.env.FIRMA, p.id, disp.id), persona: p.nombre, rol: p.rol, base: this.base });
+    return json({ token: await firmarSesion(this.env.FIRMA, p.id, disp.id), persona: p.nombre, rol: p.rol, base: this.base, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) });
   }
 
   async webSocketMessage(ws: WebSocket, mensaje: string | ArrayBuffer) {
@@ -750,7 +773,7 @@ export class Barra extends DurableObject<Env> {
       try { ws.close(4001, "acceso"); } catch { /* ya cerrada */ }
       return;
     }
-    const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo };
+    const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) };
     // Versión y pendientes que reporta el celular, para «Personas y celulares».
     const antes = (ws.deserializeAttachment() ?? {}) as DeConexion;
     ws.serializeAttachment({
@@ -758,7 +781,7 @@ export class Barra extends DurableObject<Env> {
       pendientes: typeof m.pendientes === "number" && Number.isInteger(m.pendientes) && m.pendientes >= 0 ? m.pendientes : antes.pendientes,
       visto: Date.now(),
     } satisfies DeConexion);
-    if (m.tipo === "hola") ws.send(JSON.stringify(this.novedades(m.seq, m.base) ?? this.foto()));
+    if (m.tipo === "hola") ws.send(JSON.stringify({ ...(this.novedades(m.seq, m.base) ?? this.foto()), yo: { rol: quien.rol, areas: quien.areas } }));
     else if (m.tipo === "ops" && Array.isArray(m.ops)) {
       if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto()));
       else {

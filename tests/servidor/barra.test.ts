@@ -697,3 +697,90 @@ describe("abonos en el servidor", () => {
     expect(delAdmin.rechazadas ?? []).toEqual([]);
   });
 });
+
+// Áreas (docs/14): quién anota platos, quién despacha, en qué caja se cobra, accesos por día.
+describe("áreas por persona", () => {
+  let s: Servidor;
+  let ana: string;
+  let beto: string;
+  let admin: string;
+  const personas = (b: Record<string, unknown>) => s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify(b) });
+  const hoy = () => new Date(Date.now() - 10 * 3600_000).toISOString().slice(0, 10);
+  type R = { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any; yo?: { areas: string[] } };
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    beto = await s.token("Beto");
+    admin = await s.token("Administrador");
+    // Un plato en el catálogo; Ana es de comida, Beto de barra (como viene).
+    await s.ops(admin, [op({ t: "producto", producto: { id: "sopa", nombre: "Sopa", corto: "SOPA", categoria: "comida", precio: 5000, activo: true, fondo: "#8A4F2E", texto: "#FFFFFF" } })]);
+    expect((await personas({ accion: "areas", id: "ana", areas: ["comida"] })).status).toBe(200);
+  });
+  afterAll(() => s?.apagar());
+
+  it("comida anota platos y bebidas (quedan por despachar) y no despacha; barra despacha y no anota platos", async () => {
+    const cuenta = `mesa-${Date.now()}`;
+    const r = (await s.ops(ana, [
+      op({ t: "abrir", cuenta, nombre: "Mesa 2", tipo: "mesa", mesa: 2 }),
+      op({ t: "anotar", cuenta, ronda: "r1", area: "comida", lineas: [{ id: "s1", producto: "sopa", cantidad: 1, nota: "sin cebolla" }, { id: "b1", producto: "rubia", cantidad: 2 }] }),
+      op({ t: "despachar", cuenta }),
+    ])) as R;
+    expect(r.rechazadas?.map((x) => x.motivo)).toEqual(["Solo la barra despacha las bebidas."]);
+    const lineas = r.estado.cuentas[cuenta].lineas;
+    expect(lineas.map((l: any) => [l.id, !!l.comida, l.nota ?? null, !!l.porDespachar])).toEqual([["s1", true, "sin cebolla", false], ["b1", false, null, true]]);
+
+    const b = (await s.ops(beto, [
+      op({ t: "anotar", cuenta, ronda: "r2", lineas: [{ id: "s2", producto: "sopa", cantidad: 1 }] }),
+      op({ t: "despachar", cuenta }),
+    ])) as R;
+    expect(b.rechazadas?.map((x) => x.motivo)).toEqual(["Solo el área de comida anota platos."]);
+    expect(b.estado.cuentas[cuenta].lineas.find((l: any) => l.id === "b1").despachada.por).toBe("Beto");
+  });
+
+  it("cada cobro queda en la caja de quien cobra; nadie cobra en una caja que no tiene", async () => {
+    const cuenta = `caja-${Date.now()}`;
+    await s.ops(beto, [op({ t: "abrir", cuenta, nombre: "Caja", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 3]]) })]);
+    const r = (await s.ops(beto, [
+      op({ t: "cobrar", cuenta, pago: "x1", medio: "efectivo", monto: 4000, area: "comida" }),
+      op({ t: "cobrar", cuenta, pago: "x2", medio: "efectivo", monto: 4000 }),
+    ])) as R;
+    expect(r.rechazadas?.map((x) => x.motivo)).toEqual(["Hoy no tiene acceso a comida."]);
+    const a = (await s.ops(ana, [op({ t: "cobrar", cuenta, pago: "x3", medio: "efectivo" })])) as R;
+    expect(a.estado.cuentas[cuenta].pagos.map((p: any) => [p.id, p.area])).toEqual([["x2", "barra"], ["x3", "comida"]]);
+  });
+
+  it("el administrador da un área por un día; sirve ese día y se puede quitar", async () => {
+    expect((await personas({ accion: "dia", id: "beto", area: "comida", fecha: hoy() })).status).toBe(200);
+    const cuenta = `dia-${Date.now()}`;
+    const r = (await s.ops(beto, [op({ t: "abrir", cuenta, nombre: "Día", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", area: "comida", lineas: [{ id: "s", producto: "sopa", cantidad: 1 }] })])) as R;
+    expect(r.rechazadas ?? []).toEqual([]);
+    expect(r.yo?.areas).toEqual(["barra", "comida"]);
+    expect((await personas({ accion: "dia", id: "beto", area: "comida", fecha: hoy(), dar: false })).status).toBe(200);
+    const otra = (await s.ops(beto, [op({ t: "anotar", cuenta, ronda: "r2", area: "comida", lineas: [{ id: "s2", producto: "sopa", cantidad: 1 }] })])) as R;
+    expect(otra.rechazadas?.[0].motivo).toBe("Hoy no tiene acceso a comida.");
+    const lista = (await (await s.pedir(admin, "/api/admin/personas")).json()) as { personas: { id: string; areas: string[]; dias: unknown[] }[] };
+    expect(lista.personas.find((p) => p.id === "ana")?.areas).toEqual(["comida"]);
+  });
+
+  it("un operador pasa a administrador; el último administrador no se puede quitar", async () => {
+    expect((await personas({ accion: "rol", id: "ana", rol: "admin" })).status).toBe(200);
+    expect((await personas({ accion: "rol", id: "administrador", rol: "operador" })).status).toBe(200);
+    // Ahora la única administradora es Ana: con su sesión, no puede quitarse el rol.
+    const comoAna = (b: Record<string, unknown>) => s.pedir(ana, "/api/admin/personas", { method: "POST", body: JSON.stringify(b) });
+    expect((await personas({ accion: "areas", id: "ana", areas: ["comida"] })).status).toBe(403); // el Administrador ya no lo es
+    const ultimo = await comoAna({ accion: "rol", id: "ana", rol: "operador" });
+    expect(ultimo.status).toBe(400);
+    expect(await ultimo.text()).toContain("al menos un administrador");
+    // Volver como estaba.
+    expect((await comoAna({ accion: "rol", id: "administrador", rol: "admin" })).status).toBe(200);
+  });
+
+  it("al saludar, el celular recibe sus áreas", async () => {
+    const ws = s.wsCrudo(ana);
+    const m = new Promise<any>((listo) => ws.addEventListener("message", (e) => { if (String(e.data) !== "pong") listo(JSON.parse(String(e.data))); }));
+    await new Promise((listo) => ws.addEventListener("open", listo));
+    ws.send(JSON.stringify({ tipo: "hola" }));
+    expect((await m).yo.areas).toContain("comida");
+    ws.close();
+  });
+});

@@ -10,6 +10,8 @@ const MIN = 60_000;
 export const BLOQUEO_INTENTOS = 5;
 export const BLOQUEO_MS = 5 * MIN;
 export const VIGENCIA_CODIGO_MS = 10 * MIN;
+import { AREAS, esArea, type Area } from "../dominio/areas";
+
 export const ADMIN = "admin";
 export type Rol = "admin" | "operador";
 
@@ -20,6 +22,8 @@ export interface Persona {
   color: string;
   activa: boolean;
   tienePin: boolean;
+  /** Áreas fijas, en orden: la primera es su pantalla principal (docs/14). */
+  areas: Area[];
 }
 
 const COLORES = ["#C8312A", "#2F7D3A", "#1F4E8C", "#8E44AD", "#9A6410", "#2E6B7A", "#7A1F1C", "#5B3A1E"];
@@ -99,7 +103,15 @@ export async function leerSesion(firma: string, token: string | null): Promise<{
 
 // ── La parte guardada en el Durable Object ────────────────────────────
 
-type FilaPersona = { id: string; nombre: string; rol: Rol; color: string; activa: number; pin: string | null };
+type FilaPersona = { id: string; nombre: string; rol: Rol; color: string; activa: number; pin: string | null; areas: string | null };
+
+/** «barra,comida» → ["barra", "comida"], sin repetidos ni desconocidas; vacío: la barra (como antes de las áreas). */
+const leerAreas = (t: string | null): Area[] => {
+  const a = [...new Set((t ?? "").split(",").map((x) => x.trim()).filter(esArea))];
+  return a.length ? a : ["barra"];
+};
+const COLUMNAS = "id, nombre, rol, color, activa, pin, areas";
+const aPersona = (f: FilaPersona): Persona => ({ id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin, areas: leerAreas(f.areas) });
 
 export class Acceso {
   constructor(private sql: SqlStorage, private secretoPines: string) {}
@@ -115,6 +127,11 @@ export class Acceso {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS codigos (codigo_hash TEXT PRIMARY KEY, vence INTEGER NOT NULL, por TEXT NOT NULL, usado INTEGER)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS intentos (persona TEXT NOT NULL, dispositivo TEXT NOT NULL, fallos INTEGER NOT NULL, hasta INTEGER, PRIMARY KEY (persona, dispositivo))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS intentos_vincular (ventana INTEGER PRIMARY KEY, fallos INTEGER NOT NULL)`);
+    // Áreas (docs/14): columna nueva en bases de antes; vacía = la barra.
+    const columnas = this.sql.exec<{ name: string }>("PRAGMA table_info(personas)").toArray().map((c) => c.name);
+    if (!columnas.includes("areas")) this.sql.exec("ALTER TABLE personas ADD COLUMN areas TEXT");
+    // Un área dada por el administrador para un día (jornada AAAA-MM-DD).
+    this.sql.exec("CREATE TABLE IF NOT EXISTS accesos_dia (persona TEXT NOT NULL, area TEXT NOT NULL, fecha TEXT NOT NULL, por TEXT NOT NULL, PRIMARY KEY (persona, area, fecha))");
     const hay = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM personas").one().n;
     if (hay > 0) return;
     semilla.forEach((nombre, i) => {
@@ -125,26 +142,60 @@ export class Acceso {
   }
 
   private fila(id: string): FilaPersona | undefined {
-    return this.sql.exec<FilaPersona>("SELECT id, nombre, rol, color, activa, pin FROM personas WHERE id = ?", id).toArray()[0];
+    return this.sql.exec<FilaPersona>(`SELECT ${COLUMNAS} FROM personas WHERE id = ?`, id).toArray()[0];
   }
 
   persona(id: string): Persona | undefined {
     const f = this.fila(id);
-    return f && { id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin };
+    return f && aPersona(f);
   }
 
   personas(): Persona[] {
-    return this.sql.exec<FilaPersona>("SELECT id, nombre, rol, color, activa, pin FROM personas ORDER BY creada, nombre").toArray()
-      .map((f) => ({ id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin }));
+    return this.sql.exec<FilaPersona>(`SELECT ${COLUMNAS} FROM personas ORDER BY creada, nombre`).toArray().map(aPersona);
   }
 
   /** Para la pantalla del administrador: cada persona con su PIN. */
-  async personasConPin(): Promise<(Persona & { pin: string | null })[]> {
-    const filas = this.sql.exec<FilaPersona>("SELECT id, nombre, rol, color, activa, pin FROM personas ORDER BY creada, nombre").toArray();
+  async personasConPin(): Promise<(Persona & { pin: string | null; dias: { area: Area; fecha: string }[] })[]> {
+    const filas = this.sql.exec<FilaPersona>(`SELECT ${COLUMNAS} FROM personas ORDER BY creada, nombre`).toArray();
     return Promise.all(filas.map(async (f) => ({
-      id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin,
+      ...aPersona(f),
       pin: f.pin ? await descifrar(this.secretoPines, f.pin) : null,
+      dias: this.sql.exec<{ area: string; fecha: string }>("SELECT area, fecha FROM accesos_dia WHERE persona = ? ORDER BY fecha", f.id).toArray()
+        .filter((d) => esArea(d.area)).map((d) => ({ area: d.area as Area, fecha: d.fecha })),
     })));
+  }
+
+  /** Rol (administrador u operador). El último administrador activo no se puede quitar. */
+  ponerRol(id: string, rol: Rol): string | null {
+    if (rol !== ADMIN) {
+      const otros = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM personas WHERE rol = ? AND activa = 1 AND id <> ?", ADMIN, id).one().n;
+      if (otros === 0) return "Tiene que quedar al menos un administrador.";
+    }
+    this.sql.exec("UPDATE personas SET rol = ? WHERE id = ?", rol === ADMIN ? ADMIN : "operador", id);
+    return null;
+  }
+
+  /** Áreas fijas, en orden (la primera es la pantalla principal). */
+  ponerAreas(id: string, areas: unknown[]): string | null {
+    const a = [...new Set(areas.filter(esArea))];
+    if (!a.length) return "Escoja al menos un área.";
+    this.sql.exec("UPDATE personas SET areas = ? WHERE id = ?", a.join(","), id);
+    return null;
+  }
+
+  /** Da o quita un área para un día. */
+  accesoDia(id: string, area: Area, fecha: string, dar: boolean, por: string) {
+    if (dar) this.sql.exec("INSERT OR IGNORE INTO accesos_dia (persona, area, fecha, por) VALUES (?, ?, ?, ?)", id, area, fecha, por);
+    else this.sql.exec("DELETE FROM accesos_dia WHERE persona = ? AND area = ? AND fecha = ?", id, area, fecha);
+  }
+
+  /** Las áreas que tiene hoy: el administrador, todas; los demás, las fijas y las del día. */
+  areasDeHoy(id: string, fecha: string): Area[] {
+    const p = this.persona(id);
+    if (!p) return [];
+    const extra = this.sql.exec<{ area: string }>("SELECT area FROM accesos_dia WHERE persona = ? AND fecha = ?", id, fecha).toArray().map((x) => x.area).filter(esArea);
+    const todas = p.rol === ADMIN ? [...p.areas, ...AREAS] : [...p.areas, ...extra];
+    return [...new Set(todas)];
   }
 
   crearPersona(nombre: string, rol: Rol): Persona | { error: string } {

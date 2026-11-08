@@ -7,7 +7,7 @@ import { CATALOGO } from "#negocio";
 
 export { CATALOGO, PERSONAS } from "#negocio";
 
-export type Categoria = "cerveza" | "gaseosa" | "cigarrillo" | "otro" | "licor";
+export type Categoria = "cerveza" | "gaseosa" | "cigarrillo" | "otro" | "licor" | "comida";
 
 export interface Producto {
   id: string;
@@ -23,6 +23,8 @@ export interface Producto {
   /** Además del valor, se escribe el nombre («Otro»: lo que no está en el catálogo). */
   conNombre?: boolean;
   activo: boolean;
+  /** Notas rápidas para este producto al anotarlo («solo carne», «más yuca»). */
+  notas?: string[];
   fondo: string;
   texto: string;
 }
@@ -45,6 +47,14 @@ export const SECCIONES: { titulo: string; categorias: Categoria[] }[] = [
   { titulo: "Cigarrillos, mecato y licor", categorias: ["cigarrillo", "otro", "licor"] },
 ];
 
+/** El panel de comida (docs/14): primero los platos, después las bebidas. */
+export const SECCIONES_COMIDA: { titulo: string; categorias: Categoria[] }[] = [
+  { titulo: "Comida", categorias: ["comida"] },
+  { titulo: "Cervezas", categorias: ["cerveza"] },
+  { titulo: "Gaseosas, jugos y agua", categorias: ["gaseosa"] },
+  { titulo: "Cigarrillos, mecato y licor", categorias: ["cigarrillo", "otro", "licor"] },
+];
+
 /** Tope por unidad en valor libre, para atajar un error de dedo de muchos ceros. */
 export const TOPE_VALOR_LIBRE = 5_000_000;
 
@@ -58,5 +68,6 @@ export const CATEGORIAS: { id: Categoria; nombre: string }[] = [
   { id: "cigarrillo", nombre: "Cigarrillo" },
   { id: "licor", nombre: "Licor" },
   { id: "otro", nombre: "Otro" },
+  { id: "comida", nombre: "Comida" },
 ];
 

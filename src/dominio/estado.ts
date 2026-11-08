@@ -2,6 +2,7 @@
 // el total que se ve en pantalla es el mismo que calcula el servidor.
 // Ver docs/04-sincronizacion-y-fuera-de-linea.md.
 
+import { areaDe, esArea, type Area } from "./areas";
 import { CATALOGO, ESPECIALES, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "./catalogo";
 
 export type TipoCuenta = "grupo" | "persona" | "mesa" | "cancha" | "rapida";
@@ -22,6 +23,12 @@ export interface Linea {
   editada?: { por: string; en: number; antes: number };
   /** Si vino en un petaco o medio petaco (puro o mixto). Todas las líneas del mismo paquete comparten `id`. */
   paquete?: Paquete;
+  /** Nota del producto al anotarlo («solo carne», «más yuca»). */
+  nota?: string;
+  /** Bebida pedida desde comida que la barra aún no ha despachado (docs/14). */
+  porDespachar?: true;
+  /** Quién la despachó y cuándo. */
+  despachada?: { por: string; en: number };
 }
 
 export interface Paquete {
@@ -51,6 +58,8 @@ export interface Pago {
   lineas?: { linea: string; cantidad: number }[];
   /** Quién del grupo pagó (opcional, escrito al cobrar): para saber quién abonó qué. */
   pagador?: string;
+  /** Desde qué área se cobró (su caja). Sin ella, la barra (docs/14). */
+  area?: Area;
 }
 
 export interface Cuenta {
@@ -91,6 +100,8 @@ export interface CierreJornada {
   contado: number;
   /** Efectivo que debía haber por las ventas de la jornada cuando se cerró. */
   esperado: number;
+  /** La caja que se cerró (barra o cocina). Sin ella: todo el negocio (cierres de antes de las áreas). */
+  area?: Area;
   notas?: string;
 }
 
@@ -125,7 +136,7 @@ export function precioPara(p: Producto, tipo?: TipoCuenta): number | null {
   return p.precio;
 }
 
-const CATEGORIAS_VALIDAS: Categoria[] = ["cerveza", "gaseosa", "cigarrillo", "otro", "licor"];
+const CATEGORIAS_VALIDAS: Categoria[] = ["cerveza", "gaseosa", "cigarrillo", "otro", "licor", "comida"];
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 interface Base {
@@ -150,9 +161,10 @@ export type Operacion = Base &
   (
     | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha }
     | { t: "renombrar"; cuenta: string; nombre: string }
-    | { t: "anotar"; cuenta: string; ronda: string; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number }[] }
+    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
+    | { t: "despachar"; cuenta: string; lineas?: string[] }
     | { t: "anular"; cuenta: string; linea: string }
-    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string }
+    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area }
     | { t: "deshacer_pago"; cuenta: string; pago: string }
     | { t: "reabrir"; cuenta: string }
     | { t: "comida_cobrada"; cuenta: string; valor: boolean }
@@ -161,7 +173,7 @@ export type Operacion = Base &
     | { t: "orden"; ids: string[] }
     | { t: "cantidad"; cuenta: string; linea: string; cantidad: number }
     | { t: "comida_linea"; cuenta: string; linea: string; valor: boolean }
-    | { t: "cerrar_jornada"; fecha: string; contado: number; notas?: string }
+    | { t: "cerrar_jornada"; fecha: string; contado: number; notas?: string; area?: Area }
   );
 
 export const estadoVacio = (): Estado => ({ cuentas: {}, productos: {} });
@@ -228,13 +240,29 @@ export const unidades = (c: Cuenta) =>
 
 /** Aplica una operación sobre `estado`, mutándolo. Ignora lo que no tenga sentido. */
 /** Efectivo cobrado en una jornada (sin cuentas anuladas ni cobros deshechos). */
-export function efectivoDeJornada(cuentas: Iterable<Cuenta>, fecha: string): number {
+/** Efectivo cobrado en la jornada; con `area`, solo el de esa caja (docs/14). */
+export function efectivoDeJornada(cuentas: Iterable<Cuenta>, fecha: string, area?: Area): number {
   let s = 0;
   for (const c of cuentas) {
     if (c.anulada) continue;
-    for (const p of c.pagos) if (!p.deshecho && p.medio === "efectivo" && jornada(p.en) === fecha) s += p.monto;
+    for (const p of c.pagos) {
+      if (p.deshecho || p.medio !== "efectivo" || jornada(p.en) !== fecha) continue;
+      if (area && areaDe(p.area) !== area) continue;
+      s += p.monto;
+    }
   }
   return s;
+}
+
+/** Bebidas pedidas desde comida que la barra no ha despachado, de todas las cuentas vivas. */
+export function porDespachar(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; lineas: Linea[] }[] {
+  const r: { cuenta: Cuenta; lineas: Linea[] }[] = [];
+  for (const c of cuentas) {
+    if (c.anulada) continue;
+    const lineas = c.lineas.filter((l) => l.porDespachar && !l.anulada);
+    if (lineas.length) r.push({ cuenta: c, lineas });
+  }
+  return r;
 }
 
 export function aplicar(estado: Estado, op: Operacion): Estado {
@@ -249,7 +277,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       const cierres = (estado.jornadas[op.fecha] ??= []);
       if (cierres.some((x) => x.id === op.id)) return estado; // reintento
       const notas = typeof op.notas === "string" ? op.notas.trim().slice(0, 200) : "";
-      cierres.push({ id: op.id, por: op.persona, en: op.en, contado, esperado: efectivoDeJornada(Object.values(estado.cuentas), op.fecha), ...(notas ? { notas } : {}) });
+      const area = esArea(op.area) ? op.area : undefined;
+      cierres.push({ id: op.id, por: op.persona, en: op.en, contado, esperado: efectivoDeJornada(Object.values(estado.cuentas), op.fecha, area), ...(notas ? { notas } : {}), ...(area ? { area } : {}) });
       return estado;
     }
     case "abrir": {
@@ -297,9 +326,12 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         const paquete = pq && typeof pq.id === "string" && (pq.tipo === "petaco" || pq.tipo === "medio")
           ? { id: pq.id.slice(0, 64), tipo: pq.tipo, mixto: !!pq.mixto }
           : undefined;
-        // Solo lo escrito a mano («Otro») puede ser comida; el catálogo es de la barra.
-        const comida = p.conNombre && l.comida === true;
-        nuevas.push({ id: l.id, ronda: op.ronda, producto: p.id, nombre, precio, cantidad, ...(paquete ? { paquete } : {}), ...(comida ? { comida } : {}) });
+        // Comida: lo escrito a mano («Otro») marcado así, o un producto de la categoría comida.
+        const comida = (p.conNombre && l.comida === true) || p.categoria === "comida";
+        const nota = typeof l.nota === "string" ? l.nota.trim().slice(0, 60) : "";
+        // Una bebida (no comida) anotada desde comida queda por despachar en la barra.
+        const despachar = op.area === "comida" && !comida;
+        nuevas.push({ id: l.id, ronda: op.ronda, producto: p.id, nombre, precio, cantidad, ...(paquete ? { paquete } : {}), ...(comida ? { comida } : {}), ...(nota ? { nota } : {}), ...(despachar ? { porDespachar: true as const } : {}) });
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida";
@@ -359,9 +391,21 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         ...(parcial ? { parcial } : {}),
         ...(cubre?.length ? { lineas: cubre } : {}),
         ...(pagador ? { pagador } : {}),
+        ...(esArea(op.area) ? { area: op.area } : {}),
       });
       c.ultima = op.en;
       if (!parcial) c.reabierta = false;
+      return estado;
+    }
+    case "despachar": {
+      // La barra entregó bebidas pedidas desde comida: las dichas, o todas las de la cuenta.
+      if (!c) return estado;
+      const cuales = Array.isArray(op.lineas) && op.lineas.length ? new Set(op.lineas) : null;
+      for (const l of c.lineas) {
+        if (!l.porDespachar || (cuales && !cuales.has(l.id))) continue;
+        delete l.porDespachar;
+        l.despachada = { por: op.persona, en: op.en };
+      }
       return estado;
     }
     case "deshacer_pago": {
@@ -443,6 +487,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         libre: base?.libre,
         conNombre: base?.conNombre,
         activo: !!p.activo && (precio != null || !!base?.libre),
+        ...(Array.isArray(p.notas) && p.notas.length ? { notas: p.notas.filter((x): x is string => typeof x === "string").map((x) => x.trim().slice(0, 30)).filter(Boolean).slice(0, 12) } : {}),
         fondo: COLOR.test(p.fondo) ? p.fondo : "#F0E9DE",
         texto: COLOR.test(p.texto) ? p.texto : "#241206",
       };
