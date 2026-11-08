@@ -239,6 +239,14 @@ o reparten entre varios con medios distintos.
 Pruebas: `tests/abonos.test.ts`, `tests/servidor/barra.test.ts` «abonos en el servidor» y
 `tests/e2e/abonos.spec.ts`.
 
+### Dividir entre varios (2026-11-08)
+
+En «Cobrar → Valor», «👥 Dividir entre varios»: entre cuántas personas y cuántas ya
+pagaron (empieza con los abonos que hay). A cada una le toca lo que falta entre las que
+faltan, redondeado a los cien (el último paga solo lo que queda: nunca más que el saldo).
+Cada abono guarda `entre` en el pago, así el siguiente, aquí o en otro celular, ve
+«Faltan 4» sin volver a contar.
+
 ## Comida, despacho y cajas (2026-11-08)
 
 Ver `docs/14`. Una cuenta tiene líneas de barra y de comida y **un solo saldo**: la barra

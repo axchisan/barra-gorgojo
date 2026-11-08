@@ -98,3 +98,10 @@ describe("abonos", () => {
     expect(e.cuentas.g.pagos.map((p) => p.pagador)).toEqual(["Juan el del sombrero", undefined]);
   });
 });
+
+describe("dividir entre varios", () => {
+  it("cada abono guarda entre cuántos se dividió (válido de 2 a 100)", () => {
+    const e = correr([...cuenta(), cobrar({ monto: 3_500, entre: 7 }), cobrar({ monto: 3_500, entre: 1 }), cobrar({ monto: 3_500, entre: 2.5 })]);
+    expect(e.cuentas.g.pagos.map((p) => p.entre)).toEqual([7, undefined, undefined]);
+  });
+});

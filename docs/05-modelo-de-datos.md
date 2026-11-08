@@ -65,7 +65,7 @@ guarda.
 | `anular` | `cuenta, linea` | Anula un producto anotado (queda tachado) |
 | `cantidad` | `cuenta, linea, cantidad` | Cambia la cantidad; guarda la anterior y quién |
 | `comida_linea` | `cuenta, linea, valor` | Marca o desmarca un producto como comida |
-| `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?, pagador?, area?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |
+| `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?, pagador?, area?, entre?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |
 | `deshacer_pago` | `cuenta, pago` | Deshace un solo pago o abono |
 | `reabrir` | `cuenta` | Deshace el último cobro o la anulación |
 | `comida_cobrada` | `cuenta, valor` | La cocina marca cobrada (o no) una cuenta pasada a comida |

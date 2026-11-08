@@ -884,3 +884,16 @@ html.apaisada .anotar .total-pedida > span { white-space: nowrap; }
 html.apaisada main.inicio.con-pedido.pestana-cuentas { --panel: clamp(360px, 36vw, 460px); }
 html.apaisada .inicio .pie-fijo .pedir-barra { min-height: 46px; padding: 8px 12px; flex: 0 0 auto; }
 @media (max-width: 419px) { .pie-fijo .pedir-barra .largo { display: none; } }
+/* Dividir la cuenta entre varios: entre cuántos, cuántos ya pagaron y cuánto le toca a cada uno. */
+.chip.dividir-boton { align-self: flex-start; min-height: 48px; }
+.dividir-cuenta { display: flex; flex-direction: column; gap: 8px; background: var(--papel); border: 2px solid var(--neutro-200); border-radius: var(--radio); padding: 10px 12px; }
+.dividir-cuenta .paso { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.dividir-cuenta .paso > span:first-child { min-width: 96px; }
+.dividir-cuenta .paso button { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--neutro-200); background: var(--crema); font-size: 1.3rem; font-weight: 800; }
+.dividir-cuenta .paso button:disabled { opacity: 0.35; }
+.dividir-cuenta .paso b { min-width: 32px; text-align: center; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.dividir-cuenta .cada-uno { margin: 0; font-weight: 700; }
+.dividir-cuenta .cada-uno strong { font-size: 1.3rem; }
+.dividir-cuenta .paso { display: grid; grid-template-columns: minmax(0, 1fr) 48px 2.6em 48px; gap: 8px; }
+.dividir-cuenta .paso > span:first-child { min-width: 0; }
+.dividir-cuenta .paso button { width: 48px; }

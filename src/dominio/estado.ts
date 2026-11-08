@@ -66,6 +66,8 @@ export interface Pago {
   lineas?: { linea: string; cantidad: number }[];
   /** Quién del grupo pagó (opcional, escrito al cobrar): para saber quién abonó qué. */
   pagador?: string;
+  /** Si se dividió la cuenta: entre cuántas personas (el siguiente que pague ve cuántos faltan). */
+  entre?: number;
   /** Desde qué área se cobró (su caja). Sin ella, la barra (docs/14). */
   area?: Area;
   /** Abono hecho en otra cuenta que se juntó con esta (su id). */
@@ -188,7 +190,7 @@ export type Operacion = Base &
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
     | { t: "anular"; cuenta: string; linea: string }
-    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area }
+    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area; entre?: number }
     | { t: "deshacer_pago"; cuenta: string; pago: string }
     | { t: "reabrir"; cuenta: string }
     | { t: "comida_cobrada"; cuenta: string; valor: boolean }
@@ -428,6 +430,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         ...(cubre?.length ? { lineas: cubre } : {}),
         ...(pagador ? { pagador } : {}),
         ...(esArea(op.area) ? { area: op.area } : {}),
+        ...(Number.isInteger(op.entre) && op.entre! >= 2 && op.entre! <= 100 ? { entre: op.entre } : {}),
       });
       c.ultima = op.en;
       if (!parcial) c.reabierta = false;

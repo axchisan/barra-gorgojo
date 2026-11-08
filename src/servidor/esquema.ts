@@ -57,7 +57,7 @@ const operacion = z.discriminatedUnion("t", [
   z.object({ ...comun, t: z.literal("cantidad"), cuenta: id, linea: id, cantidad: numero }),
   z.object({ ...comun, t: z.literal("comida_linea"), cuenta: id, linea: id, valor: z.boolean() }),
   z.object({ ...comun, t: z.literal("cobrar"), cuenta: id, pago: id, medio: z.enum(["efectivo", "nequi", "breve", "comida"]), recibido: opcional(numero),
-    monto: opcional(numero), lineas: opcional(z.array(z.object({ linea: id, cantidad: numero })).max(300)), pagador: opcional(texto(80)), area: opcional(z.enum(["barra", "comida"])) }),
+    monto: opcional(numero), lineas: opcional(z.array(z.object({ linea: id, cantidad: numero })).max(300)), pagador: opcional(texto(80)), area: opcional(z.enum(["barra", "comida"])), entre: opcional(numero) }),
   z.object({ ...comun, t: z.literal("deshacer_pago"), cuenta: id, pago: id }),
   z.object({ ...comun, t: z.literal("reabrir"), cuenta: id }),
   z.object({ ...comun, t: z.literal("comida_cobrada"), cuenta: id, valor: z.boolean() }),

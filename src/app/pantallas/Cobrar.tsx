@@ -30,6 +30,15 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   // Mostrar al cliente (F3): el medio y el billete escogidos siguen aquí al volver.
   const [cliente, setCliente] = useState(false);
   useAtrasCierra(cliente, () => setCliente(false));
+  // Dividir entre varios: entre cuántos y cuántos ya pagaron. Se recuerda en los pagos
+  // (`entre`), así el siguiente que pague, aquí o en otro celular, ve cuántos faltan.
+  // Lo escogido aquí manda; si no, lo que dicen los pagos (también los de otro celular).
+  const vivos = c ? c.pagos.filter((p) => !p.deshecho) : [];
+  const entreGuardado = [...vivos].reverse().find((p) => p.entre)?.entre ?? null;
+  const [entreElegido, setEntre] = useState<number | null>(null);
+  const [pagaronElegido, setPagaron] = useState<number | null>(null);
+  const entre = entreElegido ?? entreGuardado;
+  const pagaron = pagaronElegido ?? (entre ? Math.min(vivos.length, entre - 1) : vivos.length);
   if (!c) return <NoExiste nav={nav} />;
   const falta = saldo(c);
   if (falta <= 0) return <NoExiste nav={nav} />;
@@ -47,6 +56,17 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
 
   if (cliente) return <VistaCliente c={c} recibido={medio === "efectivo" ? recibido : null} cerrar={() => setCliente(false)} />;
 
+  /** Pone entre cuántos y cuántos ya pagaron, y deja listo lo que le toca a cada uno. */
+  const dividir = (n: number, p: number) => {
+    const total = Math.max(2, Math.min(100, n));
+    const ya = Math.max(0, Math.min(p, total - 1));
+    setEntre(total);
+    setPagaron(ya);
+    setValorLibre(String(parteDe(falta, total - ya)));
+    setRecibido(null);
+    setOtro("");
+  };
+
   const limpiar = () => { setEscogidas({}); setValorLibre(""); setRecibido(null); setOtro(""); setPagador(""); };
 
   const cobrar = (m: Medio) => {
@@ -60,6 +80,7 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       ...(m !== "comida" && lineas?.length ? { lineas } : {}),
       ...(monto ? { monto } : {}),
       ...(m !== "comida" && pagador.trim() ? { pagador: pagador.trim() } : {}),
+      ...(m !== "comida" && modo === "valor" && entre ? { entre } : {}),
     });
     const cobrado = m === "comida" ? falta : valor;
     const de = m !== "comida" && pagador.trim() ? ` de ${pagador.trim()}` : "";
@@ -68,6 +89,8 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       // Abono: se queda aquí con lo que falta, para el siguiente que pague.
       limpiar();
       setModo("todo");
+      // El siguiente que pague: ya pagó uno más (lo cuentan los pagos).
+      setPagaron(null);
       ponerAviso({ texto: `${c.nombre}: abono${de} ${pesos(cobrado)} · falta ${pesos(falta - cobrado)}`, deshacer });
       return;
     }
@@ -98,7 +121,11 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
 
       <div className="segmentos modo-cobro" role="group" aria-label="Qué se cobra">
         {([["todo", "Todo"], ["productos", "Productos"], ["valor", "Valor"]] as const).map(([m, texto]) => (
-          <button key={m} className={modo === m ? "activo" : ""} aria-pressed={modo === m} onClick={() => { setModo(m); setRecibido(null); setOtro(""); }}>{texto}</button>
+          <button key={m} className={modo === m ? "activo" : ""} aria-pressed={modo === m} onClick={() => {
+            setModo(m); setRecibido(null); setOtro("");
+            // Si la cuenta ya se está dividiendo, «Valor» trae de una lo que le toca al siguiente.
+            if (m === "valor" && entre) setValorLibre(String(parteDe(falta, entre - pagaron)));
+          }}>{texto}</button>
         ))}
       </div>
 
@@ -107,13 +134,27 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
         <section className="abono-valor">
           <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Valor del abono" aria-label="Valor del abono"
             value={valorLibre} onChange={(e) => { setValorLibre(e.target.value.replace(/\D/g, "")); setRecibido(null); setOtro(""); }} />
-          <div className="opciones dividir">
-            {[2, 3, 4, 5].map((n) => (
-              <button key={n} className={Number(valorLibre) === parteDe(falta, n) ? "chip activo" : "chip"} onClick={() => { setValorLibre(String(parteDe(falta, n))); setRecibido(null); setOtro(""); }}>
-                Entre {n}<small>{pesos(parteDe(falta, n))}</small>
-              </button>
-            ))}
-          </div>
+          {entre == null ? (
+            <button className="chip dividir-boton" onClick={() => dividir(Math.max(2, vivos.length + 1), vivos.length)}>👥 Dividir entre varios</button>
+          ) : (
+            <div className="dividir-cuenta">
+              <div className="paso" role="group" aria-label="Entre cuántas personas">
+                <span>Personas</span>
+                <button aria-label="Una persona menos" onClick={() => dividir(entre - 1, pagaron)} disabled={entre <= Math.max(2, pagaron + 1)}>−</button>
+                <b>{entre}</b>
+                <button aria-label="Una persona más" onClick={() => dividir(entre + 1, pagaron)}>＋</button>
+              </div>
+              <div className="paso" role="group" aria-label="Cuántos ya pagaron">
+                <span>Ya pagaron</span>
+                <button aria-label="Uno menos ya pagó" onClick={() => dividir(entre, pagaron - 1)} disabled={pagaron <= 0}>−</button>
+                <b>{pagaron}</b>
+                <button aria-label="Uno más ya pagó" onClick={() => dividir(entre, pagaron + 1)} disabled={pagaron >= entre - 1}>＋</button>
+              </div>
+              <p className="cada-uno">
+                {entre - pagaron === 1 ? "Falta 1: paga todo lo que queda" : `Faltan ${entre - pagaron} · cada uno`} <strong>{pesos(parteDe(falta, entre - pagaron))}</strong>
+              </p>
+            </div>
+          )}
         </section>
       )}
 
