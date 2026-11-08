@@ -16,7 +16,7 @@ import { BASE_ORIGINAL } from "../dominio/base";
 import { estadoVacio, type Estado, type Operacion } from "../dominio/estado";
 
 /** `areas`: las de hoy según el servidor; `panel`: el área que se está usando en este celular. */
-export interface Sesion { token: string; persona: string; rol?: string; areas?: Area[]; panel?: Area }
+export interface Sesion { token: string; persona: string; rol?: string; areas?: Area[]; panel?: Area; deudas?: boolean }
 /** Una persona como la ve la entrada de un celular vinculado (sin PIN). */
 export interface PersonaPublica { id: string; nombre: string; color: string; admin: boolean; tienePin: boolean }
 export type Apartado = Operacion & { base: string };

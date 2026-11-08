@@ -47,3 +47,33 @@ test("una cuenta pasa a deuda, queda en el panel de deudas y se recibe un pago a
   await expect(p.locator(".cifra.deuda", { hasText: "Fiado hoy" })).toContainText(total.toLocaleString("es-CO"));
   await expect(p.locator(".cifra.deuda", { hasText: "Pagos de deudas" })).toContainText(mitad.toLocaleString("es-CO"));
 });
+
+test("el permiso «Administra deudas» deja anotar deudas a mano sin ser administrador", async ({ browser }) => {
+  // El administrador crea a la persona por la pantalla.
+  const admin = await celular(browser);
+  await admin.getByRole("button", { name: /Administrador ▾/ }).click();
+  await admin.getByRole("button", { name: "Personas y celulares" }).click();
+  await admin.getByPlaceholder("Nombre de la persona nueva").fill("Mamá e2e");
+  await admin.getByRole("button", { name: "Agregar" }).click();
+  await expect(admin.locator(".fila-persona", { hasText: "Mamá e2e" })).toBeVisible();
+
+  const mama = await celular(browser, "Mamá e2e");
+  await mama.getByRole("button", { name: /Mamá e2e ▾/ }).click();
+  await mama.getByRole("button", { name: "📒 Deudas" }).click();
+  await expect(mama.getByRole("button", { name: "＋ Anotar deuda" })).toHaveCount(0);
+
+  // El administrador le da el permiso en «Personas y celulares».
+  await admin.locator(".fila-persona", { hasText: "Mamá e2e" }).first().getByRole("button", { name: /▾$/ }).click();
+  await admin.getByLabel(/Administra deudas/).click(); // se marca cuando responde el servidor
+  await expect(admin.getByLabel(/Administra deudas/)).toBeChecked();
+  await expect(admin.locator(".fila-persona", { hasText: "Mamá e2e" }).first()).toContainText("deudas");
+
+  // Le llega sin volver a entrar.
+  await expect(mama.getByRole("button", { name: "＋ Anotar deuda" })).toBeVisible({ timeout: 10_000 });
+  await mama.getByRole("button", { name: "＋ Anotar deuda" }).click();
+  await mama.getByLabel("Quién debe").fill("Vecino e2e");
+  await mama.getByLabel("Qué es la deuda").fill("almuerzos");
+  await mama.getByLabel("Valor de la deuda").fill("15000");
+  await mama.locator(".hoja .principal").click();
+  await expect(mama.locator(".tarjeta.deudor", { hasText: "Vecino e2e" })).toContainText("15.000");
+});

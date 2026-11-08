@@ -38,7 +38,7 @@ CREATE TABLE cuenta_jornadas (fecha, cuenta, PRIMARY KEY (fecha, cuenta));  -- d
 CREATE TABLE proyeccion (clave PRIMARY KEY, valor);  -- version, seq, productos, orden, jornadas
 
 -- src/servidor/acceso.ts (fase D, ADR-10)
-CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada, areas);  -- pin cifrado; areas «comida,barra» (la primera, la principal)
+CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada, areas, permisos);  -- permisos «deudas» (docs/15)  -- pin cifrado; areas «comida,barra» (la primera, la principal)
 CREATE TABLE accesos_dia (persona, area, fecha, por, PRIMARY KEY (persona, area, fecha));  -- un área solo ese día (docs/14)
 CREATE TABLE dispositivos (id, nombre, token_hash UNIQUE, creado, por, ultimo_uso, revocado);
 CREATE TABLE codigos (codigo_hash, vence, por, usado);      -- vinculación de 6 dígitos

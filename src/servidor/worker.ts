@@ -111,7 +111,8 @@ interface Cambios {
 const TOCA_DEUDAS = new Set<Operacion["t"]>(["cobrar", "deshacer_pago", "reabrir", "deuda_cargo", "deuda_pago", "deuda_anular"]);
 /** Hasta cuántas operaciones atrás se mandan novedades al reconectar; más, la foto completa. */
 const MAX_NOVEDADES = 500;
-interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string; areas: Area[] }
+/** `deudas`: administra deudas (anotar a mano, anular): el administrador o con el permiso. */
+interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string; areas: Area[]; deudas: boolean }
 interface Rechazo { id: string; motivo: string }
 
 /** La base a la que el celular dice mandar sus operaciones. Sin decirlo: la original. */
@@ -386,7 +387,7 @@ export class Barra extends DurableObject<Env> {
   private avisarYo(id: string) {
     const p = this.acceso.persona(id);
     if (!p) return;
-    const yo = { rol: p.rol, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) };
+    const yo = { rol: p.rol, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) };
     for (const ws of this.ctx.getWebSockets(`p:${id}`)) {
       try { ws.send(JSON.stringify({ tipo: "yo", yo })); } catch { /* ya cerrada */ }
     }
@@ -485,7 +486,7 @@ export class Barra extends DurableObject<Env> {
    */
   private deudas(op: Operacion, quien: Quien): string | null {
     if (op.t === "cobrar" && op.medio === "deuda" && !(typeof op.deudor === "string" && op.deudor.trim())) return "Escriba a nombre de quién queda la deuda.";
-    if ((op.t === "deuda_cargo" || op.t === "deuda_anular") && quien.rol !== ADMIN) return "Solo el administrador anota deudas a mano o anula movimientos de deudas.";
+    if ((op.t === "deuda_cargo" || op.t === "deuda_anular") && !quien.deudas) return "Anotar deudas a mano o anular movimientos de deudas necesita el permiso de administrar deudas.";
     if (op.t === "deuda_pago" || op.t === "deuda_anular") {
       const d = this.estado.deudas?.[op.deudor];
       if (!d) return "Esa persona no tiene deudas.";
@@ -630,7 +631,7 @@ export class Barra extends DurableObject<Env> {
     if (!s || s.dispositivo !== disp.id) return json({ error: "sesion" }, 401);
     const p = this.acceso.persona(s.persona);
     if (!p || !p.activa) return json({ error: "sesion" }, 401);
-    return { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo: disp.id, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) };
+    return { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo: disp.id, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) };
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -685,7 +686,7 @@ export class Barra extends DurableObject<Env> {
       if (lista.length && this.esDeOtraBase(base, q.nombre, lista.length)) return json({ error: "base", ok: [], rechazadas: [], ...this.foto() }, 409);
       const { aceptadas, rechazadas } = this.recibir(lista, q, await this.autores(lista, q));
       // Con `seq`, solo lo nuevo (el respaldo HTTP pregunta cada 5 s); sin él, la foto.
-      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()), yo: { rol: q.rol, areas: q.areas } });
+      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()), yo: { rol: q.rol, areas: q.areas, deudas: q.deudas } });
     }
     if (ruta === "/api/foto") return json(this.foto());
     if (ruta === "/api/mi-pin" && req.method === "POST") {
@@ -701,7 +702,7 @@ export class Barra extends DurableObject<Env> {
     if (ruta.startsWith("/api/admin/") && q.rol !== ADMIN) return json({ error: "Solo el administrador." }, 403);
     if (ruta === "/api/admin/personas" && req.method === "GET") return json({ personas: await this.acceso.personasConPin() });
     if (ruta === "/api/admin/personas" && req.method === "POST") {
-      const b = await cuerpo<{ accion?: string; id?: string; nombre?: string; rol?: string; pin?: string | null; activa?: boolean; areas?: unknown[]; area?: unknown; fecha?: unknown; dar?: boolean }>();
+      const b = await cuerpo<{ accion?: string; id?: string; nombre?: string; rol?: string; pin?: string | null; activa?: boolean; areas?: unknown[]; permisos?: unknown[]; area?: unknown; fecha?: unknown; dar?: boolean }>();
       if (b.accion === "crear") {
         const r = this.acceso.crearPersona(String(b.nombre ?? ""), b.rol === ADMIN ? ADMIN : "operador");
         return "error" in r ? json(r, 400) : json({ persona: r });
@@ -717,6 +718,11 @@ export class Barra extends DurableObject<Env> {
         const e = this.acceso.ponerRol(p.id, b.rol === ADMIN ? ADMIN : "operador");
         if (!e) this.avisarYo(p.id);
         return e ? json({ error: e }, 400) : json({ ok: true });
+      }
+      if (b.accion === "permisos") {
+        this.acceso.ponerPermisos(p.id, Array.isArray(b.permisos) ? b.permisos : []);
+        this.avisarYo(p.id);
+        return json({ ok: true });
       }
       if (b.accion === "areas") {
         const e = this.acceso.ponerAreas(p.id, Array.isArray(b.areas) ? b.areas : []);
@@ -826,7 +832,7 @@ export class Barra extends DurableObject<Env> {
         return json({ error: `El PIN no es correcto.${r.quedan ? ` Quedan ${r.quedan} ${r.quedan === 1 ? "intento" : "intentos"}.` : ""}` }, 401);
       }
     }
-    return json({ token: await firmarSesion(this.env.FIRMA, p.id, disp.id), persona: p.nombre, rol: p.rol, base: this.base, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) });
+    return json({ token: await firmarSesion(this.env.FIRMA, p.id, disp.id), persona: p.nombre, rol: p.rol, base: this.base, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) });
   }
 
   async webSocketMessage(ws: WebSocket, mensaje: string | ArrayBuffer) {
@@ -842,7 +848,7 @@ export class Barra extends DurableObject<Env> {
       try { ws.close(4001, "acceso"); } catch { /* ya cerrada */ }
       return;
     }
-    const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())) };
+    const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) };
     // Versión y pendientes que reporta el celular, para «Personas y celulares».
     const antes = (ws.deserializeAttachment() ?? {}) as DeConexion;
     ws.serializeAttachment({
@@ -850,7 +856,7 @@ export class Barra extends DurableObject<Env> {
       pendientes: typeof m.pendientes === "number" && Number.isInteger(m.pendientes) && m.pendientes >= 0 ? m.pendientes : antes.pendientes,
       visto: Date.now(),
     } satisfies DeConexion);
-    if (m.tipo === "hola") ws.send(JSON.stringify({ ...(this.novedades(m.seq, m.base) ?? this.foto()), yo: { rol: quien.rol, areas: quien.areas } }));
+    if (m.tipo === "hola") ws.send(JSON.stringify({ ...(this.novedades(m.seq, m.base) ?? this.foto()), yo: { rol: quien.rol, areas: quien.areas, deudas: quien.deudas } }));
     else if (m.tipo === "ops" && Array.isArray(m.ops)) {
       if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto()));
       else {

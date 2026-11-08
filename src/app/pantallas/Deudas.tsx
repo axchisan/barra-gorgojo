@@ -46,7 +46,7 @@ export function Deudas({ nav }: { nav: Nav }) {
         </section>
       )}
       {anotar && <HojaAnotarDeuda cerrar={() => setAnotar(false)} />}
-      {sinc.esAdministrador && (
+      {sinc.administraDeudas && (
         <div className="pie-fijo">
           <button className="principal grande" onClick={() => setAnotar(true)}>＋ Anotar deuda</button>
         </div>
@@ -67,7 +67,7 @@ function TarjetaDeudor({ d, nav }: { d: Deudor; nav: Nav }) {
   );
 }
 
-/** Una deuda que no salió de una cuenta (las de comida que se llevaban aparte). Solo el administrador. */
+/** Una deuda que no salió de una cuenta (las de comida que se llevaban aparte). Con el permiso de administrar deudas. */
 function HojaAnotarDeuda({ cerrar, para }: { cerrar: () => void; para?: Deudor }) {
   const [nombre, setNombre] = useState(para?.nombre ?? "");
   const [concepto, setConcepto] = useState("");
@@ -136,7 +136,7 @@ export function DeudorDetalle({ nav, id }: { nav: Nav; id: string }) {
             </span>
             <strong className="valor">{m.tipo === "pago" ? "−" : "+"}{pesos(m.valor)}</strong>
             <small className="tenue">{fechaCorta(m.en)} {horaDe(m.en)} · {m.por}{m.anulado ? ` · anulado por ${m.anulado.por}` : ""}</small>
-            {sinc.esAdministrador && !m.anulado && !m.cuenta && (
+            {sinc.administraDeudas && !m.anulado && !m.cuenta && (
               <button className="chip" onClick={() => sinc.emitir({ t: "deuda_anular", deudor: d.id, movimiento: m.id })}>Anular</button>
             )}
           </div>
@@ -148,7 +148,7 @@ export function DeudorDetalle({ nav, id }: { nav: Nav; id: string }) {
       {pagar && <HojaPagoDeuda d={d} cerrar={() => setPagar(false)} />}
       {anotar && <HojaAnotarDeuda para={d} cerrar={() => setAnotar(false)} />}
       <div className="pie-fijo">
-        {sinc.esAdministrador && <button className="secundario" onClick={() => setAnotar(true)}>＋ Deuda</button>}
+        {sinc.administraDeudas && <button className="secundario" onClick={() => setAnotar(true)}>＋ Deuda</button>}
         <button className="principal grande" disabled={debe <= 0} onClick={() => setPagar(true)}>Recibir pago</button>
       </div>
     </main>

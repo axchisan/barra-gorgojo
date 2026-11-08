@@ -872,7 +872,7 @@ describe("deudas en el servidor", () => {
     expect(r.rechazadas ?? []).toEqual([]);
     expect(r.estado.deudas["nilson-servidor"].movimientos[0].valor).toBe(3 * RUBIA);
     const manual = (await s.ops(ana, [op({ t: "deuda_cargo", deudor: "Nilson Servidor", valor: 5000, concepto: "almuerzo" })])) as R;
-    expect(manual.rechazadas?.[0].motivo).toMatch(/administrador/);
+    expect(manual.rechazadas?.[0].motivo).toMatch(/permiso de administrar deudas/);
     const delAdmin = (await s.ops(admin, [op({ t: "deuda_cargo", deudor: "Nilson Servidor", valor: 5000, concepto: "almuerzo", comida: true })])) as R;
     expect(delAdmin.rechazadas ?? []).toEqual([]);
     const pago = (await s.ops(ana, [op({ t: "deuda_pago", deudor: "nilson-servidor", valor: 1_000_000, medio: "efectivo" })])) as R;
@@ -881,5 +881,35 @@ describe("deudas en el servidor", () => {
     expect(otro.rechazadas?.[0].motivo).toBe("Nilson Servidor no debe nada.");
     const anular = (await s.ops(admin, [op({ t: "deuda_anular", deudor: "nilson-servidor", movimiento: `${cuenta}-p` })])) as R;
     expect(anular.rechazadas?.[0].motivo).toMatch(/se deshace desde el cobro de la cuenta/);
+  });
+});
+
+describe("permiso de administrar deudas", () => {
+  let s: Servidor;
+  let ana: string;
+  let admin: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    admin = await s.token("Administrador");
+  });
+  afterAll(() => s?.apagar());
+  type R = { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any; yo?: { deudas?: boolean } };
+
+  it("sin ser administrador, con el permiso anota deudas a mano y anula; sin él, no", async () => {
+    const cargo = () => op({ t: "deuda_cargo", deudor: "Vecino", valor: 8000, concepto: "almuerzo", comida: true });
+    const antes = (await s.ops(ana, [cargo()])) as R;
+    expect(antes.rechazadas?.length).toBe(1);
+    expect(antes.yo?.deudas).toBe(false);
+    const r = await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "permisos", id: "ana", permisos: ["deudas"] }) });
+    expect(r.status).toBe(200);
+    const despues = (await s.ops(ana, [cargo()])) as R;
+    expect(despues.rechazadas ?? []).toEqual([]);
+    expect(despues.yo?.deudas).toBe(true);
+    const id = despues.estado.deudas.vecino.movimientos[0].id;
+    const anular = (await s.ops(ana, [op({ t: "deuda_anular", deudor: "vecino", movimiento: id })])) as R;
+    expect(anular.rechazadas ?? []).toEqual([]);
+    const lista = (await (await s.pedir(admin, "/api/admin/personas")).json()) as { personas: { id: string; permisos: string[] }[] };
+    expect(lista.personas.find((p) => p.id === "ana")?.permisos).toEqual(["deudas"]);
   });
 });

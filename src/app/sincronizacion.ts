@@ -226,6 +226,8 @@ class Sincronizador {
     return p && this.areas.includes(p) ? p : this.areas[0];
   }
   tieneArea(a: Area) { return this.areas.includes(a); }
+  /** Administra deudas (anotar a mano, anular): el administrador o con el permiso (docs/15). */
+  get administraDeudas() { return this.esAdministrador || !!this.sesion?.deudas; }
   ponerPanel(panel: Area) {
     if (!this.sesion || !this.areas.includes(panel)) return;
     this.sesion = { ...this.sesion, panel };
@@ -234,11 +236,12 @@ class Sincronizador {
   }
 
   /** El servidor dice el rol y las áreas de hoy (pueden cambiar sin volver a entrar). */
-  private tomarYo(yo: { rol?: string; areas?: unknown[] } | undefined) {
+  private tomarYo(yo: { rol?: string; areas?: unknown[]; deudas?: boolean } | undefined) {
     if (!yo || !this.sesion) return;
     const areas = (yo.areas ?? []).filter(esArea);
-    if (yo.rol === this.sesion.rol && areas.join() === (this.sesion.areas ?? []).join()) return;
-    this.sesion = { ...this.sesion, rol: yo.rol, areas };
+    const deudas = !!yo.deudas;
+    if (yo.rol === this.sesion.rol && areas.join() === (this.sesion.areas ?? []).join() && deudas === !!this.sesion.deudas) return;
+    this.sesion = { ...this.sesion, rol: yo.rol, areas, deudas };
     void this.guardar({ ajustes: { sesion: this.sesion } });
     this.avisar();
   }
@@ -278,13 +281,13 @@ class Sincronizador {
    */
   async entrar(persona: string, pin: string, pinNuevo?: string): Promise<string | null> {
     try {
-      const { status, datos } = await pedir<{ token?: string; persona?: string; rol?: string; base?: string; areas?: unknown[] }>("/api/entrar", {
+      const { status, datos } = await pedir<{ token?: string; persona?: string; rol?: string; base?: string; areas?: unknown[]; deudas?: boolean }>("/api/entrar", {
         method: "POST", body: JSON.stringify({ persona, pin, pinNuevo }),
       });
       if (status === 401 && datos.error === "dispositivo") { this.vinculado = false; this.avisar(); return "Este celular no está vinculado."; }
       if (!datos.token) return datos.error ?? "No se pudo entrar.";
       if (datos.base) this.cambiarDeBase(datos.base);
-      this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol, areas: (datos.areas ?? []).filter(esArea) };
+      this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol, areas: (datos.areas ?? []).filter(esArea), deudas: !!datos.deudas };
       void this.guardar({ ajustes: { sesion: this.sesion } });
       if (this.lider) { this.cerrarSocket(); this.conectar(); }
       this.avisar();
@@ -555,7 +558,7 @@ class Sincronizador {
         return this.salir();
       }
       if (!r.ok && r.status !== 409) throw new Error(); // 409: otra base; llega su foto
-      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios; yo?: { rol?: string; areas?: unknown[] } };
+      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios; yo?: { rol?: string; areas?: unknown[]; deudas?: boolean } };
       this.tomarYo(d.yo);
       this.quitarPendientes(d.ok);
       this.rechazar(d.rechazadas);

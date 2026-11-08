@@ -9,7 +9,10 @@ anotaban aparte.
 - **Lo fiado es venta del día en que se fió.** Lo que pagan después **va aparte**: no se
   suma al efectivo recibido ni al cuadre de caja del día en que pagan.
 - **Pasar a deuda y recibir pagos:** cualquiera. **Anotar deudas a mano y anular
-  movimientos:** el administrador.
+  movimientos:** quien **administra deudas**: el administrador, o cualquier persona con el
+  permiso «📒 Administra deudas», que se activa en «Personas y celulares» (columna
+  `permisos` de `personas`, valor `deudas`). El servidor lo revisa en cada operación y le
+  avisa al celular conectado cuando cambia.
 
 ## Cómo funciona
 

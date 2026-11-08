@@ -24,6 +24,8 @@ export interface Persona {
   tienePin: boolean;
   /** Áreas fijas, en orden: la primera es su pantalla principal (docs/14). */
   areas: Area[];
+  /** Permisos sueltos (docs/15): «deudas». */
+  permisos: Permiso[];
 }
 
 const COLORES = ["#C8312A", "#2F7D3A", "#1F4E8C", "#8E44AD", "#9A6410", "#2E6B7A", "#7A1F1C", "#5B3A1E"];
@@ -103,15 +105,21 @@ export async function leerSesion(firma: string, token: string | null): Promise<{
 
 // ── La parte guardada en el Durable Object ────────────────────────────
 
-type FilaPersona = { id: string; nombre: string; rol: Rol; color: string; activa: number; pin: string | null; areas: string | null };
+type FilaPersona = { id: string; nombre: string; rol: Rol; color: string; activa: number; pin: string | null; areas: string | null; permisos: string | null };
+
+/** Permisos sueltos, además del rol y las áreas: «deudas» = administra deudas (docs/15). */
+export const PERMISOS = ["deudas"] as const;
+export type Permiso = (typeof PERMISOS)[number];
+const esPermiso = (x: unknown): x is Permiso => PERMISOS.includes(x as Permiso);
+const leerPermisos = (t: string | null): Permiso[] => [...new Set((t ?? "").split(",").map((x) => x.trim()).filter(esPermiso))];
 
 /** «barra,comida» → ["barra", "comida"], sin repetidos ni desconocidas; vacío: la barra (como antes de las áreas). */
 const leerAreas = (t: string | null): Area[] => {
   const a = [...new Set((t ?? "").split(",").map((x) => x.trim()).filter(esArea))];
   return a.length ? a : ["barra"];
 };
-const COLUMNAS = "id, nombre, rol, color, activa, pin, areas";
-const aPersona = (f: FilaPersona): Persona => ({ id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin, areas: leerAreas(f.areas) });
+const COLUMNAS = "id, nombre, rol, color, activa, pin, areas, permisos";
+const aPersona = (f: FilaPersona): Persona => ({ id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin, areas: leerAreas(f.areas), permisos: leerPermisos(f.permisos) });
 
 export class Acceso {
   constructor(private sql: SqlStorage, private secretoPines: string) {}
@@ -130,6 +138,8 @@ export class Acceso {
     // Áreas (docs/14): columna nueva en bases de antes; vacía = la barra.
     const columnas = this.sql.exec<{ name: string }>("PRAGMA table_info(personas)").toArray().map((c) => c.name);
     if (!columnas.includes("areas")) this.sql.exec("ALTER TABLE personas ADD COLUMN areas TEXT");
+    // Permisos sueltos (docs/15): columna nueva; vacía = ninguno.
+    if (!columnas.includes("permisos")) this.sql.exec("ALTER TABLE personas ADD COLUMN permisos TEXT");
     // Un área dada por el administrador para un día (jornada AAAA-MM-DD).
     this.sql.exec("CREATE TABLE IF NOT EXISTS accesos_dia (persona TEXT NOT NULL, area TEXT NOT NULL, fecha TEXT NOT NULL, por TEXT NOT NULL, PRIMARY KEY (persona, area, fecha))");
     const hay = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM personas").one().n;
@@ -173,6 +183,17 @@ export class Acceso {
     }
     this.sql.exec("UPDATE personas SET rol = ? WHERE id = ?", rol === ADMIN ? ADMIN : "operador", id);
     return null;
+  }
+
+  /** Permisos sueltos de una persona (por ahora, administrar deudas). */
+  ponerPermisos(id: string, permisos: unknown[]) {
+    this.sql.exec("UPDATE personas SET permisos = ? WHERE id = ?", [...new Set(permisos.filter(esPermiso))].join(","), id);
+  }
+
+  /** Si administra deudas: el administrador siempre; los demás, con el permiso. */
+  administraDeudas(id: string): boolean {
+    const p = this.persona(id);
+    return !!p && (p.rol === ADMIN || p.permisos.includes("deudas"));
   }
 
   /** Áreas fijas, en orden (la primera es la pantalla principal). */

@@ -8,7 +8,7 @@ import { cerrarConEnter } from "../teclado";
 
 interface PersonaAdmin {
   id: string; nombre: string; rol: string; color: string; activa: boolean; tienePin: boolean; pin: string | null;
-  areas?: Area[]; dias?: { area: Area; fecha: string }[];
+  areas?: Area[]; dias?: { area: Area; fecha: string }[]; permisos?: string[];
 }
 interface Celular { id: string; nombre: string; creado: number; por: string; ultimo_uso: number | null; revocado: number | null }
 interface Rechazada { id: string; persona: string; motivo: string; en: number }
@@ -84,7 +84,7 @@ export function Personas({ nav }: { nav: Nav }) {
             <button className="chip" onClick={() => { setCambiando(cambiando === p.id ? null : p.id); setPinNuevo(""); }}>Cambiar PIN</button>
             <button className="chip" onClick={() => accion({ accion: "activa", id: p.id, activa: !p.activa })}>{p.activa ? "Desactivar" : "Activar"}</button>
             <button className={permisos === p.id ? "chip activo" : "chip"} aria-expanded={permisos === p.id} onClick={() => setPermisos(permisos === p.id ? null : p.id)}>
-              {p.rol === "admin" ? "Todo" : (p.areas ?? ["barra"]).map(nombreArea).join(" y ")} ▾
+              {p.rol === "admin" ? "Todo" : `${(p.areas ?? ["barra"]).map(nombreArea).join(" y ")}${p.permisos?.includes("deudas") ? " · deudas" : ""}`} ▾
             </button>
             {permisos === p.id && <Permisos p={p} accion={accion} />}
             {cambiando === p.id && (
@@ -201,6 +201,13 @@ function Permisos({ p, accion }: { p: PersonaAdmin; accion: (cuerpo: unknown) =>
         <input type="checkbox" checked={p.rol === "admin"} onChange={(e) => accion({ accion: "rol", id: p.id, rol: e.target.checked ? "admin" : "operador" })} />
         Administrador: ve y hace todo, en todas las áreas
       </label>
+      {p.rol !== "admin" && (
+        <label className="interruptor">
+          <input type="checkbox" checked={!!p.permisos?.includes("deudas")}
+            onChange={(e) => accion({ accion: "permisos", id: p.id, permisos: e.target.checked ? ["deudas"] : [] })} />
+          📒 Administra deudas: anotar deudas a mano y anular movimientos
+        </label>
+      )}
       <p className="etiqueta">Áreas fijas {p.rol === "admin" ? "(y su pantalla principal)" : ""}</p>
       <div className="chips">
         {AREAS.map((a) => {
