@@ -24,13 +24,19 @@ const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mes
 
 export function Anotar({ nav, cuentaId, repetir }: { nav: Nav; cuentaId?: string; repetir?: boolean }) {
   const cuenta = cuentaId ? sinc.visible.cuentas[cuentaId] : undefined;
+  // «Repetir» trae la última pedida. En las canchas, el último chico: los adicionales
+  // (algo suelto después del chivo) solo si no hay ningún chico.
   const ultima = useMemo(() => {
     if (!cuenta) return null;
-    for (let i = cuenta.rondas.length - 1; i >= 0; i--) {
-      const lineas = cuenta.lineas.filter((l) => l.ronda === cuenta.rondas[i].id && !l.anulada);
-      if (lineas.length) return lineas;
-    }
-    return null;
+    const buscar = (sirve: (adicional: boolean) => boolean) => {
+      for (let i = cuenta.rondas.length - 1; i >= 0; i--) {
+        if (!sirve(!!cuenta.rondas[i].adicional)) continue;
+        const lineas = cuenta.lineas.filter((l) => l.ronda === cuenta.rondas[i].id && !l.anulada);
+        if (lineas.length) return lineas;
+      }
+      return null;
+    };
+    return (cuenta.tipo === "cancha" ? buscar((ad) => !ad) : null) ?? buscar(() => true);
   }, [cuenta]);
 
   // El panel de comida (docs/14): platos primero, con notas; las bebidas quedan por despachar.

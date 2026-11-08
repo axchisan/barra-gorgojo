@@ -7,7 +7,8 @@ test("en la cancha se anota un adicional sin que cuente como chico", async ({ br
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
   await p.getByRole("button", { name: "Cancha", exact: true }).click();
   await p.getByRole("button", { name: "Cancha 2" }).click();
-  await p.locator("main > section .producto").first().click();
+  const primero = p.locator("main > section .producto").first();
+  await primero.click(); await primero.click(); // el chico: 2 Rubia
   await p.locator(".pie-fijo .principal").click();
   await p.locator(".tarjeta", { hasText: "Cancha 2" }).click();
   await p.getByRole("button", { name: "＋ Chico" }).click();
@@ -21,6 +22,11 @@ test("en la cancha se anota un adicional sin que cuente como chico", async ({ br
   await expect(p.locator(".cabeza-total .meta")).toContainText("1 chico · 1 adicional");
   await p.getByRole("button", { name: "Chicos" }).click();
   await expect(p.locator(".ronda-tarjeta header strong", { hasText: "Adicional 1" })).toBeVisible();
+  // «Repetir» trae el chico, no el adicional.
+  await p.getByRole("button", { name: "＋ Chico" }).click();
+  await expect(p.locator(".repetir")).toContainText("Repetir chico: 2 Rubia");
+  await p.getByRole("button", { name: "Volver" }).click();
+  await p.getByRole("button", { name: "Chicos" }).click();
   // Se cambia después con un toque.
   await p.locator(".ronda-tarjeta", { hasText: "Adicional 1" }).getByRole("button", { name: "Es chico" }).click();
   await expect(p.locator(".cabeza-total .meta")).toContainText("2 chicos");
