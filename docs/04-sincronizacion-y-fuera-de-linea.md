@@ -239,6 +239,10 @@ o reparten entre varios con medios distintos.
 Pruebas: `tests/abonos.test.ts`, `tests/servidor/barra.test.ts` «abonos en el servidor» y
 `tests/e2e/abonos.spec.ts`.
 
+En el detalle, cada abono muestra de qué chico o pedida es cada producto que pagó y
+tiene «✎ ¿Quién?» para poner o corregir quién pagó (operación `pagador`: no cambia el
+valor; lo último que llega es lo que queda).
+
 ### Dividir entre varios (2026-11-08)
 
 En «Cobrar → Valor», «👥 Dividir entre varios»: entre cuántas personas y cuántas ya

@@ -192,6 +192,7 @@ export type Operacion = Base &
     | { t: "anular"; cuenta: string; linea: string }
     | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area; entre?: number }
     | { t: "deshacer_pago"; cuenta: string; pago: string }
+    | { t: "pagador"; cuenta: string; pago: string; pagador: string }
     | { t: "reabrir"; cuenta: string }
     | { t: "comida_cobrada"; cuenta: string; valor: boolean }
     | { t: "anular_cuenta"; cuenta: string; motivo?: string }
@@ -495,6 +496,15 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       delete o.juntadaA;
       o.ultima = op.en;
       c.ultima = op.en;
+      return estado;
+    }
+    case "pagador": {
+      // Quién pagó un abono, puesto o corregido después (solo la etiqueta, no el valor).
+      const p = c?.pagos.find((x) => x.id === op.pago);
+      if (!p) return estado;
+      const nombre = typeof op.pagador === "string" ? op.pagador.trim().slice(0, 40) : "";
+      if (nombre) p.pagador = nombre;
+      else delete p.pagador;
       return estado;
     }
     case "deshacer_pago": {

@@ -897,3 +897,8 @@ html.apaisada .inicio .pie-fijo .pedir-barra { min-height: 46px; padding: 8px 12
 .dividir-cuenta .paso { display: grid; grid-template-columns: minmax(0, 1fr) 48px 2.6em 48px; gap: 8px; }
 .dividir-cuenta .paso > span:first-child { min-width: 0; }
 .dividir-cuenta .paso button { width: 48px; }
+/* Abonos del detalle: quién pagó, editable. */
+.acciones-abono { display: flex; gap: 8px; flex-wrap: wrap; }
+.nombrar-abono { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.nombrar-abono input { flex: 1 1 160px; min-width: 0; }
+.nombrar-abono button { min-height: 48px; }

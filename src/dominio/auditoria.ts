@@ -80,6 +80,11 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
     }
     case "separar":
       return { texto: "Separó una cuenta que se había juntado con esta", atencion: true };
+    case "pagador": {
+      const p = cuenta?.pagos.find((x) => x.id === op.pago);
+      const quien = op.pagador.trim();
+      return { texto: `${quien ? `Puso «${quien}» como quien pagó` : "Quitó quién pagó"} ${p ? `el abono de ${pesos(p.monto)}` : "un abono"}`, atencion: false };
+    }
     case "deshacer_pago": {
       const p = cuenta?.pagos.find((x) => x.id === op.pago);
       return { texto: `Deshizo ${p ? `un ${p.parcial ? "abono" : "cobro"} de ${pesos(p.monto)} (${p.persona})` : "un abono"}`, atencion: true };

@@ -105,3 +105,14 @@ describe("dividir entre varios", () => {
     expect(e.cuentas.g.pagos.map((p) => p.entre)).toEqual([7, undefined, undefined]);
   });
 });
+
+describe("quién pagó, después", () => {
+  it("se pone, se cambia o se quita sin tocar el valor", () => {
+    let e = correr([...cuenta(), cobrar({ pago: "pq", monto: 5_000 })]);
+    const pago = e.cuentas.g.pagos[0].id;
+    e = correr([op({ t: "pagador", cuenta: "g", pago, pagador: "  Pedro  " })], e);
+    expect(e.cuentas.g.pagos[0]).toMatchObject({ pagador: "Pedro", monto: 5_000 });
+    e = correr([op({ t: "pagador", cuenta: "g", pago, pagador: "" })], e);
+    expect(e.cuentas.g.pagos[0].pagador).toBeUndefined();
+  });
+});

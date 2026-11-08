@@ -26,6 +26,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const [cliente, setCliente] = useState(false);
   const [juntar, setJuntar] = useState(false);
   const [verAnuladas, setVerAnuladas] = useState(false);
+  /** El abono al que se le está poniendo quién pagó, y lo escrito. */
+  const [nombrando, setNombrando] = useState<{ pago: string; texto: string } | null>(null);
   useAtrasCierra(cliente, () => setCliente(false));
   if (!c) return <NoExiste nav={nav} />;
 
@@ -125,13 +127,34 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
       {s === "abierta" && abonos(c).length > 0 && (
         <section className="abonos-lista">
           {abonos(c).map((p) => {
-            const que = p.lineas?.map((x) => `${x.cantidad} ${c.lineas.find((l) => l.id === x.linea)?.nombre ?? ""}`).join(", ");
+            // Cada producto abonado con su chico o pedida: «4 Águila (Chico 2)».
+            const que = p.lineas?.map((x) => {
+              const l = c.lineas.find((y) => y.id === x.linea);
+              const r = l && c.rondas.find((y) => y.id === l.ronda);
+              return `${x.cantidad} ${l?.nombre ?? ""}${r ? ` (${nombreRonda(c, r)})` : ""}`;
+            }).join(", ");
             const puede = sinc.esAdministrador || (p.persona === sinc.sesion?.persona && Date.now() - p.en < 5 * 60_000);
             return (
               <div key={p.id} className="abono-fila">
                 <span>{p.pagador && <b className="pagador">{p.pagador}: </b>}<b>{pesos(p.monto)}</b> {p.medio === "efectivo" ? "en efectivo" : p.medio === "nequi" ? "por Nequi" : "por Breve"}{que ? ` · ${que}` : ""}</span>
                 <small className="tenue">{horaDe(p.en)} · {p.persona}</small>
-                {puede && <button className="chip" onClick={() => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago: p.id })}>Deshacer</button>}
+                {nombrando?.pago === p.id ? (
+                  <form className="nombrar-abono" onSubmit={(e) => {
+                    e.preventDefault();
+                    sinc.emitir({ t: "pagador", cuenta: c.id, pago: p.id, pagador: nombrando.texto.trim() });
+                    setNombrando(null);
+                  }}>
+                    <input aria-label="Quién pagó este abono" placeholder="¿Quién pagó?" maxLength={40} enterKeyHint="done" autoCapitalize="words" autoFocus
+                      value={nombrando.texto} onChange={(e) => setNombrando({ pago: p.id, texto: e.target.value })} />
+                    <button className="principal">Guardar</button>
+                    <button type="button" className="secundario" onClick={() => setNombrando(null)}>✕</button>
+                  </form>
+                ) : (
+                  <div className="acciones-abono">
+                    <button className="chip" onClick={() => setNombrando({ pago: p.id, texto: p.pagador ?? "" })}>✎ {p.pagador ? "Cambiar quién" : "¿Quién?"}</button>
+                    {puede && <button className="chip" onClick={() => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago: p.id })}>Deshacer</button>}
+                  </div>
+                )}
               </div>
             );
           })}

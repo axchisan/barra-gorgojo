@@ -82,6 +82,13 @@ test("el detalle muestra los abonos y lo pagado; «Deshacer» deshace solo ese a
   await p.goBack();
   await expect(p.locator(".estado.abonada")).toContainText("falta");
   await expect(p.locator(".abono-fila")).toHaveCount(1);
+  // Cada producto abonado dice de qué pedida es, y se pone quién pagó desde aquí.
+  await expect(p.locator(".abono-fila")).toContainText("(Pedida 2)");
+  await p.locator(".abono-fila").getByRole("button", { name: "✎ ¿Quién?" }).click();
+  await p.getByLabel("Quién pagó este abono").fill("Pedro");
+  await p.getByRole("button", { name: "Guardar" }).click();
+  await expect(p.locator(".abono-fila .pagador")).toHaveText("Pedro: ");
+  await expect(p.locator(".abono-fila").getByRole("button", { name: "✎ Cambiar quién" })).toBeVisible();
   await p.getByRole("button", { name: "Pedidas" }).click();
   await expect(p.locator(".ficha.pagada")).toHaveCount(1);
 
