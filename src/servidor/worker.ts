@@ -7,6 +7,7 @@ import { PERSONAS } from "../dominio/catalogo";
 import { aplicar, esOperacion, esVigente, estadoVacio, jornada, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
+import { saldoDeudor } from "../dominio/deudas";
 import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
 import { describirConEnvio, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
@@ -104,7 +105,10 @@ interface Cambios {
   productos?: Estado["productos"];
   orden?: Estado["orden"];
   jornadas?: Estado["jornadas"];
+  deudas?: Estado["deudas"];
 }
+/** Las operaciones que pueden cambiar las deudas (docs/15). */
+const TOCA_DEUDAS = new Set<Operacion["t"]>(["cobrar", "deshacer_pago", "reabrir", "deuda_cargo", "deuda_pago", "deuda_anular"]);
 /** Hasta cuántas operaciones atrás se mandan novedades al reconectar; más, la foto completa. */
 const MAX_NOVEDADES = 500;
 interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string; areas: Area[] }
@@ -186,6 +190,7 @@ export class Barra extends DurableObject<Env> {
     estado.productos = JSON.parse(meta.get("productos") ?? "{}");
     if (meta.has("orden")) estado.orden = JSON.parse(meta.get("orden")!);
     if (meta.has("jornadas")) estado.jornadas = JSON.parse(meta.get("jornadas")!);
+    if (meta.has("deudas")) estado.deudas = JSON.parse(meta.get("deudas")!);
     for (const f of sql.exec<{ datos: string }>("SELECT datos FROM cuentas WHERE viva = 1 OR ultima >= ?", Date.now() - VENTANA_VIGENTE)) {
       const c = JSON.parse(f.datos) as Cuenta;
       estado.cuentas[c.id] = c;
@@ -203,7 +208,7 @@ export class Barra extends DurableObject<Env> {
       sql.exec("DELETE FROM cuenta_jornadas");
       sql.exec("DELETE FROM proyeccion");
       for (const c of Object.values(this.estado.cuentas)) this.guardarCuenta(c);
-      this.guardarGeneral(["productos", "orden", "jornadas"]);
+      this.guardarGeneral(["productos", "orden", "jornadas", "deudas"]);
     });
     console.log(JSON.stringify({ aviso: "proyeccion-reconstruida", seq: this.seq, cuentas: Object.keys(this.estado.cuentas).length }));
   }
@@ -228,7 +233,7 @@ export class Barra extends DurableObject<Env> {
   }
 
   /** Lo general de la proyección: siempre la versión y el seq; lo demás, lo que cambió. */
-  private guardarGeneral(claves: ("productos" | "orden" | "jornadas")[] = []) {
+  private guardarGeneral(claves: ("productos" | "orden" | "jornadas" | "deudas")[] = []) {
     const sql = this.ctx.storage.sql;
     const poner = (clave: string, valor: string) =>
       sql.exec("INSERT INTO proyeccion (clave, valor) VALUES (?, ?) ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor", clave, valor);
@@ -297,6 +302,7 @@ export class Barra extends DurableObject<Env> {
     if (op.t === "producto") cambios.productos = this.estado.productos ?? {};
     if (op.t === "orden") cambios.orden = this.estado.orden ?? [];
     if (op.t === "cerrar_jornada") cambios.jornadas = this.estado.jornadas ?? {};
+    if (TOCA_DEUDAS.has(op.t) && this.estado.deudas) cambios.deudas = this.estado.deudas;
     return cambios;
   }
 
@@ -431,7 +437,7 @@ export class Barra extends DurableObject<Env> {
    * esconder un botón no es seguridad (docs/03 «Acceso y seguridad»).
    */
   private permiso(op: Operacion, quien: Quien, ahora: number): string | null {
-    const juntas = this.juntas(op);
+    const juntas = this.juntas(op) ?? this.deudas(op, quien);
     if (juntas) return juntas;
     if (quien.rol === ADMIN) {
       if (op.t === "anular_cuenta") {
@@ -477,6 +483,22 @@ export class Barra extends DurableObject<Env> {
    * Juntar y separar cuentas (docs/04 «Juntar cuentas»), para todos: lo que no se puede
    * hacer se rechaza con el porqué en vez de no hacer nada en silencio (regla 8).
    */
+  private deudas(op: Operacion, quien: Quien): string | null {
+    if (op.t === "cobrar" && op.medio === "deuda" && !(typeof op.deudor === "string" && op.deudor.trim())) return "Escriba a nombre de quién queda la deuda.";
+    if ((op.t === "deuda_cargo" || op.t === "deuda_anular") && quien.rol !== ADMIN) return "Solo el administrador anota deudas a mano o anula movimientos de deudas.";
+    if (op.t === "deuda_pago" || op.t === "deuda_anular") {
+      const d = this.estado.deudas?.[op.deudor];
+      if (!d) return "Esa persona no tiene deudas.";
+      if (op.t === "deuda_pago" && saldoDeudor(d) <= 0) return `${d.nombre} no debe nada.`;
+      if (op.t === "deuda_anular") {
+        const m = d.movimientos.find((x) => x.id === op.movimiento);
+        if (!m || m.anulado) return "Ese movimiento ya no está.";
+        if (m.cuenta) return `Esa deuda salió de la cuenta «${m.cuenta.nombre}»: se deshace desde el cobro de la cuenta.`;
+      }
+    }
+    return null;
+  }
+
   private juntas(op: Operacion): string | null {
     const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
     if (op.t === "cobrar" && c && situacion(c) === "juntada") return `${c.nombre} se juntó con ${c.juntadaA!.nombre}: cóbrela allá.`;
@@ -591,7 +613,7 @@ export class Barra extends DurableObject<Env> {
         const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
         if (c) this.guardarCuenta(c);
         if (op.t === "juntar" || op.t === "separar") { const o = this.estado.cuentas[op.desde]; if (o) this.guardarCuenta(o); }
-        this.guardarGeneral(op.t === "producto" ? ["productos"] : op.t === "orden" ? ["orden"] : op.t === "cerrar_jornada" ? ["jornadas"] : []);
+        this.guardarGeneral(op.t === "producto" ? ["productos"] : op.t === "orden" ? ["orden"] : op.t === "cerrar_jornada" ? ["jornadas"] : TOCA_DEUDAS.has(op.t) ? ["deudas"] : []);
       });
       aceptadas.push(op.id);
       this.avisarATodos({ tipo: "op", op, cambios: this.cambiosDe(op) });

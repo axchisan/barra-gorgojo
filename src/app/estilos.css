@@ -902,3 +902,22 @@ html.apaisada .inicio .pie-fijo .pedir-barra { min-height: 46px; padding: 8px 12
 .nombrar-abono { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
 .nombrar-abono input { flex: 1 1 160px; min-width: 0; }
 .nombrar-abono button { min-height: 48px; }
+/* Deudas (docs/15). */
+.chip.activo.deuda-chip { background: #5b3a8a; border-color: #5b3a8a; }
+.a-deuda { display: flex; flex-direction: column; gap: 8px; }
+.cifra.deuda { background: #efe8f7; color: #4a3577; border: 0; text-align: left; font: inherit; }
+.deudas, .deudor-detalle { max-width: 900px; }
+.deudas .cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.deudas .cifras .cifra.grande { grid-column: 1 / -1; }
+.tarjeta.deudor { border-color: #b9a3d9; }
+.movimientos { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.movimiento { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; background: var(--papel); border: 2px solid var(--neutro-200); border-radius: var(--radio); padding: 8px 12px; }
+.movimiento .que { font-weight: 700; }
+.movimiento .valor { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.movimiento.pago .valor { color: var(--verde); }
+.movimiento .tenue { grid-column: 1 / -1; }
+.movimiento .chip { grid-column: 1 / -1; justify-self: start; min-height: 40px; }
+.movimiento.anulado { opacity: 0.55; text-decoration: line-through; }
+/* Cuatro medios (con «Deuda») en una sola fila, también en el teléfono. */
+.cobrar .opciones.medios { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cobrar .opciones.medios .chip { padding: 8px 4px; font-size: clamp(0.85rem, 3.9vw, 1.05rem); white-space: nowrap; }

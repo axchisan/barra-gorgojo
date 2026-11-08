@@ -2,6 +2,7 @@ import { useState } from "react";
 import { areaDe, type Area } from "../../dominio/areas";
 import { efectivoDeJornada, jornada, saldo, situacion, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
+import { pagosDeudasDe } from "../../dominio/deudas";
 import { resumenJornada } from "../../dominio/jornada";
 import { ponerAviso } from "../avisos";
 import { sinc } from "../sincronizacion";
@@ -25,6 +26,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const cierres = (sinc.visible.jornadas?.[hoy] ?? []).filter((x) => areaDe(x.area) === caja);
   const ultimoCierre = cierres[cierres.length - 1];
   const nombreCaja = caja === "comida" ? "caja de cocina" : "caja de barra";
+  const pagosDeudas = pagosDeudasDe(Object.values(sinc.visible.deudas ?? {}), hoy, jornada);
   const paquetesHoy = contarPaquetes(
     cuentas.filter((c) => !c.anulada).flatMap((c) => {
       const rondasHoy = new Set(c.rondas.filter((r) => jornada(r.en) === hoy).map((r) => r.id));
@@ -87,7 +89,14 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
         )}
         <div className="cifra"><span>Nequi</span><strong>{pesos(porMedio.nequi)}</strong></div>
         <div className="cifra"><span>Breve</span><strong>{pesos(porMedio.breve)}</strong></div>
-        <div className="cifra en-comida"><span>Pasado a comida</span><strong>{pesos(porMedio.comida)}</strong></div>
+        {porMedio.comida > 0 && <div className="cifra en-comida"><span>Pasado a comida</span><strong>{pesos(porMedio.comida)}</strong></div>}
+        {/* Deudas (docs/15): lo fiado hoy es venta de hoy; lo que pagan de deudas va aparte de la caja. */}
+        {porMedio.deuda > 0 && <div className="cifra deuda"><span>📒 Fiado hoy</span><strong>{pesos(porMedio.deuda)}</strong></div>}
+        {pagosDeudas.total > 0 && (
+          <button className="cifra deuda" onClick={() => nav.ir({ v: "deudas" })}>
+            <span>📒 Pagos de deudas hoy (aparte de la caja)</span><strong>{pesos(pagosDeudas.total)}</strong>
+          </button>
+        )}
         {(paquetesHoy.petacos > 0 || paquetesHoy.medios > 0) && (
           <div className="cifra"><span>Petacos vendidos</span><strong>{textoPaquetes(paquetesHoy)}</strong></div>
         )}

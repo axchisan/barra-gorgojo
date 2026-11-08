@@ -3,10 +3,12 @@
 // Ver docs/04-sincronizacion-y-fuera-de-linea.md.
 
 import { areaDe, esArea, type Area } from "./areas";
+import { idDeudor, saldoDeudor, type Deudor } from "./deudas";
 import { CATALOGO, ESPECIALES, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "./catalogo";
 
 export type TipoCuenta = "grupo" | "persona" | "mesa" | "cancha" | "rapida";
-export type Medio = "efectivo" | "nequi" | "breve" | "comida";
+/** «deuda»: no entra plata; queda como deuda de alguien (docs/15). */
+export type Medio = "efectivo" | "nequi" | "breve" | "comida" | "deuda";
 export type Cancha = "1" | "2" | "pequena";
 
 export interface Linea {
@@ -68,6 +70,8 @@ export interface Pago {
   pagador?: string;
   /** Si se dividió la cuenta: entre cuántas personas (el siguiente que pague ve cuántos faltan). */
   entre?: number;
+  /** Pasado a deuda: de quién (id en `Estado.deudas`). */
+  deudor?: string;
   /** Desde qué área se cobró (su caja). Sin ella, la barra (docs/14). */
   area?: Area;
   /** Abono hecho en otra cuenta que se juntó con esta (su id). */
@@ -106,6 +110,8 @@ export interface Estado {
   orden?: string[];
   /** Cierres de cada jornada (AAAA-MM-DD), en el orden en que se hicieron. RF-51. */
   jornadas?: Record<string, CierreJornada[]>;
+  /** Quienes deben, con sus cargos y pagos (docs/15). */
+  deudas?: Record<string, Deudor>;
 }
 
 /** Un cierre del día: el efectivo contado contra el esperado en ese momento. */
@@ -190,7 +196,10 @@ export type Operacion = Base &
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
     | { t: "anular"; cuenta: string; linea: string }
-    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area; entre?: number }
+    | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area; entre?: number; deudor?: string }
+    | { t: "deuda_cargo"; deudor: string; valor: number; concepto: string; comida?: boolean }
+    | { t: "deuda_pago"; deudor: string; valor: number; medio: "efectivo" | "nequi" | "breve" }
+    | { t: "deuda_anular"; deudor: string; movimiento: string }
     | { t: "deshacer_pago"; cuenta: string; pago: string }
     | { t: "pagador"; cuenta: string; pago: string; pagador: string }
     | { t: "reabrir"; cuenta: string }
@@ -292,6 +301,20 @@ export function puedeEditarLinea(areas: readonly Area[], l: Linea): boolean {
   return areas.includes("barra") || !!l.comida || !!l.porDespachar;
 }
 
+/** La persona que debe, por su nombre; si no existe, se crea. */
+function deudorDe(estado: Estado, nombre: string): Deudor {
+  const id = idDeudor(nombre);
+  estado.deudas ??= {};
+  return (estado.deudas[id] ??= { id, nombre: nombre.trim().slice(0, 40), movimientos: [] });
+}
+
+/** Deshacer un pago a deuda de una cuenta anula su cargo en la deuda. */
+function anularCargoDeCuenta(estado: Estado, p: Pago, op: { persona: string; en: number }) {
+  if (p.medio !== "deuda" || !p.deudor) return;
+  const m = estado.deudas?.[p.deudor]?.movimientos.find((x) => x.id === p.id);
+  if (m && !m.anulado) m.anulado = { por: op.persona, en: op.en };
+}
+
 /** Bebidas pedidas desde comida que la barra no ha despachado, de todas las cuentas vivas. */
 export function porDespachar(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; lineas: Linea[] }[] {
   const r: { cuenta: Cuenta; lineas: Linea[] }[] = [];
@@ -306,6 +329,34 @@ export function porDespachar(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; linea
 export function aplicar(estado: Estado, op: Operacion): Estado {
   const c = "cuenta" in op ? estado.cuentas[op.cuenta] : undefined;
   switch (op.t) {
+    case "deuda_cargo": {
+      // Una deuda anotada a mano (no salió de una cuenta).
+      const nombre = typeof op.deudor === "string" ? op.deudor.trim().slice(0, 40) : "";
+      const valor = Math.floor(Number(op.valor));
+      if (!idDeudor(nombre) || !(valor > 0) || valor > TOPE_VALOR_LIBRE) return estado;
+      const d = deudorDe(estado, nombre);
+      if (d.movimientos.some((m) => m.id === op.id)) return estado;
+      const concepto = typeof op.concepto === "string" ? op.concepto.trim().slice(0, 80) : "";
+      d.movimientos.push({ id: op.id, tipo: "cargo", valor, en: op.en, por: op.persona, ...(concepto ? { concepto } : {}), ...(op.comida ? { comida: valor } : {}) });
+      return estado;
+    }
+    case "deuda_pago": {
+      // Pagó (todo o un abono). Nunca más de lo que debe.
+      const d = estado.deudas?.[op.deudor];
+      const debe = d ? saldoDeudor(d) : 0;
+      const valor = Math.min(Math.floor(Number(op.valor)), debe);
+      if (!d || !(valor > 0) || d.movimientos.some((m) => m.id === op.id)) return estado;
+      const medio = op.medio === "nequi" || op.medio === "breve" ? op.medio : "efectivo";
+      d.movimientos.push({ id: op.id, tipo: "pago", valor, en: op.en, por: op.persona, medio });
+      return estado;
+    }
+    case "deuda_anular": {
+      // Anula un cargo anotado a mano o un pago. Lo que salió de una cuenta se deshace en la cuenta.
+      const m = estado.deudas?.[op.deudor]?.movimientos.find((x) => x.id === op.movimiento);
+      if (!m || m.anulado || m.cuenta) return estado;
+      m.anulado = { por: op.persona, en: op.en };
+      return estado;
+    }
     case "cerrar_jornada": {
       // Cerrar no bloquea nada: se puede volver a cerrar si después entra un cobro.
       if (!/^\d{4}-\d{2}-\d{2}$/.test(op.fecha)) return estado;
@@ -394,6 +445,9 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       const falta = saldo(c);
       if (falta <= 0) return estado; // otro celular ya la cobró
       if (op.medio === "comida" && c.tipo !== "mesa") return estado;
+      // A deuda: hace falta saber de quién.
+      const nombreDeudor = op.medio === "deuda" && typeof op.deudor === "string" ? op.deudor.trim().slice(0, 40) : "";
+      if (op.medio === "deuda" && !idDeudor(nombreDeudor)) return estado;
       // Abono (docs/04 «Abonos»): por productos (lo que valen las unidades que aún no se
       // han pagado) o por un valor. Sin nada de eso, como siempre: todo lo que falta. Pasar
       // a comida es siempre por todo lo que falta (regla 9). Nunca más que el saldo.
@@ -432,7 +486,18 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         ...(pagador ? { pagador } : {}),
         ...(esArea(op.area) ? { area: op.area } : {}),
         ...(Number.isInteger(op.entre) && op.entre! >= 2 && op.entre! <= 100 ? { entre: op.entre } : {}),
+        ...(nombreDeudor ? { deudor: idDeudor(nombreDeudor) } : {}),
       });
+      if (nombreDeudor) {
+        // La deuda: lo pasado y cuánto de eso es comida (por productos, exacto; si no, en proporción).
+        const comida = cubre?.length
+          ? cubre.reduce((s, x) => { const l = c.lineas.find((y) => y.id === x.linea); return s + (l?.comida ? l.precio * x.cantidad : 0); }, 0)
+          : total(c) > 0 ? Math.round((monto * totalComida(c)) / total(c)) : 0;
+        deudorDe(estado, nombreDeudor).movimientos.push({
+          id: op.pago, tipo: "cargo", valor: monto, en: op.en, por: op.persona,
+          cuenta: { id: c.id, nombre: c.nombre }, ...(comida > 0 ? { comida: Math.min(comida, monto) } : {}),
+        });
+      }
       c.ultima = op.en;
       if (!parcial) c.reabierta = false;
       return estado;
@@ -513,12 +578,13 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       if (!c || !p || p.deshecho) return estado;
       p.deshecho = true;
       if (p.medio === "comida") c.comidaCobrada = false;
+      anularCargoDeCuenta(estado, p, op);
       c.ultima = op.en;
       return estado;
     }
     case "reabrir": {
       if (!c) return estado;
-      for (const p of c.pagos) p.deshecho = true;
+      for (const p of c.pagos) { if (!p.deshecho) anularCargoDeCuenta(estado, p, op); p.deshecho = true; }
       // También deshace una anulación («Deshacer» después de anular la cuenta).
       c.anulada = false;
       delete c.anulacion;
@@ -612,7 +678,7 @@ export function esVigente(c: Cuenta, ahora: number): boolean {
 export function recortar(estado: Estado, ahora: number): Estado {
   const cuentas: Record<string, Cuenta> = {};
   for (const c of Object.values(estado.cuentas)) if (esVigente(c, ahora)) cuentas[c.id] = c;
-  return { cuentas, productos: estado.productos ?? {}, orden: estado.orden, ...(estado.jornadas ? { jornadas: estado.jornadas } : {}) };
+  return { cuentas, productos: estado.productos ?? {}, orden: estado.orden, ...(estado.jornadas ? { jornadas: estado.jornadas } : {}), ...(estado.deudas ? { deudas: estado.deudas } : {}) };
 }
 
 /** Validación ligera de forma, para lo que llega por la red. */
@@ -625,6 +691,7 @@ export function esOperacion(x: unknown): x is Operacion {
     (o.t === "producto" ? typeof o.producto === "object"
       : o.t === "orden" ? Array.isArray(o.ids)
       : o.t === "cerrar_jornada" ? typeof o.fecha === "string" && typeof o.contado === "number"
+      : o.t === "deuda_cargo" || o.t === "deuda_pago" || o.t === "deuda_anular" ? typeof o.deudor === "string" && o.deudor.length <= 64
       : typeof o.cuenta === "string" && o.cuenta.length <= 64)
   );
 }

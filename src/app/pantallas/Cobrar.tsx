@@ -27,6 +27,8 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   const [valorLibre, setValorLibre] = useState("");
   /** Quién del grupo paga (opcional): queda en el pago para saber quién abonó. */
   const [pagador, setPagador] = useState("");
+  /** Pasar a deuda (docs/15): a nombre de quién. */
+  const [deudor, setDeudor] = useState("");
   // Mostrar al cliente (F3): el medio y el billete escogidos siguen aquí al volver.
   const [cliente, setCliente] = useState(false);
   useAtrasCierra(cliente, () => setCliente(false));
@@ -71,6 +73,7 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
 
   const cobrar = (m: Medio) => {
     if (m !== "comida" && !(valor > 0)) return;
+    if (m === "deuda" && !deudor.trim()) return;
     const pago = crypto.randomUUID();
     const lineas = modo === "productos" ? Object.entries(escogidas).filter(([, k]) => k > 0).map(([linea, cantidad]) => ({ linea, cantidad })) : undefined;
     const monto = m !== "comida" && modo === "valor" ? valor : undefined;
@@ -81,9 +84,10 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       ...(monto ? { monto } : {}),
       ...(m !== "comida" && pagador.trim() ? { pagador: pagador.trim() } : {}),
       ...(m !== "comida" && modo === "valor" && entre ? { entre } : {}),
+      ...(m === "deuda" ? { deudor: deudor.trim() } : {}),
     });
     const cobrado = m === "comida" ? falta : valor;
-    const de = m !== "comida" && pagador.trim() ? ` de ${pagador.trim()}` : "";
+    const de = m === "deuda" ? ` a deuda de ${deudor.trim()}` : m !== "comida" && pagador.trim() ? ` de ${pagador.trim()}` : "";
     const deshacer = () => sinc.emitir({ t: "deshacer_pago", cuenta: c.id, pago });
     if (m !== "comida" && esAbono) {
       // Abono: se queda aquí con lo que falta, para el siguiente que pague.
@@ -95,7 +99,7 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       return;
     }
     nav.aInicio();
-    ponerAviso({ texto: m === "comida" ? `${c.nombre}: pasada a comida · ${pesos(cobrado)}` : `${c.nombre}: cobrada · ${pesos(cobrado)}`, deshacer });
+    ponerAviso({ texto: m === "comida" ? `${c.nombre}: pasada a comida · ${pesos(cobrado)}` : m === "deuda" ? `${c.nombre}: pasada a deuda de ${deudor.trim()} · ${pesos(cobrado)}` : `${c.nombre}: cobrada · ${pesos(cobrado)}`, deshacer });
   };
 
   const yaAbonado = abonos(c);
@@ -169,12 +173,31 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
         </div>
       )}
       <div className="opciones medios">
-        {(["efectivo", "nequi", "breve"] as const).map((m) => (
-          <button key={m} className={medio === m ? "chip activo" : "chip"} onClick={() => setMedio(m)}>
-            {m === "efectivo" ? "Efectivo" : m === "nequi" ? "Nequi" : "Breve"}
+        {(["efectivo", "nequi", "breve", "deuda"] as const).map((m) => (
+          <button key={m} className={medio === m ? `chip activo${m === "deuda" ? " deuda-chip" : ""}` : "chip"} onClick={() => { setMedio(m); setRecibido(null); setOtro(""); }}>
+            {m === "efectivo" ? "Efectivo" : m === "nequi" ? "Nequi" : m === "breve" ? "Breve" : "📒 Deuda"}
           </button>
         ))}
       </div>
+      {medio === "deuda" && (
+        <section className="a-deuda">
+          <input placeholder="¿A nombre de quién?" aria-label="A nombre de quién queda la deuda" value={deudor} maxLength={40} autoCapitalize="words"
+            enterKeyHint="done" onKeyDown={cerrarConEnter} onChange={(e) => setDeudor(e.target.value)} />
+          {/* Los que ya deben (y quienes abonaron aquí), para no escribirlos distinto. */}
+          <div className="chips">
+            {[...new Set([
+              ...yaAbonado.map((p) => p.pagador).filter((x): x is string => !!x),
+              ...Object.values(sinc.visible.deudas ?? {})
+                .filter((d) => !deudor.trim() || d.nombre.toLowerCase().includes(deudor.trim().toLowerCase()))
+                .sort((a, b) => (b.movimientos.at(-1)?.en ?? 0) - (a.movimientos.at(-1)?.en ?? 0))
+                .map((d) => d.nombre),
+            ])].slice(0, 8).map((n) => (
+              <button key={n} className={deudor === n ? "chip activo" : "chip"} onClick={() => setDeudor(n)}>{n}</button>
+            ))}
+          </div>
+          <p className="nota">No entra plata a la caja: queda en «Deudas» a nombre de esa persona.</p>
+        </section>
+      )}
       {medio === "efectivo" && valor > 0 && (
         <section className="recibido">
           <p>¿Con cuánto paga?</p>
@@ -199,13 +222,15 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
       )}
       <div className="pie-fijo">
         {modo !== "todo" ? (
-          <button className="principal grande" onClick={() => cobrar(medio)} disabled={!(valor > 0) || (cambio != null && cambio < 0)}>
-            {esAbono ? `Abonar ${pesos(valor)}` : `Cobrar ${pesos(valor)}`}
+          <button className="principal grande" onClick={() => cobrar(medio)} disabled={!(valor > 0) || (cambio != null && cambio < 0) || (medio === "deuda" && !deudor.trim())}>
+            {medio === "deuda" ? `Pasar ${pesos(valor)} a deuda` : esAbono ? `Abonar ${pesos(valor)}` : `Cobrar ${pesos(valor)}`}
           </button>
         ) : (
           // «Pasar a comida» se quitó (2026-11-08): la cocina anota y cobra la misma cuenta.
           // Lo pasado antes sigue valiendo (regla 4); el dominio aún lo acepta.
-          <button className="principal grande" onClick={() => cobrar(medio)} disabled={cambio != null && cambio < 0}>Cobrar {pesos(falta)}</button>
+          <button className="principal grande" onClick={() => cobrar(medio)} disabled={(cambio != null && cambio < 0) || (medio === "deuda" && !deudor.trim())}>
+            {medio === "deuda" ? `Pasar ${pesos(falta)} a deuda` : `Cobrar ${pesos(falta)}`}
+          </button>
         )}
       </div>
     </main>

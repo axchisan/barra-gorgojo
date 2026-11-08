@@ -107,7 +107,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         <span className="total">{pesos(s === "abierta" ? saldo(c) : total(c))}</span>
         <span className="meta">{unidades(c)} productos · {cuantasRondas(c)}</span>
         {totalComida(c) > 0 && <Desglose c={c} />}
-        {s === "cobrada" && <span className="estado cobrada">Cobrada · {c.pagos.filter((p) => !p.deshecho).map((p) => `${p.medio} por ${p.persona}`).join(", ")}</span>}
+        {s === "cobrada" && <span className="estado cobrada">Cobrada · {c.pagos.filter((p) => !p.deshecho).map((p) => p.medio === "deuda" ? `a deuda de ${sinc.visible.deudas?.[p.deudor ?? ""]?.nombre ?? "alguien"}` : `${p.medio} por ${p.persona}`).join(", ")}</span>}
         {s === "comida" && <span className="estado comida">Pasada a comida{c.comidaCobrada ? " · ya cobrada allá" : " · falta cobrar en comida"}</span>}
         {s === "anulada" && <span className="estado anulada">Anulada</span>}
         {s === "juntada" && (
@@ -136,7 +136,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
             const puede = sinc.esAdministrador || (p.persona === sinc.sesion?.persona && Date.now() - p.en < 5 * 60_000);
             return (
               <div key={p.id} className="abono-fila">
-                <span>{p.pagador && <b className="pagador">{p.pagador}: </b>}<b>{pesos(p.monto)}</b> {p.medio === "efectivo" ? "en efectivo" : p.medio === "nequi" ? "por Nequi" : "por Breve"}{que ? ` · ${que}` : ""}</span>
+                <span>{p.pagador && <b className="pagador">{p.pagador}: </b>}<b>{pesos(p.monto)}</b> {p.medio === "efectivo" ? "en efectivo" : p.medio === "nequi" ? "por Nequi" : p.medio === "deuda" ? `📒 a deuda de ${sinc.visible.deudas?.[p.deudor ?? ""]?.nombre ?? "alguien"}` : "por Breve"}{que ? ` · ${que}` : ""}</span>
                 <small className="tenue">{horaDe(p.en)} · {p.persona}</small>
                 {nombrando?.pago === p.id ? (
                   <form className="nombrar-abono" onSubmit={(e) => {

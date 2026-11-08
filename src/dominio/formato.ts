@@ -7,6 +7,9 @@ export const pesos = (n: number) => `$\u00A0${miles.format(n)}`;
 
 const hora = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" });
 export const horaDe = (en: number) => hora.format(en);
+const dia = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", weekday: "short", day: "numeric", month: "short" });
+/** «dom, 8 nov». */
+export const fechaCorta = (en: number) => dia.format(en);
 
 export function haceCuanto(en: number, ahora = Date.now()): string {
   const min = Math.floor((ahora - en) / 60_000);

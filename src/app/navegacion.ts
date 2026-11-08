@@ -9,6 +9,8 @@ export type Vista =
   | { v: "productos" }
   | { v: "producto"; id?: string }
   | { v: "platos" }
+  | { v: "deudas" }
+  | { v: "deudor"; id: string }
   | { v: "personas" }
   | { v: "mipin" }
   | { v: "dias" }

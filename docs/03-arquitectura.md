@@ -431,3 +431,14 @@ operación, y avisa a los celulares conectados cuando cambian. Todo son campos o
 y una operación nueva: el registro viejo da el mismo estado (sin subir
 `VERSION_PROYECCION`). Cambia la regla 9: «pasar a comida» se conserva para la barra.
 Las notificaciones con la app cerrada (push) quedan para después.
+
+### ADR-16 · Deudas en el estado general, con pagos aparte de la caja (2026-11-08)
+
+El negocio fía y necesita llevar quién debe. **Decisión.** Un medio de cobro nuevo,
+`deuda`, salda la cuenta sin plata en caja y carga el valor a una persona en
+`Estado.deudas` (estado general, como productos y cierres: se guarda en la proyección con
+la clave `deudas` y viaja en `cambios`). Los cargos se guardan al aplicarse, no se
+calculan de las cuentas, porque el celular recorta las cuentas viejas. Los pagos de
+deudas se registran en la deuda y no entran al efectivo esperado del cierre (lo pidió el
+negocio: lo fiado es venta del día en que se fió). Todo es campo opcional u operación
+nueva: el registro viejo da el mismo estado. Ver docs/15.

@@ -12,6 +12,7 @@ import { Inicio } from "./pantallas/Inicio";
 import { Dias } from "./pantallas/Dias";
 import { Auditoria } from "./pantallas/Auditoria";
 import { MiPin, Personas } from "./pantallas/Personas";
+import { DeudorDetalle, Deudas } from "./pantallas/Deudas";
 import { Platos } from "./pantallas/Platos";
 import { Productos } from "./pantallas/Productos";
 import { sinc } from "./sincronizacion";
@@ -39,6 +40,8 @@ export function App() {
       {vista.v === "productos" && <Productos nav={nav} />}
       {vista.v === "producto" && <EditarProducto nav={nav} id={vista.id} />}
       {vista.v === "platos" && <Platos nav={nav} />}
+      {vista.v === "deudas" && <Deudas nav={nav} />}
+      {vista.v === "deudor" && <DeudorDetalle nav={nav} id={vista.id} />}
       {vista.v === "personas" && <Personas nav={nav} />}
       {vista.v === "mipin" && <MiPin nav={nav} />}
       {vista.v === "dias" && <Dias nav={nav} />}

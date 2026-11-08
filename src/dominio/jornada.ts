@@ -21,7 +21,7 @@ export interface ResumenJornada {
 /** Lo que pertenece a una jornada: las pedidas anotadas y los cobros hechos ese día. */
 export function resumenJornada(cuentas: Iterable<Cuenta>, fecha: string): ResumenJornada {
   const lista = [...cuentas];
-  const porMedio: Record<Medio, number> = { efectivo: 0, nequi: 0, breve: 0, comida: 0 };
+  const porMedio: Record<Medio, number> = { efectivo: 0, nequi: 0, breve: 0, comida: 0, deuda: 0 };
   const porProducto = new Map<string, RenglonDia>();
   let vendido = 0;
   let vendidoComida = 0;

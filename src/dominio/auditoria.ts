@@ -27,7 +27,7 @@ function tipoCuenta(c: Cuenta | undefined, op: Extract<Operacion, { t: "abrir" }
 }
 
 /** La operación en una frase. `cuenta` es la cuenta como está ahora; `estado`, para cierres y productos. */
-export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos">): { texto: string; atencion: boolean } {
+export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas">): { texto: string; atencion: boolean } {
   const linea = (id: string) => cuenta?.lineas.find((l) => l.id === id);
   switch (op.t) {
     case "abrir":
@@ -58,6 +58,7 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const p = cuenta?.pagos.find((x) => x.id === op.pago);
       const valor = p ? ` ${pesos(p.monto)}` : "";
       if (op.medio === "comida") return { texto: `Pasó a comida${valor}`, atencion: false };
+      if (op.medio === "deuda") return { texto: `Pasó a deuda de ${op.deudor?.trim() || "alguien"}${valor}${p?.deshecho ? " · después se deshizo" : ""}`, atencion: true };
       const cambio = p?.recibido && p.recibido > p.monto ? ` (pagó con ${pesos(p.recibido)})` : "";
       const que = p?.lineas?.length
         ? ` por ${p.lineas.map((x) => `${x.cantidad} ${linea(x.linea)?.nombre ?? "producto"}`).join(", ")}`
@@ -84,6 +85,18 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const p = cuenta?.pagos.find((x) => x.id === op.pago);
       const quien = op.pagador.trim();
       return { texto: `${quien ? `Puso «${quien}» como quien pagó` : "Quitó quién pagó"} ${p ? `el abono de ${pesos(p.monto)}` : "un abono"}`, atencion: false };
+    }
+    case "deuda_cargo":
+      return { texto: `Anotó una deuda de ${op.deudor.trim()}: ${pesos(Math.floor(op.valor))}${op.concepto?.trim() ? ` · ${op.concepto.trim()}` : ""}${op.comida ? " · comida" : ""}`, atencion: true };
+    case "deuda_pago": {
+      const d = estado?.deudas?.[op.deudor];
+      const m = d?.movimientos.find((x) => x.id === op.id);
+      return { texto: `Recibió un pago de la deuda de ${d?.nombre ?? op.deudor}: ${pesos(m?.valor ?? Math.floor(op.valor))} ${medio(op.medio)}`, atencion: false };
+    }
+    case "deuda_anular": {
+      const d = estado?.deudas?.[op.deudor];
+      const m = d?.movimientos.find((x) => x.id === op.movimiento);
+      return { texto: `Anuló ${m ? `${m.tipo === "pago" ? "un pago" : "una deuda"} de ${pesos(m.valor)}` : "un movimiento"} de ${d?.nombre ?? op.deudor}`, atencion: true };
     }
     case "deshacer_pago": {
       const p = cuenta?.pagos.find((x) => x.id === op.pago);
@@ -117,7 +130,7 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
 }
 
 /** La frase con la nota de quién la envió, si fue otra persona (lo anotado sin señal salió con otra sesión). */
-export function describirConEnvio(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos">) {
+export function describirConEnvio(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas">) {
   const d = describir(op, cuenta, estado);
   return op.enviadaPor ? { texto: `${d.texto} · la envió ${op.enviadaPor}`, atencion: true } : d;
 }

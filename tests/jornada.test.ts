@@ -30,7 +30,7 @@ describe("el día", () => {
     const r = resumenJornada(Object.values(e.cuentas), "2026-03-10");
     expect(r.vendido).toBe(3 * 4000 + 20000 + 2 * 2500);
     expect(r.vendidoComida).toBe(20000);
-    expect(r.porMedio).toEqual({ efectivo: 32000, nequi: 5000, breve: 0, comida: 0 });
+    expect(r.porMedio).toEqual({ efectivo: 32000, nequi: 5000, breve: 0, comida: 0, deuda: 0 });
     expect(r.efectivo).toBe(32000);
     expect(r.cuentas).toBe(2);
     expect(r.porProducto.map((p) => [p.nombre, p.cantidad])).toEqual([["Rubia", 3], ["Agua", 2], ["Almuerzo", 1]]);

@@ -65,8 +65,11 @@ guarda.
 | `anular` | `cuenta, linea` | Anula un producto anotado (queda tachado) |
 | `cantidad` | `cuenta, linea, cantidad` | Cambia la cantidad; guarda la anterior y quién |
 | `comida_linea` | `cuenta, linea, valor` | Marca o desmarca un producto como comida |
-| `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?, pagador?, area?, entre?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |
-| `deshacer_pago` | `cuenta, pago` | Deshace un solo pago o abono |
+| `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?, pagador?, area?, entre?, deudor?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |
+| `deshacer_pago` | `cuenta, pago` | Deshace un solo pago o abono (y su deuda, si era a deuda) |
+| `deuda_cargo` | `deudor, valor, concepto, comida?` | Deuda anotada a mano (administrador). Ver docs/15 |
+| `deuda_pago` | `deudor, valor, medio` | Pago de una deuda, aparte de la caja |
+| `deuda_anular` | `deudor, movimiento` | Anula un cargo a mano o un pago de deuda (administrador) |
 | `pagador` | `cuenta, pago, pagador` | Pone, cambia o quita quién pagó un abono (solo la etiqueta) |
 | `reabrir` | `cuenta` | Deshace el último cobro o la anulación |
 | `comida_cobrada` | `cuenta, valor` | La cocina marca cobrada (o no) una cuenta pasada a comida |

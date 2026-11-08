@@ -31,6 +31,7 @@ interface Cambios {
   productos?: Estado["productos"];
   orden?: Estado["orden"];
   jornadas?: Estado["jornadas"];
+  deudas?: Estado["deudas"];
 }
 
 const CANDADO = "barra-gorgojo-conexion";
@@ -437,6 +438,7 @@ class Sincronizador {
     if (c.productos) e.productos = c.productos;
     if (c.orden) e.orden = c.orden;
     if (c.jornadas) e.jornadas = c.jornadas;
+    if (c.deudas) e.deudas = c.deudas;
   }
 
   private recibirNovedades(m: { seq: number; cambios?: Cambios }) {
