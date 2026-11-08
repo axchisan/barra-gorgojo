@@ -12,12 +12,14 @@ import { sinc } from "../sincronizacion";
 import { Cocina } from "./Cocina";
 import { ElDia } from "./ElDia";
 
-export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocina" | "despacho" | "dia" }) {
+export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" | "cocina" | "despacho" | "dia" }) {
+  // «Cocina» ya no es pestaña (las pasadas a comida salen arriba de las cuentas): un
+  // historial viejo que lleve allá abre las cuentas.
+  const pestana = pedida === "cocina" ? "cuentas" : pedida;
   const cuentas = Object.values(sinc.visible.cuentas);
   const enCocina = cuentas.filter((c) => situacion(c) === "comida" && !c.comidaCobrada);
   const nDespacho = porDespachar(cuentas).length;
   const panel = sinc.panel;
-  const barra = sinc.tieneArea("barra");
   const [cambiar, setCambiar] = useState(false);
   useAtrasCierra(cambiar, () => setCambiar(false));
 
@@ -52,9 +54,14 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
       )}
 
       <Apartados />
+      {pestana === "cuentas" && enCocina.length > 0 && (
+        <details className="pasadas-a-comida">
+          <summary>🍽 {enCocina.length === 1 ? "1 mesa pasada" : `${enCocina.length} mesas pasadas`} a comida sin cobrar</summary>
+          <Cocina nav={nav} cuentas={enCocina} />
+        </details>
+      )}
       {pestana === "cuentas" && <ListaCuentas nav={nav} cuentas={cuentas} />}
       {pestana === "despacho" && <PorDespachar nav={nav} cuentas={cuentas} />}
-      {pestana === "cocina" && <Cocina nav={nav} cuentas={enCocina} />}
       {pestana === "dia" && <ElDia nav={nav} cuentas={cuentas} />}
 
       <nav className="pestanas">
@@ -63,11 +70,6 @@ export function Inicio({ nav, pestana }: { nav: Nav; pestana: "cuentas" | "cocin
         {nDespacho > 0 && (
           <button className={`${pestana === "despacho" ? "activa" : ""}${nDespacho ? " con-pendientes" : ""}`} onClick={() => nav.ir({ v: "inicio", pestana: "despacho" }, true)}>
             Despachar{nDespacho ? ` (${nDespacho})` : ""}
-          </button>
-        )}
-        {(barra && (panel === "barra" || enCocina.length > 0)) && (
-          <button className={pestana === "cocina" ? "activa" : ""} onClick={() => nav.ir({ v: "inicio", pestana: "cocina" }, true)}>
-            Cocina{enCocina.length ? ` (${enCocina.length})` : ""}
           </button>
         )}
         <button className={pestana === "dia" ? "activa" : ""} onClick={() => nav.ir({ v: "inicio", pestana: "dia" }, true)}>El día</button>
@@ -91,6 +93,12 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
     .filter((c) => filtro === "todas" || deComida(c))
     .sort((a, b) => b.ultima - a.ultima);
   const hayComida = cuentas.some((c) => situacion(c) === "abierta" && deComida(c));
+  // En el panel de comida (docs/14): primero las cuentas con comida; las demás de la barra,
+  // plegadas debajo (se ven y se cobran, pero no son lo de comida).
+  const enComida = sinc.panel === "comida" && filtro === "todas";
+  const principales = enComida ? abiertas.filter(deComida) : abiertas;
+  const deBarra = enComida ? abiertas.filter((c) => !deComida(c)) : [];
+  const [verBarra, setVerBarra] = useState(false);
   const hoy = jornada(Date.now());
   const cerradas = cuentas
     .filter((c) => (situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada") && jornada(c.ultima) === hoy)
@@ -103,15 +111,23 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
       <div className="fila-buscar">
         <input className="buscar" type="search" enterKeyHint="search" autoCapitalize="off" autoCorrect="off" spellCheck={false} onKeyDown={cerrarConEnter}
           placeholder="Buscar cuenta, mesa o cancha" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
-        {(hayComida || filtro === "comida") && (
+        {sinc.panel === "barra" && (hayComida || filtro === "comida") && (
           <button className={filtro === "comida" ? "chip filtro-comida activo" : "chip filtro-comida"} aria-pressed={filtro === "comida"}
             aria-label="Solo cuentas con comida" onClick={() => setFiltro(filtro === "comida" ? "todas" : "comida")}>🍽</button>
         )}
       </div>
-      {abiertas.length === 0 && <p className="vacio">{filtro === "comida" ? "No hay cuentas abiertas con comida." : "No hay cuentas abiertas."}</p>}
+      {principales.length === 0 && <p className="vacio">{filtro === "comida" || enComida ? "No hay cuentas abiertas con comida." : "No hay cuentas abiertas."}</p>}
       <div className="tarjetas">
-        {abiertas.map((c) => <TarjetaCuenta key={c.id} c={c} nav={nav} />)}
+        {principales.map((c) => <TarjetaCuenta key={c.id} c={c} nav={nav} />)}
       </div>
+      {deBarra.length > 0 && (
+        <section className="cuentas-barra">
+          <button className="enlace" onClick={() => setVerBarra(!verBarra)}>
+            {verBarra ? "▾" : "▸"} Cuentas de la barra ({deBarra.length})
+          </button>
+          {verBarra && <div className="tarjetas">{deBarra.map((c) => <TarjetaCuenta key={c.id} c={c} nav={nav} />)}</div>}
+        </section>
+      )}
       {cerradas.length > 0 && (
         <section className="cerradas">
           <button className="enlace" onClick={() => setVerCerradas(!verCerradas)}>

@@ -12,7 +12,7 @@ test("se cierra el día con el efectivo contado y el administrador ve el día y 
   await p.getByRole("button", { name: "Exacto" }).click();
   await p.locator(".pie-fijo .principal").click();
 
-  await p.locator(".pestanas button").nth(2).click();
+  await p.locator(".pestanas button", { hasText: "El día" }).click();
   await expect(p.getByRole("button", { name: "Cerrar el día" })).toHaveCount(0); // sin contado no hay cierre
   await p.getByPlaceholder("Efectivo contado").fill("1");
   await p.keyboard.press("Enter");

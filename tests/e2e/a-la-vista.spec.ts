@@ -136,7 +136,7 @@ for (const [aparato, viewport] of Object.entries(APARATOS) as [Aparato, (typeof 
     await p.locator("main.cliente").click();
     await p.goBack(); await p.goBack();
 
-    await p.locator(".pestanas button").nth(2).click();
+    await p.locator(".pestanas button", { hasText: "El día" }).click();
     m.elDia = await medir(p, { vendido: ".cifra.grande", efectivoContado: ".dia .caja input" });
     await foto("9-el-dia");
 

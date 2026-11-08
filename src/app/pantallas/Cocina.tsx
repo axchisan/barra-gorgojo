@@ -8,7 +8,7 @@ import { sinc } from "../sincronizacion";
 export function Cocina({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   return (
     <section className="cocina">
-      <p className="nota">Bebidas de mesas que se pasaron a la cuenta de comida y todavía no se han cobrado allá.</p>
+      <p className="nota">Mesas que la barra pasó a la cuenta de comida (como se hacía antes de anotar la comida aquí). Cuando las cobren en comida, toque «Ya se cobró en comida».</p>
       {cuentas.length === 0 && <p className="vacio">Nada pendiente en comida.</p>}
       {cuentas.sort((a, b) => (a.mesa ?? 0) - (b.mesa ?? 0)).map((c) => (
         <article key={c.id} className="caja">

@@ -302,6 +302,11 @@ valor» → valor → Agregar. Las bebidas anotadas aquí le llegan a la barra c
 (sonido, vibración y franja arriba) hasta que se despachan; la pestaña «Despachar» sale
 solo cuando hay algo pendiente, para no quitar espacio.
 
+En el panel de comida, la lista de cuentas muestra primero las que tienen comida (con
+cuánto va de comida); las demás de la barra quedan plegadas debajo. La pestaña «Cocina»
+(mesas pasadas a comida por cobrar allá) se quitó: si queda alguna, sale como aviso
+plegable arriba de las cuentas.
+
 ## Reglas visuales
 
 - **Modo claro**, alto contraste, igual que el sitio: se usa con sol y bajo luz

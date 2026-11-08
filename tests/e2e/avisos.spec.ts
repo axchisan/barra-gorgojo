@@ -70,7 +70,7 @@ test("sin «Deshacer» se va en unos 2,5 s; con «Deshacer», en unos 6 s", asyn
   await expect(aviso).toBeVisible();
   await expect(aviso).toHaveCount(0, { timeout: 3000 });
 
-  await p.locator(".pestanas button").nth(2).click();
+  await p.locator(".pestanas button", { hasText: "El día" }).click();
   await p.getByPlaceholder("Efectivo contado").fill("0");
   await p.keyboard.press("Enter");
   await p.getByRole("button", { name: "Cerrar el día" }).click();

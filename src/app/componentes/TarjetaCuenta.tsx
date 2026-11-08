@@ -3,6 +3,7 @@ import { abonos, saldo, totalComida, unidades, type Cuenta } from "../../dominio
 import { haceCuanto, pesos } from "../../dominio/formato";
 import { iconoTipo } from "../cuentas";
 import type { Nav } from "../navegacion";
+import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
 
 export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
@@ -32,7 +33,8 @@ export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
       {/* Comida y bebidas por despachar, en la misma línea: la tarjeta no crece (C2). */}
       <span className="meta">
         {unidades(c)} · {haceCuanto(c.ultima)}{abonos(c).length > 0 && !c.reabierta ? " · con abono" : ""}
-        {totalComida(c) > 0 && <span className="marca-comida" title="Con comida"> · 🍽</span>}
+        {/* En el panel de comida, cuánto va de comida; en la barra, solo la marca. */}
+        {totalComida(c) > 0 && <span className="marca-comida" title="Con comida"> · 🍽{sinc.panel === "comida" ? ` ${pesos(totalComida(c))}` : ""}</span>}
       </span>
       {c.lineas.some((l) => l.porDespachar && !l.anulada) && <span className="alerta despacho">🔔 Por despachar</span>}
       {c.reabierta && <span className="alerta">Anotaron después del cobro</span>}

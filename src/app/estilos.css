@@ -850,3 +850,6 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .fila-plato { display: grid; grid-template-columns: 1fr 110px; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--neutro-200); }
 .fila-plato .notas { grid-column: 1 / -1; }
 .platos-admin { max-width: 720px; }
+.pasadas-a-comida { background: #dcebee; border-radius: var(--radio); padding: 8px 12px; margin-bottom: 10px; }
+.pasadas-a-comida summary { font-weight: 700; color: var(--azul-comida); cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.cuentas-barra { margin-top: 14px; }
