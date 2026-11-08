@@ -327,6 +327,12 @@ una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso
 sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
 como cualquier otra.
 
+### Totales a la vista (2026-11-08)
+
+En el panel de la pedida (tablet o celular girado) cada producto lleva su valor y al pie
+va el total: cuántos productos y cuánto vale; si es una cuenta ya abierta, en cuánto
+queda. En el detalle, cada pedida dice cuántos productos lleva junto a lo que vale.
+
 ## Reglas visuales
 
 - **Modo claro**, alto contraste, igual que el sitio: se usa con sol y bajo luz

@@ -168,7 +168,11 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                     </button>
                   )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
-                  <strong className="sub">{pesos(sub)}</strong>
+                  <strong className="sub">
+                    {/* Cuántos productos lleva la pedida, junto a lo que vale. */}
+                    <small className="cuantos">{(() => { const k = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.cantidad), 0); return `${k} ${k === 1 ? "producto" : "productos"} · `; })()}</small>
+                    {pesos(sub)}
+                  </strong>
                 </header>
                 {(() => {
                   const ficha = (l: Linea) => (

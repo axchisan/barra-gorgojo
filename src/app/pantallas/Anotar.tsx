@@ -145,9 +145,9 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
 
   /** Lo que lleva la pedida, para el panel lateral en horizontal (C12). */
   const enLaPedida = [
-    ...paquetes.map((pq) => ({ clave: pq.id, texto: `${nombrePaquete(pq)} · ${Object.entries(pq.items).map(([id, k]) => `${k} ${productoDe(sinc.visible, id)?.nombre ?? id}`).join(", ")}` })),
-    ...Object.entries(cant).filter(([, k]) => k > 0).map(([id, k]) => ({ clave: id, texto: `${k} ${productoDe(sinc.visible, idDe(id))?.nombre ?? id}${notaDe(id) ? ` · ${notaDe(id)}` : ""}` })),
-    ...libres.map((x, i) => ({ clave: `libre-${i}`, texto: `${x.comida ? "🍽 " : ""}${x.nombre ?? "Mecato"} ${pesos(x.precio)}` })),
+    ...paquetes.map((pq) => ({ clave: pq.id, texto: `${nombrePaquete(pq)} · ${Object.entries(pq.items).map(([id, k]) => `${k} ${productoDe(sinc.visible, id)?.nombre ?? id}`).join(", ")}`, valor: Object.entries(pq.items).reduce((t, [id, k]) => t + precioDe(id) * k, 0) })),
+    ...Object.entries(cant).filter(([, k]) => k > 0).map(([id, k]) => ({ clave: id, texto: `${k} ${productoDe(sinc.visible, idDe(id))?.nombre ?? id}${notaDe(id) ? ` · ${notaDe(id)}` : ""}`, valor: precioDe(id) * k })),
+    ...libres.map((x, i) => ({ clave: `libre-${i}`, texto: `${x.comida ? "🍽 " : ""}${x.nombre ?? "Mecato"}`, valor: x.precio })),
   ];
 
   const lineas = () => {
@@ -406,7 +406,15 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
         <div className="resumen-pedida" aria-hidden={enLaPedida.length === 0}>
           <h2 className="seccion">{cuenta ? `Esta ${palabra}` : "La cuenta nueva"}</h2>
           {enLaPedida.length === 0 ? <p className="nota">Toque los productos.</p> : (
-            <ul>{enLaPedida.map((x) => <li key={x.clave}>{x.texto}</li>)}</ul>
+            <ul>{enLaPedida.map((x) => <li key={x.clave}><span>{x.texto}</span><b>{pesos(x.valor)}</b></li>)}</ul>
+          )}
+          {/* El total va a la vista mientras se anota (en la tablet, al pie del panel). */}
+          {n > 0 && (
+            <div className="total-pedida">
+              <span>{n} {n === 1 ? "producto" : "productos"}</span>
+              <strong>{pesos(valor)}</strong>
+              {(cuenta ?? destinoCuenta) && <small>La cuenta queda en {pesos(saldo((cuenta ?? destinoCuenta)!) + valor)}</small>}
+            </div>
           )}
         </div>
         {!cuenta && !despacho && (

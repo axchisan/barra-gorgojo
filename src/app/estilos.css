@@ -867,3 +867,15 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .chips.destinos .chip { flex: 0 0 auto; min-height: 44px; padding: 6px 14px; }
 .detalle-pedido { margin: 6px 0 0; font-size: 1.15rem; font-weight: 800; color: var(--marron); background: #fff3cf; border-radius: 10px; padding: 6px 10px; }
 .pie-fijo .pedir-barra { flex: 0 0 auto; }
+/* Panel de la pedida en la tablet: valor por producto y total al pie. */
+.resumen-pedida li { display: flex; justify-content: space-between; gap: 8px; }
+.resumen-pedida li b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.total-pedida { display: none; }
+html.apaisada .anotar .total-pedida {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 8px;
+  margin-top: auto; padding: 10px 8px 4px; border-top: 2px solid var(--marron); font-weight: 700;
+}
+html.apaisada .anotar .total-pedida strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+html.apaisada .anotar .total-pedida small { grid-column: 1 / -1; color: var(--neutro-600); font-weight: 600; }
+.ronda-tarjeta .sub .cuantos { font-size: 0.85rem; font-weight: 600; color: var(--neutro-600); }
+html.apaisada .anotar .total-pedida > span { white-space: nowrap; }
