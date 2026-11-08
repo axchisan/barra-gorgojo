@@ -831,3 +831,5 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .permisos .fila-pin { flex-wrap: wrap; }
 .permisos input[type="date"] { min-height: 48px; font: inherit; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--neutro-200); }
 .fila-dia { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.estado.juntada { border: 0; font: inherit; font-weight: 700; background: #e7e0f3; color: #4a3577; }
+.estado.juntas { background: #e7e0f3; color: #4a3577; }

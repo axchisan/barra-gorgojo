@@ -93,7 +93,7 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const hayComida = cuentas.some((c) => situacion(c) === "abierta" && deComida(c));
   const hoy = jornada(Date.now());
   const cerradas = cuentas
-    .filter((c) => (situacion(c) === "cobrada" || situacion(c) === "comida") && jornada(c.ultima) === hoy)
+    .filter((c) => (situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada") && jornada(c.ultima) === hoy)
     .filter(coincide)
     .sort((a, b) => b.ultima - a.ultima);
 
@@ -123,8 +123,8 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
                 <button key={c.id} className="tarjeta cerrada" onClick={() => nav.ir({ v: "cuenta", id: c.id })}>
                   <span className="nombre">{c.nombre}</span>
                   <span className="valor">{pesos(total(c))}</span>
-                  <span className={situacion(c) === "comida" ? "estado comida" : "estado cobrada"}>
-                    {situacion(c) === "comida" ? "Pasada a comida" : "Cobrada"} · {horaDe(c.ultima)}
+                  <span className={situacion(c) === "comida" ? "estado comida" : situacion(c) === "juntada" ? "estado juntas" : "estado cobrada"}>
+                    {situacion(c) === "comida" ? "Pasada a comida" : situacion(c) === "juntada" ? `Junto con ${c.juntadaA!.nombre}` : "Cobrada"} · {horaDe(c.ultima)}
                   </span>
                 </button>
               ))}

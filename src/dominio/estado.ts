@@ -29,6 +29,8 @@ export interface Linea {
   porDespachar?: true;
   /** Quién la despachó y cuándo. */
   despachada?: { por: string; en: number };
+  /** Vino de otra cuenta que se juntó con esta (su id). */
+  de?: string;
 }
 
 export interface Paquete {
@@ -42,6 +44,8 @@ export interface Ronda {
   numero: number;
   persona: string;
   en: number;
+  /** Vino de otra cuenta que se juntó con esta: su id, su nombre y el número que tenía allá. */
+  de?: { cuenta: string; nombre: string; numero: number };
 }
 
 export interface Pago {
@@ -60,6 +64,8 @@ export interface Pago {
   pagador?: string;
   /** Desde qué área se cobró (su caja). Sin ella, la barra (docs/14). */
   area?: Area;
+  /** Abono hecho en otra cuenta que se juntó con esta (su id). */
+  de?: string;
 }
 
 export interface Cuenta {
@@ -80,6 +86,10 @@ export interface Cuenta {
   anulacion?: { por: string; en: number; motivo?: string };
   /** Se anotó algo después de cobrarla (otro celular sin señal). */
   reabierta: boolean;
+  /** Se sumó a otra cuenta para cobrarlas juntas: a cuál, quién y cuándo. */
+  juntadaA?: { cuenta: string; nombre: string; por: string; en: number };
+  /** Cuentas que se sumaron a esta; `pagos`: cuántos pagos tenía justo después (para separar). */
+  juntadas?: { cuenta: string; nombre: string; por: string; en: number; pagos: number }[];
 }
 
 export interface Estado {
@@ -163,6 +173,8 @@ export type Operacion = Base &
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "anotar"; cuenta: string; ronda: string; area?: Area; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
+    | { t: "juntar"; cuenta: string; desde: string }
+    | { t: "separar"; cuenta: string; desde: string }
     | { t: "anular"; cuenta: string; linea: string }
     | { t: "cobrar"; cuenta: string; pago: string; medio: Medio; recibido?: number; monto?: number; lineas?: { linea: string; cantidad: number }[]; pagador?: string; area?: Area }
     | { t: "deshacer_pago"; cuenta: string; pago: string }
@@ -217,10 +229,12 @@ export function porPagarPorLinea(c: Cuenta): Map<string, number> {
 /** Abonos vivos de una cuenta que no la terminaron de pagar (para mostrar «abonado»). */
 export const abonos = (c: Cuenta) => c.pagos.filter((p) => !p.deshecho);
 
-export type Situacion = "abierta" | "cobrada" | "comida" | "anulada";
+export type Situacion = "abierta" | "cobrada" | "comida" | "anulada" | "juntada";
 
 export function situacion(c: Cuenta): Situacion {
   if (c.anulada) return "anulada";
+  // Juntada con otra: cerrada mientras no le anoten nada nuevo (otro celular sin señal).
+  if (c.juntadaA && total(c) === 0 && !c.pagos.some((p) => !p.deshecho)) return "juntada";
   const vivos = c.pagos.filter((p) => !p.deshecho);
   if (vivos.length > 0 && saldo(c) <= 0) {
     return vivos[vivos.length - 1].medio === "comida" ? "comida" : "cobrada";
@@ -334,7 +348,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         nuevas.push({ id: l.id, ronda: op.ronda, producto: p.id, nombre, precio, cantidad, ...(paquete ? { paquete } : {}), ...(comida ? { comida } : {}), ...(nota ? { nota } : {}), ...(despachar ? { porDespachar: true as const } : {}) });
       }
       if (nuevas.length === 0) return estado;
-      const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida";
+      const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
       c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en });
       c.lineas.push(...nuevas);
       c.ultima = op.en;
@@ -406,6 +420,47 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         delete l.porDespachar;
         l.despachada = { por: op.persona, en: op.en };
       }
+      return estado;
+    }
+    case "juntar": {
+      // Suma una cuenta abierta a otra para cobrarlas juntas (docs/04 «Juntar cuentas»):
+      // pedidas, productos y abonos pasan a la de destino; la de origen queda sin nada.
+      const o = estado.cuentas[op.desde];
+      if (!c || !o || o.id === c.id || c.anulada || o.anulada) return estado;
+      if (situacion(c) !== "abierta" || situacion(o) !== "abierta" || !o.lineas.length) return estado;
+      // Si la de origen ya tenía otras juntadas, todo pasa como suyo: separar después la
+      // devuelve entera, y esas juntas internas ya no se separan.
+      for (const r of o.rondas) c.rondas.push({ ...r, numero: c.rondas.length + 1, de: { cuenta: o.id, nombre: o.nombre, numero: r.numero } });
+      for (const l of o.lineas) c.lineas.push({ ...l, de: o.id });
+      for (const p of o.pagos) c.pagos.push({ ...p, de: o.id });
+      delete o.juntadas;
+      (c.juntadas ??= []).push({ cuenta: o.id, nombre: o.nombre, por: op.persona, en: op.en, pagos: c.pagos.length });
+      c.ultima = op.en;
+      o.rondas = []; o.lineas = []; o.pagos = [];
+      o.reabierta = false;
+      o.juntadaA = { cuenta: c.id, nombre: c.nombre, por: op.persona, en: op.en };
+      o.ultima = op.en;
+      return estado;
+    }
+    case "separar": {
+      // Deshace «juntar»: lo que vino de `desde` vuelve allá. Solo si después no se cobró nada.
+      const o = estado.cuentas[op.desde];
+      const j = c?.juntadas?.find((x) => x.cuenta === op.desde);
+      if (!c || !o || !j || o.juntadaA?.cuenta !== c.id) return estado;
+      if (c.pagos.slice(j.pagos).some((p) => !p.deshecho)) return estado;
+      const vino = (x: { de?: string }) => x.de === o.id;
+      const rondas = c.rondas.filter((r) => r.de?.cuenta === o.id);
+      o.rondas = [...rondas.map(({ de, ...r }) => ({ ...r, numero: de!.numero })), ...o.rondas];
+      o.lineas = [...c.lineas.filter(vino).map(({ de: _, ...l }) => l), ...o.lineas];
+      o.pagos = [...c.pagos.filter(vino).map(({ de: _, ...p }) => p), ...o.pagos];
+      c.rondas = c.rondas.filter((r) => r.de?.cuenta !== o.id).map((r, i) => ({ ...r, numero: i + 1 }));
+      c.lineas = c.lineas.filter((l) => !vino(l));
+      c.pagos = c.pagos.filter((p) => !vino(p));
+      c.juntadas = c.juntadas!.filter((x) => x !== j);
+      if (!c.juntadas.length) delete c.juntadas;
+      delete o.juntadaA;
+      o.ultima = op.en;
+      c.ultima = op.en;
       return estado;
     }
     case "deshacer_pago": {

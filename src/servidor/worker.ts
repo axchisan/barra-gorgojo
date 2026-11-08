@@ -263,6 +263,7 @@ export class Barra extends DurableObject<Env> {
   /** Lo que una operación necesita en memoria para aplicarse igual que con el registro completo. */
   private traerPara(op: Operacion) {
     if ("cuenta" in op) this.traerCuenta(op.cuenta);
+    if (op.t === "juntar" || op.t === "separar") this.traerCuenta(op.desde);
     // El efectivo esperado de un cierre suma todas las cuentas de ese día.
     if (op.t === "cerrar_jornada" && /^\d{4}-\d{2}-\d{2}$/.test(op.fecha)) {
       for (const c of this.cuentasDe(op.fecha)) this.estado.cuentas[c.id] ??= c;
@@ -287,9 +288,11 @@ export class Barra extends DurableObject<Env> {
   /** Agrega a `cambios` cómo quedó lo que tocó una operación ya aplicada. */
   private cambiosDe(op: Operacion, cambios: Cambios = {}): Cambios {
     if ("cuenta" in op) {
-      this.traerCuenta(op.cuenta);
-      const c = this.estado.cuentas[op.cuenta];
-      if (c) (cambios.cuentas ??= {})[c.id] = c;
+      for (const id of op.t === "juntar" || op.t === "separar" ? [op.cuenta, op.desde] : [op.cuenta]) {
+        this.traerCuenta(id);
+        const c = this.estado.cuentas[id];
+        if (c) (cambios.cuentas ??= {})[c.id] = c;
+      }
     }
     if (op.t === "producto") cambios.productos = this.estado.productos ?? {};
     if (op.t === "orden") cambios.orden = this.estado.orden ?? [];
@@ -428,6 +431,8 @@ export class Barra extends DurableObject<Env> {
    * esconder un botón no es seguridad (docs/03 «Acceso y seguridad»).
    */
   private permiso(op: Operacion, quien: Quien, ahora: number): string | null {
+    const juntas = this.juntas(op);
+    if (juntas) return juntas;
     if (quien.rol === ADMIN) {
       if (op.t === "anular_cuenta") {
         const c = this.estado.cuentas[op.cuenta];
@@ -461,6 +466,30 @@ export class Barra extends DurableObject<Env> {
       const p = c.pagos.find((x) => x.id === op.pago);
       if (p && !p.deshecho && !(p.persona === quien.nombre && ahora - p.en < VENTANA_DESHACER)) return "Solo el administrador deshace un abono de otro o de hace rato.";
     }
+    return null;
+  }
+
+  /**
+   * Juntar y separar cuentas (docs/04 «Juntar cuentas»), para todos: lo que no se puede
+   * hacer se rechaza con el porqué en vez de no hacer nada en silencio (regla 8).
+   */
+  private juntas(op: Operacion): string | null {
+    const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
+    if (op.t === "cobrar" && c && situacion(c) === "juntada") return `${c.nombre} se juntó con ${c.juntadaA!.nombre}: cóbrela allá.`;
+    if (op.t !== "juntar" && op.t !== "separar") return null;
+    const o = this.estado.cuentas[op.desde];
+    if (!c || !o) return "Esa cuenta ya no existe.";
+    if (op.t === "juntar") {
+      if (o.id === c.id) return "Escoja otra cuenta.";
+      if (situacion(o) === "juntada") return `${o.nombre} ya se juntó con ${o.juntadaA!.nombre}.`;
+      if (situacion(c) !== "abierta") return `${c.nombre} ya no está abierta.`;
+      if (situacion(o) !== "abierta") return `${o.nombre} ya no está abierta.`;
+      if (!o.lineas.length) return `${o.nombre} no tiene productos.`;
+      return null;
+    }
+    const j = c.juntadas?.find((x) => x.cuenta === o.id);
+    if (!j || o.juntadaA?.cuenta !== c.id) return `${o.nombre} ya no está junto con ${c.nombre}.`;
+    if (c.pagos.slice(j.pagos).some((p) => !p.deshecho)) return `Después de juntarlas ya se cobró algo de ${c.nombre}: no se pueden separar.`;
     return null;
   }
 
@@ -557,6 +586,7 @@ export class Barra extends DurableObject<Env> {
         this.seq = seq;
         const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
         if (c) this.guardarCuenta(c);
+        if (op.t === "juntar" || op.t === "separar") { const o = this.estado.cuentas[op.desde]; if (o) this.guardarCuenta(o); }
         this.guardarGeneral(op.t === "producto" ? ["productos"] : op.t === "orden" ? ["orden"] : op.t === "cerrar_jornada" ? ["jornadas"] : []);
       });
       aceptadas.push(op.id);

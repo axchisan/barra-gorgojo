@@ -784,3 +784,51 @@ describe("áreas por persona", () => {
     ws.close();
   });
 });
+
+describe("juntar cuentas en el servidor", () => {
+  let s: Servidor;
+  let ana: string;
+  let beto: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    beto = await s.token("Beto");
+  });
+  afterAll(() => s?.apagar());
+  type R = { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any };
+
+  it("junta dos cuentas, rechaza cobrar la de origen y no deja separar después de un cobro", async () => {
+    const a = `junta-a-${Date.now()}`, b = `junta-b-${Date.now()}`;
+    await s.ops(ana, [
+      op({ t: "abrir", cuenta: a, nombre: "Mesa 3", tipo: "mesa", mesa: 3 }), op({ t: "anotar", cuenta: a, ronda: `${a}-r`, lineas: lineas([["rubia", 2]]) }),
+      op({ t: "abrir", cuenta: b, nombre: "Los de rojo", tipo: "grupo" }), op({ t: "anotar", cuenta: b, ronda: `${b}-r`, lineas: lineas([["rubia", 1]]) }),
+    ]);
+    const junta = (await s.ops(ana, [op({ t: "juntar", cuenta: a, desde: b })])) as R;
+    expect(junta.rechazadas ?? []).toEqual([]);
+    expect(junta.estado.cuentas[a].lineas).toHaveLength(2);
+    expect(junta.estado.cuentas[b].juntadaA.nombre).toBe("Mesa 3");
+
+    // Otro celular sin señal: juntar otra vez o cobrar la de origen se rechaza con el porqué.
+    const otra = (await s.ops(beto, [op({ t: "juntar", cuenta: a, desde: b }), op({ t: "cobrar", cuenta: b, pago: `${b}-p`, medio: "efectivo" })])) as R;
+    expect(otra.rechazadas?.map((x) => x.motivo)).toEqual(["Los de rojo ya se juntó con Mesa 3.", "Los de rojo se juntó con Mesa 3: cóbrela allá."]);
+
+    const cobro = (await s.ops(ana, [op({ t: "cobrar", cuenta: a, pago: `${a}-p`, medio: "efectivo", monto: RUBIA })])) as R;
+    expect(cobro.rechazadas ?? []).toEqual([]);
+    const separar = (await s.ops(ana, [op({ t: "separar", cuenta: a, desde: b })])) as R;
+    expect(separar.rechazadas?.[0].motivo).toMatch(/no se pueden separar/);
+  });
+
+  it("separa si no se cobró nada después", async () => {
+    const a = `sep-a-${Date.now()}`, b = `sep-b-${Date.now()}`;
+    await s.ops(ana, [
+      op({ t: "abrir", cuenta: a, nombre: "Uno", tipo: "grupo" }), op({ t: "anotar", cuenta: a, ronda: `${a}-r`, lineas: lineas([["rubia", 1]]) }),
+      op({ t: "abrir", cuenta: b, nombre: "Dos", tipo: "grupo" }), op({ t: "anotar", cuenta: b, ronda: `${b}-r`, lineas: lineas([["rubia", 1]]) }),
+      op({ t: "juntar", cuenta: a, desde: b }),
+    ]);
+    const r = (await s.ops(beto, [op({ t: "separar", cuenta: a, desde: b })])) as R;
+    expect(r.rechazadas ?? []).toEqual([]);
+    expect(r.estado.cuentas[a].lineas).toHaveLength(1);
+    expect(r.estado.cuentas[b].lineas).toHaveLength(1);
+    expect(r.estado.cuentas[b].juntadaA).toBeUndefined();
+  });
+});

@@ -253,6 +253,25 @@ Cada pago guarda su `area` (la caja); lo registrado antes cuenta como de la barr
   barra; anotar, cobrar o cerrar en un área que la persona no tiene hoy se rechaza (regla
   8). Las áreas de hoy son las fijas más las dadas para ese día; el administrador, todas.
 
+## Juntar cuentas (2026-11-08)
+
+Para cobrar dos cuentas como una («Juntar con otra cuenta» en el menú ⋮ del detalle).
+`juntar { cuenta, desde }` pasa a `cuenta` las pedidas (numeradas a continuación, con «de
+…»), los productos y **los abonos** de `desde`, que queda sin nada y cerrada como
+«juntada». Como el dinero y los productos se mueven juntos, el saldo de las dos es el
+mismo antes y después: nada se cobra dos veces ni se pierde. Pruebas en
+`tests/juntar.test.ts` y en el servidor.
+
+| Conflicto | Regla |
+|---|---|
+| Otro celular sin señal cobra la de origen ya juntada | Se rechaza: «… se juntó con …: cóbrela allá» (regla 8) |
+| Dos celulares juntan la misma cuenta | La segunda se rechaza: «ya se juntó con …» |
+| Otro celular anota en la de origen ya juntada | Se anota ahí: la cuenta revive con la alerta de «se anotó después» |
+| Separar después de un cobro o abono en la de destino | Se rechaza: el pago ya pudo incluir lo juntado |
+
+`separar` devuelve todo a la de origen con sus números de pedida. Si la de origen ya
+tenía otras juntas, al juntarla todo pasa como suyo.
+
 ## Cómo se prueba
 
 La sincronización no se prueba a mano. Pruebas obligatorias antes de usarlo en el local:

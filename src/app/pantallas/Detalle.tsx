@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   abonos, porPagarPorLinea, producto as productoDe, saldo, situacion, total, totalComida, unidades,
-  type Linea,
+  type Cuenta, type Linea,
 } from "../../dominio/estado";
 import { horaDe, palabraRonda, pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
@@ -24,6 +24,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   useAtrasCierra(menu, () => setMenu(false));
   const [renombrar, setRenombrar] = useState<string | null>(null);
   const [cliente, setCliente] = useState(false);
+  const [juntar, setJuntar] = useState(false);
   useAtrasCierra(cliente, () => setCliente(false));
   if (!c) return <NoExiste nav={nav} />;
 
@@ -48,6 +49,17 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         <div className="menu-persona">
           <button onClick={() => { setRenombrar(c.nombre); setMenu(false); }}>Cambiar nombre</button>
           <button onClick={() => { setCliente(true); setMenu(false); }}>Mostrar al cliente</button>
+          {/* Juntar: para cobrar dos cuentas como una (docs/04 «Juntar cuentas»). */}
+          {s === "abierta" && c.lineas.length > 0 && (
+            <button onClick={() => { setJuntar(true); setMenu(false); }}>Juntar con otra cuenta</button>
+          )}
+          {s === "abierta" && (c.juntadas ?? []).map((j) => (
+            <button key={j.cuenta} onClick={() => {
+              setMenu(false);
+              sinc.emitir({ t: "separar", cuenta: c.id, desde: j.cuenta });
+              ponerAviso({ texto: `${j.nombre}: separada otra vez` });
+            }}>Separar «{j.nombre}»</button>
+          ))}
           {/* Anular: una cuenta vacía, cualquiera; con productos, solo el administrador y con motivo (RF-07). */}
           {s === "abierta" && (total(c) === 0 || sinc.esAdministrador) && (
             <button className="peligro" onClick={() => {
@@ -86,6 +98,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         </form>
       )}
 
+      {juntar && <HojaJuntar c={c} nav={nav} cerrar={() => setJuntar(false)} />}
+
       <section className="cabeza-total">
         {tipo && <span className="tipo">{tipo}</span>}
         <span className="total">{pesos(s === "abierta" ? saldo(c) : total(c))}</span>
@@ -94,6 +108,14 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         {s === "cobrada" && <span className="estado cobrada">Cobrada · {c.pagos.filter((p) => !p.deshecho).map((p) => `${p.medio} por ${p.persona}`).join(", ")}</span>}
         {s === "comida" && <span className="estado comida">Pasada a comida{c.comidaCobrada ? " · ya cobrada allá" : " · falta cobrar en comida"}</span>}
         {s === "anulada" && <span className="estado anulada">Anulada</span>}
+        {s === "juntada" && (
+          <button className="estado juntada" onClick={() => nav.ir({ v: "cuenta", id: c.juntadaA!.cuenta }, true)}>
+            Se juntó con {c.juntadaA!.nombre} ({c.juntadaA!.por}, {horaDe(c.juntadaA!.en)}) · ver
+          </button>
+        )}
+        {s === "abierta" && (c.juntadas ?? []).length > 0 && (
+          <span className="estado juntas">Con {c.juntadas!.map((j) => j.nombre).join(", ")}</span>
+        )}
         {c.reabierta && <span className="alerta">Se anotó después del cobro. Falta cobrar {pesos(saldo(c))}</span>}
         {s === "abierta" && abonos(c).length > 0 && (
           <span className="estado abonada">Abonado {pesos(abonos(c).reduce((t, p) => t + p.monto, 0))} · falta {pesos(saldo(c))}</span>
@@ -138,7 +160,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
             return (
               <section key={r.id} className="ronda-tarjeta">
                 <header>
-                  <strong>{palabra === "chico" ? "Chico" : "Pedida"} {r.numero}</strong>
+                  <strong>{palabra === "chico" ? "Chico" : "Pedida"} {r.numero}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
                   <span className="tenue">{horaDe(r.en)} · {r.persona}</span>
                   <strong className="sub">{pesos(sub)}</strong>
                 </header>
@@ -193,5 +215,40 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         )}
       </div>
     </main>
+  );
+}
+
+/** Escoger la cuenta a la que se suma esta: todo lo de esta pasa allá, para cobrarlas juntas. */
+function HojaJuntar({ c, nav, cerrar }: { c: Cuenta; nav: Nav; cerrar: () => void }) {
+  useAtrasCierra(true, cerrar);
+  const otras = Object.values(sinc.visible.cuentas)
+    .filter((x) => x.id !== c.id && situacion(x) === "abierta" && (x.lineas.length > 0 || Date.now() - x.abiertaEn < 3 * 3600_000))
+    .sort((a, b) => b.ultima - a.ultima);
+  const juntarCon = (d: Cuenta) => {
+    sinc.emitir({ t: "juntar", cuenta: d.id, desde: c.id });
+    cerrar();
+    nav.ir({ v: "cuenta", id: d.id }, true);
+    ponerAviso({ texto: `${c.nombre} quedó junto con ${d.nombre}`, deshacer: () => sinc.emitir({ t: "separar", cuenta: d.id, desde: c.id }) });
+  };
+  return (
+    <div className="hoja" onClick={cerrar}>
+      <div className="hoja-cuerpo" onClick={(e) => e.stopPropagation()}>
+        <header className="cabeza-hoja">
+          <h2>¿Con qué cuenta se junta «{c.nombre}»?</h2>
+          <button className="cerrar-hoja" aria-label="Cerrar" onClick={cerrar}>✕</button>
+        </header>
+        <p className="nota">Lo de {c.nombre} ({pesos(saldo(c))}) pasa a la que escoja, y se cobran juntas.</p>
+        {otras.length === 0 && <p className="vacio">No hay otras cuentas abiertas.</p>}
+        <div className="tarjetas">
+          {otras.map((x) => (
+            <button key={x.id} className={`tarjeta ${x.tipo}`} onClick={() => juntarCon(x)}>
+              <span className="nombre">{x.nombre}</span>
+              <span className="valor">{pesos(saldo(x))}</span>
+              <span className="meta">Juntas: {pesos(saldo(x) + saldo(c))}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
