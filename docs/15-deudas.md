@@ -26,6 +26,11 @@ anotaban aparte.
   que debe. «El día» los muestra como «Pagos de deudas hoy (aparte de la caja)».
 - **Deshacer:** deshacer el cobro o reabrir la cuenta anula su cargo. Un cargo anotado a
   mano o un pago se anulan con `deuda_anular` (administrador). Nada se borra.
+- **Detalle de lo fiado** (2026-11-14): cada deuda que salió de una cuenta muestra qué se
+  fió (los productos con su pedida, o «lo que faltaba»), y «Ver la cuenta» trae la cuenta
+  completa: cuándo y quién la abrió, cada pedida con hora, quién la anotó, productos,
+  cantidades y precios (lo fiado resaltado), los demás pagos y los totales. Las cuentas
+  viejas, que ya no están en el celular, se piden al servidor (`GET /api/cuentas?ids=`).
 - **Panel «📒 Deudas»** (menú de la persona): lo que le deben al negocio, de comida y de
   barra, cada persona con lo que debe y su historial.
 

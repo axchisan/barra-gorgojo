@@ -331,6 +331,18 @@ una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso
 sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
 como cualquier otra.
 
+### Sonido del aviso y cancelar el pedido (2026-11-14)
+
+El aviso de bebidas por despachar suena como un timbre fuerte (con compresor, para que se
+oiga en la barra) y se configura en cada aparato desde el menú, «🔔 Sonido de los
+avisos»: **Insistente** (cada 4 s hasta que despachen; por defecto), **Cada minuto**,
+**Una vez** o **Sin sonido**, con «Probar sonido». Mientras haya algo por despachar, la
+pantalla no se apaga sola (Wake Lock), para que el aviso no se pierda.
+
+Un pedido a la barra que aún no se despacha se puede **cancelar** desde «Despachar» o
+desde la pedida en el detalle de la cuenta: anula esas bebidas, con confirmación porque
+no se deshace.
+
 ### Totales a la vista (2026-11-08)
 
 En el panel de la pedida (tablet o celular girado) cada producto lleva su valor y al pie

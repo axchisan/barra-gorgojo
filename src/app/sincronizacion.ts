@@ -9,7 +9,7 @@
 
 import { AREAS, esArea, type Area } from "../dominio/areas";
 import { BASE_ORIGINAL } from "../dominio/base";
-import { aplicar, estadoVacio, recortar, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, estadoVacio, recortar, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { abrirMemoria, type Ajustes, type Apartado, type Cambio, type Confirmado, type Memoria, type PersonaPublica, type Sesion } from "./memoria";
 
 export type { PersonaPublica, Sesion } from "./memoria";
@@ -294,6 +294,26 @@ class Sincronizador {
       return null;
     } catch {
       return "Sin señal. Para entrar se necesita internet.";
+    }
+  }
+
+  /**
+   * Cuentas por id: las que están en el celular, y las demás (días anteriores) se piden al
+   * servidor. Para el detalle de las deudas. Sin señal, solo las del celular.
+   */
+  async traerCuentas(ids: string[]): Promise<{ cuentas: Record<string, Cuenta>; faltan: boolean }> {
+    const cuentas: Record<string, Cuenta> = {};
+    const pedir_ = ids.filter((id) => { const c = this.visible.cuentas[id]; if (c) cuentas[id] = c; return !c; });
+    if (!pedir_.length || !this.sesion) return { cuentas, faltan: pedir_.length > 0 };
+    try {
+      for (let i = 0; i < pedir_.length; i += 50) {
+        const { status, datos } = await pedir<{ cuentas?: Record<string, Cuenta> }>(`/api/cuentas?ids=${encodeURIComponent(pedir_.slice(i, i + 50).join(","))}`, { headers: { authorization: `Bearer ${this.sesion.token}` } });
+        if (status !== 200) return { cuentas, faltan: true };
+        Object.assign(cuentas, datos.cuentas ?? {});
+      }
+      return { cuentas, faltan: false };
+    } catch {
+      return { cuentas, faltan: true };
     }
   }
 

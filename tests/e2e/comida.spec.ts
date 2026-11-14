@@ -137,7 +137,7 @@ for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular g
   });
 }
 
-for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular", 360, 740], ["celular girado", 768, 301]] as const) {
+for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular", 360, 740], ["celular mediano", 390, 844], ["celular girado", 768, 301]] as const) {
   test(`la barra oculta las cuentas de solo comida; las que tienen bebidas siguen · ${nombre}`, async ({ browser }) => {
     const p = await celular(browser, "Administrador", { viewport: { width, height } });
     const n = Date.now() % 10000;
@@ -169,3 +169,48 @@ for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular",
     await expect(p.locator(".tarjetas .tarjeta", { hasText: soloPlato })).toBeVisible();
   });
 }
+
+test("comida cancela un pedido a la barra que aún no se despacha; la barra deja de tener el aviso", async ({ browser }) => {
+  const barra = await celular(browser, "Administrador");
+  // Una persona solo de comida, creada por la pantalla.
+  await barra.getByRole("button", { name: /Administrador ▾/ }).click();
+  await barra.getByRole("button", { name: "Personas y celulares" }).click();
+  await barra.getByPlaceholder("Nombre de la persona nueva").fill("Cocina cancela");
+  await barra.getByRole("button", { name: "Agregar" }).click();
+  await barra.locator(".fila-persona", { hasText: "Cocina cancela" }).first().getByRole("button", { name: /▾$/ }).click();
+  const permisos = barra.locator(".permisos");
+  await permisos.getByRole("button", { name: /🍽 Comida/ }).click(); // agrega comida
+  await expect(permisos.getByRole("button", { name: /🍽 Comida/ })).toHaveAttribute("aria-pressed", "true");
+  await permisos.getByRole("button", { name: /🍺 Barra/ }).click(); // quita barra
+  await expect(barra.locator(".fila-persona", { hasText: "Cocina cancela" }).first()).toContainText("Comida ▾");
+  await barra.goBack();
+
+  const cocina = await celular(browser, "Cocina cancela");
+  await cocina.getByRole("button", { name: "Pedir a la barra" }).click();
+  await cocina.getByLabel("Detalles del pedido").fill("para cancelar");
+  await cocina.keyboard.press("Enter");
+  await cocina.locator(".producto", { hasText: "RUBIA" }).first().click();
+  await cocina.locator(".pie-fijo .principal").click();
+  await expect(barra.locator(".aviso-despacho")).toContainText("para cancelar");
+
+  // Comida lo cancela desde «Despachar» (confirma), y a la barra se le quita el aviso.
+  await cocina.getByRole("button", { name: /Despachar/ }).click();
+  const tarjeta = cocina.locator(".por-despachar .despacho", { hasText: "para cancelar" });
+  await tarjeta.getByRole("button", { name: "Cancelar pedido" }).click();
+  await tarjeta.getByRole("button", { name: "Sí, cancelar" }).click();
+  await expect(cocina.locator(".aviso")).toContainText("pedido cancelado");
+  await expect(barra.locator(".aviso-despacho", { hasText: "para cancelar" })).toHaveCount(0);
+});
+
+test("el sonido de los avisos se escoge en cada aparato y se recuerda", async ({ browser }) => {
+  const p = await celular(browser, "Administrador");
+  await p.getByRole("button", { name: /Administrador ▾/ }).click();
+  await p.getByRole("button", { name: "🔔 Sonido de los avisos" }).click();
+  await expect(p.getByRole("radio", { name: /Insistente/ })).toHaveAttribute("aria-checked", "true");
+  await p.getByRole("radio", { name: /Una vez/ }).click();
+  await p.getByRole("button", { name: "▶ Probar sonido" }).click();
+  await p.reload();
+  await p.getByRole("button", { name: /Administrador ▾/ }).click();
+  await p.getByRole("button", { name: "🔔 Sonido de los avisos" }).click();
+  await expect(p.getByRole("radio", { name: /Una vez/ })).toHaveAttribute("aria-checked", "true");
+});

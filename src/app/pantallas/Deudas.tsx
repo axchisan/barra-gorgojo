@@ -1,9 +1,10 @@
 // Deudas (docs/15): quién debe y cuánto, lo que se le fió (cuentas o anotado a mano), sus
 // pagos, y recibir un pago. Los pagos de deudas van aparte de la caja del día.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { comidaDeudor, idDeudor, saldoDeudor, type Deudor } from "../../dominio/deudas";
 import { TOPE_VALOR_LIBRE } from "../../dominio/catalogo";
-import { fechaCorta, horaDe, pesos } from "../../dominio/formato";
+import { cuantasRondas, fechaCorta, horaDe, nombreCancha, nombreRonda, pesos, rondaViva } from "../../dominio/formato";
+import { total, type Cuenta } from "../../dominio/estado";
 import { ponerAviso } from "../avisos";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
@@ -112,8 +113,23 @@ export function DeudorDetalle({ nav, id }: { nav: Nav; id: string }) {
   const [pagar, setPagar] = useState(false);
   const [anotar, setAnotar] = useState(false);
   const [verAnulados, setVerAnulados] = useState(false);
+  // Las cuentas de donde salió la deuda, completas (las viejas se piden al servidor).
+  const idsCuentas = [...new Set((d?.movimientos ?? []).map((m) => m.cuenta?.id).filter((x): x is string => !!x))];
+  const clave = idsCuentas.join(",");
+  const [cuentas, setCuentas] = useState<Record<string, Cuenta>>({});
+  const [estadoCarga, setEstadoCarga] = useState<"cargando" | "listo" | "sin-senal">("cargando");
+  useEffect(() => {
+    let vivo = true;
+    void sinc.traerCuentas(idsCuentas).then((r) => { if (!vivo) return; setCuentas(r.cuentas); setEstadoCarga(r.faltan ? "sin-senal" : "listo"); });
+    return () => { vivo = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
   if (!d) return <main className="vacio-pantalla"><p>Esa persona no tiene deudas.</p><button className="secundario" onClick={nav.volver}>Volver</button></main>;
   const debe = Math.max(0, saldoDeudor(d));
+  const vivos = d.movimientos.filter((m) => !m.anulado);
+  const fiado = vivos.filter((m) => m.tipo === "cargo").reduce((t, m) => t + m.valor, 0);
+  const pagado = vivos.filter((m) => m.tipo === "pago").reduce((t, m) => t + m.valor, 0);
+  const desde = vivos.filter((m) => m.tipo === "cargo").map((m) => m.en).sort((a, b) => a - b)[0];
   const movimientos = [...d.movimientos].reverse().filter((m) => verAnulados || !m.anulado);
   return (
     <main className="deudor-detalle">
@@ -125,7 +141,9 @@ export function DeudorDetalle({ nav, id }: { nav: Nav; id: string }) {
         <span className="tipo">Debe</span>
         <span className="total">{pesos(debe)}</span>
         {comidaDeudor(d) > 0 && <span className="meta">🍽 {pesos(comidaDeudor(d))} de comida · 🍺 {pesos(debe - comidaDeudor(d))} de barra</span>}
+        <span className="meta">Fiado {pesos(fiado)}{pagado ? ` · pagó ${pesos(pagado)}` : ""}{desde ? ` · desde ${fechaCorta(desde)}` : ""}</span>
       </section>
+      {estadoCarga === "sin-senal" && <p className="alerta">Sin señal: no se pudo traer el detalle de algunas cuentas viejas.</p>}
       <section className="movimientos">
         {movimientos.map((m) => (
           <div key={m.id} className={`movimiento ${m.tipo}${m.anulado ? " anulado" : ""}`}>
@@ -135,7 +153,11 @@ export function DeudorDetalle({ nav, id }: { nav: Nav; id: string }) {
               {m.comida ? " · 🍽" : ""}
             </span>
             <strong className="valor">{m.tipo === "pago" ? "−" : "+"}{pesos(m.valor)}</strong>
-            <small className="tenue">{fechaCorta(m.en)} {horaDe(m.en)} · {m.por}{m.anulado ? ` · anulado por ${m.anulado.por}` : ""}</small>
+            <small className="tenue">
+              {fechaCorta(m.en)} {horaDe(m.en)} · {m.tipo === "pago" ? "recibió" : m.cuenta ? "la pasó a deuda" : "la anotó"} {m.por}
+              {m.anulado ? ` · anulado por ${m.anulado.por}` : ""}
+            </small>
+            {m.cuenta && <DetalleFiado c={cuentas[m.cuenta.id]} pago={m.id} cargando={estadoCarga === "cargando"} />}
             {sinc.administraDeudas && !m.anulado && !m.cuenta && (
               <button className="chip" onClick={() => sinc.emitir({ t: "deuda_anular", deudor: d.id, movimiento: m.id })}>Anular</button>
             )}
@@ -152,6 +174,75 @@ export function DeudorDetalle({ nav, id }: { nav: Nav; id: string }) {
         <button className="principal grande" disabled={debe <= 0} onClick={() => setPagar(true)}>Recibir pago</button>
       </div>
     </main>
+  );
+}
+
+const medioTexto = (m: string) => (m === "efectivo" ? "en efectivo" : m === "nequi" ? "por Nequi" : m === "breve" ? "por Breve" : m === "deuda" ? "a deuda" : m === "comida" ? "pasado a comida" : m);
+
+/**
+ * Cómo fue la cuenta de donde salió una deuda: qué se fió, cada pedida con sus productos,
+ * cantidades, precios, horas y quién la anotó, y los demás pagos de esa cuenta.
+ */
+function DetalleFiado({ c, pago, cargando }: { c?: Cuenta; pago: string; cargando: boolean }) {
+  const [abierto, setAbierto] = useState(false);
+  if (!c) return <small className="tenue detalle-fiado">{cargando ? "Trayendo el detalle…" : "Sin el detalle de esta cuenta."}</small>;
+  const p = c.pagos.find((x) => x.id === pago);
+  const fiadas = new Map((p?.lineas ?? []).map((x) => [x.linea, x.cantidad]));
+  const nombreLinea = (id: string) => {
+    const l = c.lineas.find((y) => y.id === id);
+    const r = l && c.rondas.find((y) => y.id === l.ronda);
+    return l ? `${l.nombre}${r ? ` (${nombreRonda(c, r)})` : ""}` : "producto";
+  };
+  const otros = c.pagos.filter((x) => x.id !== pago && !x.deshecho);
+  const tipo = c.tipo === "mesa" ? `Mesa ${c.mesa}` : c.tipo === "cancha" ? `Cancha ${nombreCancha(c.cancha ?? "")}` : null;
+  return (
+    <div className="detalle-fiado">
+      <p className="que-se-fio">
+        {fiadas.size
+          ? <>Se fió: {[...fiadas].map(([l, k]) => `${k} ${nombreLinea(l)}`).join(", ")}</>
+          : p?.parcial ? <>Se fió una parte de la cuenta ({pesos(p.monto)})</> : <>Se fió lo que faltaba de la cuenta</>}
+      </p>
+      <button className="enlace" aria-expanded={abierto} onClick={() => setAbierto(!abierto)}>
+        {abierto ? "▾ Esconder la cuenta" : `▸ Ver la cuenta: ${cuantasRondas(c)} · ${pesos(total(c))}`}
+      </button>
+      {abierto && (
+        <div className="cuenta-fiada">
+          <p className="tenue">{tipo ? `${tipo} · ` : ""}abierta el {fechaCorta(c.abiertaEn)} a las {horaDe(c.abiertaEn)} por {c.abiertaPor}</p>
+          {c.rondas.map((r) => {
+            const lineas = c.lineas.filter((l) => l.ronda === r.id);
+            if (!lineas.length) return null;
+            const sub = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.precio * l.cantidad), 0);
+            return (
+              <div key={r.id} className="pedida-fiada">
+                <div className="cabeza-pedida">
+                  <strong>{rondaViva(c, r.id) ? nombreRonda(c, r) : "Anulada"}</strong>
+                  <span className="tenue">{fechaCorta(r.en)} {horaDe(r.en)} · {r.persona}{r.detalle ? ` · ${r.detalle}` : ""}</span>
+                  <strong>{pesos(sub)}</strong>
+                </div>
+                <ul>
+                  {lineas.map((l) => (
+                    <li key={l.id} className={l.anulada ? "anulada" : fiadas.has(l.id) ? "fiada" : ""}>
+                      <span><b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{fiadas.has(l.id) ? ` · 📒 ${fiadas.get(l.id)} fiado${fiadas.get(l.id) === 1 ? "" : "s"}` : ""}</span>
+                      <span className="tenue">{l.cantidad} × {pesos(l.precio)}</span>
+                      <b>{pesos(l.precio * l.cantidad)}</b>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+          {otros.length > 0 && (
+            <div className="otros-pagos">
+              <strong>Otros pagos de esta cuenta</strong>
+              {otros.map((x) => (
+                <p key={x.id} className="tenue">{x.pagador ? `${x.pagador}: ` : ""}{pesos(x.monto)} {medioTexto(x.medio)} · {fechaCorta(x.en)} {horaDe(x.en)} · {x.persona}</p>
+              ))}
+            </div>
+          )}
+          <p className="totales-fiado">Total de la cuenta {pesos(total(c))}{otros.length ? ` · pagado aparte ${pesos(otros.reduce((t, x) => t + x.monto, 0))}` : ""} · fiado {pesos(p?.monto ?? 0)}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

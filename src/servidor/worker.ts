@@ -689,6 +689,14 @@ export class Barra extends DurableObject<Env> {
       return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()), yo: { rol: q.rol, areas: q.areas, deudas: q.deudas } });
     }
     if (ruta === "/api/foto") return json(this.foto());
+    // Cuentas por id, aunque ya no estén en el celular (las de días anteriores): para ver
+    // el detalle de lo fiado en «Deudas» (docs/15). Solo lectura, hasta 50 a la vez.
+    if (ruta === "/api/cuentas" && req.method === "GET") {
+      const ids = (url.searchParams.get("ids") ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 50);
+      const cuentas: Record<string, Cuenta> = {};
+      for (const id of ids) { const c = this.cuentaGuardada(id); if (c) cuentas[id] = c; }
+      return json({ cuentas });
+    }
     if (ruta === "/api/mi-pin" && req.method === "POST") {
       const { actual, nuevo } = await cuerpo<{ actual?: string; nuevo?: string }>();
       if (!esPin(nuevo)) return json({ error: "El PIN nuevo debe tener 4 números." }, 400);

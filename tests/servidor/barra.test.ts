@@ -881,6 +881,11 @@ describe("deudas en el servidor", () => {
     expect(otro.rechazadas?.[0].motivo).toBe("Nilson Servidor no debe nada.");
     const anular = (await s.ops(admin, [op({ t: "deuda_anular", deudor: "nilson-servidor", movimiento: `${cuenta}-p` })])) as R;
     expect(anular.rechazadas?.[0].motivo).toMatch(/se deshace desde el cobro de la cuenta/);
+    // El detalle de la cuenta fiada se puede pedir por id (para «Deudas»).
+    const r2 = await s.pedir(ana, `/api/cuentas?ids=${cuenta},no-existe`);
+    const { cuentas } = (await r2.json()) as { cuentas: Record<string, any> };
+    expect(Object.keys(cuentas)).toEqual([cuenta]);
+    expect(cuentas[cuenta].lineas[0].cantidad).toBe(3);
   });
 });
 

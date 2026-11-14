@@ -3,7 +3,7 @@ import { nombreArea } from "../../dominio/areas";
 import { jornada, porDespachar, situacion, total, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
 import { Apartados } from "../componentes/Apartados";
-import { PorDespachar } from "../componentes/Despacho";
+import { HojaSonido, PorDespachar } from "../componentes/Despacho";
 import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
 import { useAtrasCierra, type Nav } from "../navegacion";
@@ -21,6 +21,8 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   const nDespacho = porDespachar(cuentas).length;
   const panel = sinc.panel;
   const [cambiar, setCambiar] = useState(false);
+  const [sonido, setSonido] = useState(false);
+  const barra = sinc.tieneArea("barra");
   // Ocultar lo que no es del panel (docs/14): en la barra, las cuentas de solo comida; en
   // comida, las de solo barra. Lo que mezcla las dos cosas siempre se ve. Cada aparato lo
   // recuerda por panel; comida empieza ocultando lo de la barra (como antes, plegado).
@@ -64,12 +66,14 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
             </>
           )}
           <button onClick={() => { setCambiar(false); nav.ir({ v: "deudas" }); }}>📒 Deudas</button>
+          {barra && <button onClick={() => { setCambiar(false); setSonido(true); }}>🔔 Sonido de los avisos</button>}
           <button onClick={() => { setCambiar(false); nav.ir({ v: "mipin" }); }}>Cambiar mi PIN</button>
           <button onClick={() => sinc.salir()}>Cambiar de persona</button>
           <button onClick={() => setCambiar(false)}>Cerrar</button>
         </div>
       )}
 
+      {sonido && <HojaSonido cerrar={() => setSonido(false)} />}
       <Apartados />
       {pestana === "cuentas" && enCocina.length > 0 && (
         <details className="pasadas-a-comida">

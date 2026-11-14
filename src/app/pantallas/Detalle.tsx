@@ -10,6 +10,7 @@ import { EditarLinea } from "../componentes/EditarLinea";
 import { NoExiste } from "../componentes/NoExiste";
 import { TarjetasProducto } from "../componentes/TarjetasProducto";
 import { VistaCliente } from "../componentes/VistaCliente";
+import { CancelarPedido } from "../componentes/Despacho";
 import { colorDe, iconoTipo, resumen } from "../cuentas";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { contarPaquetes, nombrePaquete, porPaquete, textoPaquetes } from "../paquetes";
@@ -191,6 +192,9 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                     </button>
                   )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
+                  {s === "abierta" && lineas.some((l) => l.porDespachar && !l.anulada) && (
+                    <span className="cancelar-pedido"><CancelarPedido c={c} lineas={lineas.filter((l) => l.porDespachar && !l.anulada)} /></span>
+                  )}
                   <strong className="sub">
                     {/* Cuántos productos lleva la pedida, junto a lo que vale. */}
                     <small className="cuantos">{(() => { const k = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.cantidad), 0); return `${k} ${k === 1 ? "producto" : "productos"} · `; })()}</small>

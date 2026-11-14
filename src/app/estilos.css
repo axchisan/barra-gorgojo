@@ -941,3 +941,31 @@ html.apaisada-baja .segmentos.pestanas-anotar .largo { display: none; }
 html.apaisada-baja .segmentos.pestanas-anotar button { padding: 0 8px; }
 /* Celular: el cambio de panel solo con ícono, para que quepan la persona y el botón de ocultar. */
 @media (max-width: 459px) { .segmentos.panel .largo { display: none; } .segmentos.panel { flex: 0 0 auto; } .segmentos.panel button { padding: 0 12px; } }
+/* Detalle de lo fiado (docs/15). */
+.detalle-fiado { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.detalle-fiado .que-se-fio { margin: 0; font-weight: 600; }
+.detalle-fiado .enlace { align-self: flex-start; padding: 6px 0; min-height: 40px; }
+.cuenta-fiada { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--neutro-200); padding-top: 8px; }
+.cuenta-fiada p { margin: 0; }
+.pedida-fiada { background: var(--crema); border-radius: 10px; padding: 8px 10px; }
+.pedida-fiada .cabeza-pedida { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; }
+.pedida-fiada ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pedida-fiada li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.pedida-fiada li.anulada { opacity: 0.55; text-decoration: line-through; }
+.pedida-fiada li.fiada { background: #efe8f7; border-radius: 6px; padding: 2px 6px; }
+.otros-pagos { display: flex; flex-direction: column; gap: 2px; }
+.totales-fiado { font-weight: 700; }
+@media (max-width: 459px) { .pedida-fiada .cabeza-pedida { grid-template-columns: 1fr auto; } .pedida-fiada .cabeza-pedida .tenue { grid-column: 1 / -1; grid-row: 2; } .pedida-fiada li { grid-template-columns: 1fr auto; } .pedida-fiada li > .tenue { display: none; } }
+/* Sonido de los avisos de despacho. */
+.modos-sonido { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.modo-sonido { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-height: 64px; padding: 10px 12px; border-radius: var(--radio); border: 2px solid var(--neutro-200); background: var(--papel); }
+.modo-sonido small { color: var(--neutro-600); font-weight: 600; }
+.modo-sonido.activo { background: var(--marron); color: var(--crema); border-color: var(--marron); }
+.modo-sonido.activo small { color: var(--neutro-200); }
+.por-despachar .fila-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+.por-despachar .fila-botones > * { flex: 1 1 auto; min-height: 52px; }
+.ronda-tarjeta .cancelar-pedido { display: inline-flex; gap: 6px; }
+.ronda-tarjeta .cancelar-pedido button { min-height: 40px; padding: 4px 12px; font-size: 0.9rem; }
+/* El nombre de la persona se recorta antes que desbordar la cabecera (con el botón de ocultar). */
+.barra-superior > .quien { flex-shrink: 1; min-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra-superior > .conexion { flex-shrink: 1; min-width: 28px; overflow: hidden; white-space: nowrap; }

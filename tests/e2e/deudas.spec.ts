@@ -33,6 +33,12 @@ test("una cuenta pasa a deuda, queda en el panel de deudas y se recibe un pago a
   await expect(tarjeta).toContainText(total.toLocaleString("es-CO"));
   await tarjeta.click();
   await expect(p.locator(".movimiento")).toContainText(`Cuenta «${nombre}»`);
+  // El detalle de lo fiado: qué se fió, y la cuenta con sus pedidas, cantidades, horas y quién.
+  await expect(p.locator(".que-se-fio")).toContainText("Se fió lo que faltaba de la cuenta");
+  await p.getByRole("button", { name: /Ver la cuenta: 1 pedida/ }).click();
+  await expect(p.locator(".pedida-fiada")).toContainText("Pedida 1");
+  await expect(p.locator(".pedida-fiada")).toContainText("Administrador");
+  await expect(p.locator(".pedida-fiada li").first()).toContainText("2 ");
   await p.getByRole("button", { name: "Recibir pago" }).click();
   await p.getByRole("button", { name: "La mitad" }).click();
   const mitad = Math.ceil(total / 2 / 100) * 100;
