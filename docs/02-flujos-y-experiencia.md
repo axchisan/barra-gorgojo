@@ -333,8 +333,10 @@ como cualquier otra.
 
 ### Sonido del aviso y cancelar el pedido (2026-11-14)
 
-El aviso de bebidas por despachar suena como un timbre fuerte (con compresor, para que se
-oiga en la barra) y se configura en cada aparato desde el menú, «🔔 Sonido de los
+El aviso de bebidas por despachar suena como una campana limpia (tonos puros con
+armónicos suaves que se desvanecen, un eco corto para darle cuerpo y un limitador para que
+suene fuerte sin rajarse; 2026-11-14 reemplazó el pitido de ondas cuadradas). Timbre a
+escoger: **Campana** (tres notas que suben) o **Ding-dong**. Se configura en cada aparato desde el menú, «🔔 Sonido de los
 avisos»: **Insistente** (cada 4 s hasta que despachen; por defecto), **Cada minuto**,
 **Una vez** o **Sin sonido**, con «Probar sonido». Mientras haya algo por despachar, la
 pantalla no se apaga sola (Wake Lock), para que el aviso no se pierda.

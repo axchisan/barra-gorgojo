@@ -969,3 +969,4 @@ html.apaisada-baja .segmentos.pestanas-anotar button { padding: 0 8px; }
 /* El nombre de la persona se recorta antes que desbordar la cabecera (con el botón de ocultar). */
 .barra-superior > .quien { flex-shrink: 1; min-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barra-superior > .conexion { flex-shrink: 1; min-width: 28px; overflow: hidden; white-space: nowrap; }
+.segmentos.timbres button { min-height: 52px; }

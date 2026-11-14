@@ -208,9 +208,11 @@ test("el sonido de los avisos se escoge en cada aparato y se recuerda", async ({
   await p.getByRole("button", { name: "🔔 Sonido de los avisos" }).click();
   await expect(p.getByRole("radio", { name: /Insistente/ })).toHaveAttribute("aria-checked", "true");
   await p.getByRole("radio", { name: /Una vez/ }).click();
+  await p.getByRole("radio", { name: "Ding-dong" }).click();
   await p.getByRole("button", { name: "▶ Probar sonido" }).click();
   await p.reload();
   await p.getByRole("button", { name: /Administrador ▾/ }).click();
   await p.getByRole("button", { name: "🔔 Sonido de los avisos" }).click();
   await expect(p.getByRole("radio", { name: /Una vez/ })).toHaveAttribute("aria-checked", "true");
+  await expect(p.getByRole("radio", { name: "Ding-dong" })).toHaveAttribute("aria-checked", "true");
 });
