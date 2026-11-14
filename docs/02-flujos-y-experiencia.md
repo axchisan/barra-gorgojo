@@ -302,8 +302,12 @@ valor» → valor → Agregar. Las bebidas anotadas aquí le llegan a la barra c
 (sonido, vibración y franja arriba) hasta que se despachan; la pestaña «Despachar» sale
 solo cuando hay algo pendiente, para no quitar espacio.
 
-En el panel de comida, la lista de cuentas muestra primero las que tienen comida (con
-cuánto va de comida); las demás de la barra quedan plegadas debajo. La pestaña «Cocina»
+**Ocultar lo del otro panel** (2026-11-14): en la franja de arriba, a la derecha, un solo
+botón. En Barra, «🍽 Ocultar» esconde las cuentas de solo comida; en Comida, «🍺 Ocultar»
+esconde las de solo barra. Lo que mezcla las dos cosas (comida con bebidas) siempre se ve.
+Cada aparato recuerda su preferencia por panel (Comida empieza ocultando lo de la barra);
+debajo de las cuentas se avisa «N cuentas … ocultas · Mostrar». En el celular, el botón y
+el cambio de panel van solo con ícono para que quepa todo. La pestaña «Cocina»
 (mesas pasadas a comida por cobrar allá) se quitó: si queda alguna, sale como aviso
 plegable arriba de las cuentas.
 

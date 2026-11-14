@@ -824,7 +824,7 @@ html.apaisada-baja main.cobrar:not(.parte) > .quien-paga { grid-column: 1; }
 .marca.despacho { background: var(--amarillo); color: var(--marron); }
 .fila-buscar { display: flex; gap: 8px; align-items: flex-start; }
 .fila-buscar .buscar { flex: 1; min-width: 0; }
-.chip.filtro-comida { flex: 0 0 auto; min-height: 44px; padding: 6px 14px; font-size: 1.1rem; }
+.chip.filtro-comida { flex: 0 0 auto; min-height: 44px; padding: 6px 14px; font-size: 1rem; white-space: nowrap; }
 .chip.filtro-comida.activo { background: var(--azul-comida); border-color: var(--azul-comida); }
 .permisos { flex-basis: 100%; display: flex; flex-direction: column; gap: 8px; background: var(--papel); border: 2px solid var(--neutro-200); border-radius: var(--radio); padding: 10px 12px; }
 .permisos .etiqueta { margin: 4px 0 0; }
@@ -921,3 +921,23 @@ html.apaisada .inicio .pie-fijo .pedir-barra { min-height: 46px; padding: 8px 12
 /* Cuatro medios (con «Deuda») en una sola fila, también en el teléfono. */
 .cobrar .opciones.medios { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .cobrar .opciones.medios .chip { padding: 8px 4px; font-size: clamp(0.85rem, 3.9vw, 1.05rem); white-space: nowrap; }
+
+/* Ocultar las cuentas de solo comida: en la cabecera, a toda la derecha. */
+.barra-superior .ocultar-comida {
+  margin-left: auto; flex: 0 0 auto; min-height: 40px; min-width: 44px; padding: 0 12px; border-radius: 12px;
+  background: transparent; color: var(--crema); border: 2px solid rgb(250 244 232 / 0.4); font-weight: 700; white-space: nowrap;
+}
+.barra-superior .ocultar-comida.activo { background: var(--crema); color: var(--marron); border-color: var(--crema); }
+.barra-superior .ocultar-comida.activo::before { content: ""; }
+.barra-superior .ocultar-comida small { margin-left: 6px; background: var(--azul-comida); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 0.8rem; }
+@media (max-width: 559px) { .barra-superior .ocultar-comida .largo { display: none; } .barra-superior .ocultar-comida { padding: 0 8px; } }
+.enlace.ocultas { display: block; margin: 10px auto 0; }
+/* La cabecera nunca se sale de la pantalla: el título se recorta antes que los botones. */
+.barra-superior > * { min-width: 0; }
+.barra-superior > button, .barra-superior > .segmentos.pestanas-anotar, .barra-superior > .ocultar-comida { flex-shrink: 0; }
+.barra-superior strong { min-width: 0; }
+/* Celular girado: la cabecera de «Anotar» va en el panel derecho, angosto: pestañas solo con ícono. */
+html.apaisada-baja .segmentos.pestanas-anotar .largo { display: none; }
+html.apaisada-baja .segmentos.pestanas-anotar button { padding: 0 8px; }
+/* Celular: el cambio de panel solo con ícono, para que quepan la persona y el botón de ocultar. */
+@media (max-width: 459px) { .segmentos.panel .largo { display: none; } .segmentos.panel { flex: 0 0 auto; } .segmentos.panel button { padding: 0 12px; } }

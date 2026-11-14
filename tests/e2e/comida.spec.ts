@@ -57,8 +57,8 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   await expect(aviso).toHaveCount(0);
   await expect(mesa).not.toContainText("Por despachar");
 
-  // La barra ve la cuenta con su comida.
-  await barra.getByRole("button", { name: "Solo cuentas con comida" }).click();
+  // La barra ve la cuenta con su comida, y aunque oculte las de solo comida, esta sigue
+  // porque tiene bebidas.
   await expect(barra.locator(".tarjeta", { hasText: "Mesa 7" }).locator(".marca-comida")).toBeVisible();
 
   // Comida cobra todo (platos y cerveza) en su caja: 2·5.000 + 30.000 + 12.000 + rubia.
@@ -134,5 +134,38 @@ for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular g
     for (const b of [p.getByRole("button", { name: "Pedir a la barra" }), p.getByRole("button", { name: "＋ Nueva cuenta" }), p.locator(".pestanas button").last()]) {
       await expect(b).toBeInViewport({ ratio: 1 });
     }
+  });
+}
+
+for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular", 360, 740], ["celular girado", 768, 301]] as const) {
+  test(`la barra oculta las cuentas de solo comida; las que tienen bebidas siguen · ${nombre}`, async ({ browser }) => {
+    const p = await celular(browser, "Administrador", { viewport: { width, height } });
+    const n = Date.now() % 10000;
+    const soloPlato = `Solo plato ${n}`, conBebida = `Plato y cerveza ${n}`;
+    const cuenta = async (nombreCuenta: string, cerveza: boolean) => {
+      await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+      await p.getByPlaceholder("Nombre", { exact: true }).fill(nombreCuenta);
+      await p.getByRole("tab", { name: /Comida/ }).click();
+      await p.getByRole("button", { name: /Otro valor/ }).click();
+      await p.getByLabel("Valor del plato").fill("10000");
+      await p.locator(".hoja").getByRole("button", { name: /Agregar/ }).click();
+      if (cerveza) { await p.getByRole("tab", { name: /Bebidas/ }).click(); await p.locator("main > section .producto").first().click(); }
+      await p.locator(".pie-fijo .principal").click();
+    };
+    await cuenta(soloPlato, false);
+    await cuenta(conBebida, true);
+    const boton = p.getByRole("button", { name: "Ocultar las cuentas de solo comida" });
+    await expect(boton).toBeInViewport({ ratio: 1 });
+    // El encabezado no crece ni se sale.
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await boton.click();
+    await expect(p.locator(".tarjetas .tarjeta", { hasText: soloPlato })).toHaveCount(0);
+    await expect(p.locator(".tarjetas .tarjeta", { hasText: conBebida })).toBeVisible();
+    await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/ocultar-" + nombre.replace(" ", "-") + ".png" });
+    // Se recuerda al volver a abrir la app.
+    await p.reload();
+    await expect(p.locator(".tarjetas .tarjeta", { hasText: soloPlato })).toHaveCount(0);
+    await p.getByRole("button", { name: "Mostrar las cuentas de solo comida" }).click();
+    await expect(p.locator(".tarjetas .tarjeta", { hasText: soloPlato })).toBeVisible();
   });
 }

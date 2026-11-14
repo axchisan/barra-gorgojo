@@ -21,6 +21,15 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   const nDespacho = porDespachar(cuentas).length;
   const panel = sinc.panel;
   const [cambiar, setCambiar] = useState(false);
+  // Ocultar lo que no es del panel (docs/14): en la barra, las cuentas de solo comida; en
+  // comida, las de solo barra. Lo que mezcla las dos cosas siempre se ve. Cada aparato lo
+  // recuerda por panel; comida empieza ocultando lo de la barra (como antes, plegado).
+  const [ocultarPor, setOcultarPor] = useState(() => ({ barra: leerOcultar("barra"), comida: leerOcultar("comida") }));
+  const ocultar = ocultarPor[panel];
+  const setOcultar = (v: boolean) => { setOcultarPor((o) => ({ ...o, [panel]: v })); guardarOcultar(panel, v); };
+  const ocultables = cuentas.filter((c) => situacion(c) === "abierta" && ajena(c, panel)).length;
+  const verBotonOcultar = pestana === "cuentas" && (ocultables > 0 || ocultar);
+  const queOculta = panel === "barra" ? "comida" : "barra";
   useAtrasCierra(cambiar, () => setCambiar(false));
 
   return (
@@ -29,14 +38,21 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
         {sinc.areas.length > 1 ? (
           <div className="segmentos panel" role="group" aria-label="Área">
             {sinc.areas.map((a) => (
-              <button key={a} className={panel === a ? `activo${a === "comida" ? " comida-chip" : ""}` : ""} aria-pressed={panel === a} onClick={() => sinc.ponerPanel(a)}>
-                {a === "comida" ? "🍽" : "🍺"} {nombreArea(a)}
+              <button key={a} className={panel === a ? `activo${a === "comida" ? " comida-chip" : ""}` : ""} aria-pressed={panel === a} aria-label={nombreArea(a)} onClick={() => sinc.ponerPanel(a)}>
+                {a === "comida" ? "🍽" : "🍺"}<span className="largo"> {nombreArea(a)}</span>
               </button>
             ))}
           </div>
         ) : <strong>{nombreArea(panel)}</strong>}
         <EstadoConexion />
         <button className="quien" onClick={() => setCambiar(!cambiar)}>{sinc.sesion!.persona} ▾</button>
+        {/* A toda la derecha: ocultar o mostrar lo del otro panel. */}
+        {verBotonOcultar && (
+          <button className={ocultar ? "ocultar-comida activo" : "ocultar-comida"} aria-pressed={ocultar}
+            aria-label={`${ocultar ? "Mostrar" : "Ocultar"} las cuentas de solo ${queOculta}`} onClick={() => setOcultar(!ocultar)}>
+            {queOculta === "comida" ? "🍽" : "🍺"}<span className="largo"> {ocultar ? "Mostrar" : "Ocultar"}</span>{ocultar && ocultables ? <small>{ocultables}</small> : null}
+          </button>
+        )}
       </header>
       {cambiar && (
         <div className="menu-persona">
@@ -61,7 +77,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
           <Cocina nav={nav} cuentas={enCocina} />
         </details>
       )}
-      {pestana === "cuentas" && <ListaCuentas nav={nav} cuentas={cuentas} />}
+      {pestana === "cuentas" && <ListaCuentas nav={nav} cuentas={cuentas} ocultar={ocultar} mostrar={() => setOcultar(false)} />}
       {pestana === "despacho" && <PorDespachar nav={nav} cuentas={cuentas} />}
       {pestana === "dia" && <ElDia nav={nav} cuentas={cuentas} />}
 
@@ -79,27 +95,35 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   );
 }
 
-function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
+/** Si este aparato oculta lo del otro panel (preferencia local). Comida empieza ocultando lo de la barra. */
+function leerOcultar(panel: "barra" | "comida") {
+  try { const v = localStorage.getItem(`ocultar-${panel}`); return v == null ? panel === "comida" : v === "1"; } catch { return panel === "comida"; }
+}
+function guardarOcultar(panel: "barra" | "comida", v: boolean) { try { localStorage.setItem(`ocultar-${panel}`, v ? "1" : "0"); } catch { /* sin almacenamiento */ } }
+
+/** Con algo de comida: platos, o bebidas pedidas desde comida. */
+const deComida = (c: Cuenta) => c.lineas.some((l) => !l.anulada && (l.comida || l.porDespachar || l.despachada));
+/** Con productos y todos de comida (sin bebidas). */
+const soloComida = (c: Cuenta) => { const vivas = c.lineas.filter((l) => !l.anulada); return vivas.length > 0 && vivas.every((l) => l.comida); };
+/** Lo que un panel puede ocultar: en la barra, lo de solo comida; en comida, lo que no tiene nada de comida. */
+const ajena = (c: Cuenta, panel: "barra" | "comida") => (panel === "barra" ? soloComida(c) : !deComida(c));
+
+function ListaCuentas({ nav, cuentas, ocultar, mostrar }: { nav: Nav; cuentas: Cuenta[]; ocultar: boolean; mostrar: () => void }) {
   const [buscar, setBuscar] = useState("");
   const [verCerradas, setVerCerradas] = useState(false);
-  // La barra ve lo que pasa en comida (docs/14): filtro de cuentas con platos o con cerveza pedida desde comida.
-  const [filtro, setFiltro] = useState<"todas" | "comida">("todas");
-  const deComida = (c: Cuenta) => c.lineas.some((l) => !l.anulada && (l.comida || l.porDespachar || l.despachada));
+  // La barra ve lo que pasa en comida (docs/14), pero puede ocultar las cuentas de solo
+  // comida para anotar más cómodo. Las de comida con bebidas siguen a la vista. Cada
+  // aparato lo recuerda.
   const q = buscar.trim().toLowerCase();
   const coincide = (c: Cuenta) =>
     !q || c.nombre.toLowerCase().includes(q) || String(c.mesa ?? "") === q || (c.cancha ?? "") === q;
   const abiertas = cuentas
     .filter((c) => situacion(c) === "abierta" && (total(c) > 0 || Date.now() - c.abiertaEn < 3 * 3600_000))
     .filter(coincide)
-    .filter((c) => filtro === "todas" || deComida(c))
     .sort((a, b) => b.ultima - a.ultima);
-  const hayComida = cuentas.some((c) => situacion(c) === "abierta" && deComida(c));
-  // En el panel de comida (docs/14): primero las cuentas con comida; las demás de la barra,
-  // plegadas debajo (se ven y se cobran, pero no son lo de comida).
-  const enComida = sinc.panel === "comida" && filtro === "todas";
-  const principales = enComida ? abiertas.filter(deComida) : abiertas;
-  const deBarra = enComida ? abiertas.filter((c) => !deComida(c)) : [];
-  const [verBarra, setVerBarra] = useState(false);
+  const panel = sinc.panel;
+  const ocultas = ocultar ? abiertas.filter((c) => ajena(c, panel)) : [];
+  const principales = ocultar ? abiertas.filter((c) => !ajena(c, panel)) : abiertas;
   const hoy = jornada(Date.now());
   const cerradas = cuentas
     .filter((c) => (situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada") && jornada(c.ultima) === hoy)
@@ -112,22 +136,16 @@ function ListaCuentas({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
       <div className="fila-buscar">
         <input className="buscar" type="search" enterKeyHint="search" autoCapitalize="off" autoCorrect="off" spellCheck={false} onKeyDown={cerrarConEnter}
           placeholder="Buscar cuenta, mesa o cancha" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
-        {sinc.panel === "barra" && (hayComida || filtro === "comida") && (
-          <button className={filtro === "comida" ? "chip filtro-comida activo" : "chip filtro-comida"} aria-pressed={filtro === "comida"}
-            aria-label="Solo cuentas con comida" onClick={() => setFiltro(filtro === "comida" ? "todas" : "comida")}>🍽</button>
-        )}
       </div>
-      {principales.length === 0 && <p className="vacio">{filtro === "comida" || enComida ? "No hay cuentas abiertas con comida." : "No hay cuentas abiertas."}</p>}
+      {principales.length === 0 && !ocultas.length && <p className="vacio">No hay cuentas abiertas.</p>}
       <div className="tarjetas">
         {principales.map((c) => <TarjetaCuenta key={c.id} c={c} nav={nav} />)}
       </div>
-      {deBarra.length > 0 && (
-        <section className="cuentas-barra">
-          <button className="enlace" onClick={() => setVerBarra(!verBarra)}>
-            {verBarra ? "▾" : "▸"} Cuentas de la barra ({deBarra.length})
-          </button>
-          {verBarra && <div className="tarjetas">{deBarra.map((c) => <TarjetaCuenta key={c.id} c={c} nav={nav} />)}</div>}
-        </section>
+      {/* Lo oculto se avisa: en el celular el botón de arriba es solo un ícono. */}
+      {ocultas.length > 0 && (
+        <button className="enlace ocultas" onClick={mostrar}>
+          {ocultas.length === 1 ? "1 cuenta" : `${ocultas.length} cuentas`} de solo {panel === "barra" ? "comida" : "barra"} {ocultas.length === 1 ? "oculta" : "ocultas"} · Mostrar
+        </button>
       )}
       {cerradas.length > 0 && (
         <section className="cerradas">
