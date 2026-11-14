@@ -1,8 +1,9 @@
 # 07 · Roadmap
 
 > **Desde el 2026-11-02 el orden de trabajo lo manda [12 · Plan de trabajo](12-plan-de-trabajo.md)**,
-> que parte de la auditoría (`negocio/docs/09`, privada). Este documento queda como el
-> roadmap original de producto (fases 1 a 4).
+> que parte de la auditoría (`negocio/docs/09`, privada), y desde el 2026-11-14
+> **[16 · Estado y siguiente etapa](16-siguiente-etapa.md)**. Este documento queda como el
+> roadmap original de producto (fases 1 a 4); lo hecho de cada fase está marcado.
 
 ## Versión 0.1 · En uso — 2026-10-04
 
@@ -72,8 +73,8 @@ El mínimo para reemplazar el cuaderno un día normal, **con y sin señal**.
 | Entregable | Requerimientos |
 |---|---|
 | Jornadas anteriores y exportación CSV | RF-52, RF-53 |
-| Unir cuentas, anular cuentas, reabrir | RF-06, RF-07 |
-| Notas en las rondas | RF-17 |
+| ✅ Unir cuentas (juntar, 2026-11-08), anular cuentas, reabrir | RF-06, RF-07 |
+| ✅ Notas: en los platos y detalles en los pedidos a la barra (2026-11-08) | RF-17 |
 | Modo «mostrar al cliente» | RF-27 |
 | Auditoría consultable y pantalla de estado de celulares | RF-74 |
 | Administración del catálogo, personas y dispositivos desde la app | RF-62 |
@@ -93,12 +94,13 @@ se vende de cada cosa**. Después de dos meses de fase 1 ese dato ya está.
 
 ## Fase 4 · Integraciones, según necesidad
 
-- Pago en varias partes y fiado (RF-28, RF-29), si el negocio lo pide.
+- ✅ Pago en varias partes y fiado (RF-28, RF-29): abonos y deudas, 2026-11-08.
 - Canchas con equipos y «¿quién paga este chico?» (RF-19).
 - Mecato como lista desplegable de productos con su precio (decisión ya tomada; solo es cargar el catálogo y una pantalla de selección).
 - Ventas de la barra en el tablero del panel del sitio web.
-- Sistema de cuentas de la cocina con el mismo motor, si la barra funciona y la cocina
-  lo quiere. La arquitectura lo permite: otra categoría de productos y otra pantalla.
+- ✅ Cuentas de la cocina con el mismo motor (2026-11-08, [14](14-comida-y-areas.md)): la
+  misma cuenta, categoría comida, panel propio y dos cajas.
+- Pedidos de los clientes por QR y NFC, y notificaciones push: [16](16-siguiente-etapa.md).
 - Precios de bebidas del sitio público leídos desde la barra, para que no se
   desactualicen.
 

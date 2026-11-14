@@ -27,7 +27,7 @@ export interface Deudor {
   movimientos: MovimientoDeuda[];
 }
 
-/** El id de una persona que debe, a partir de su nombre: «Nilson » y «nilson» son la misma. */
+/** El id de una persona que debe, a partir de su nombre: «Pedro » y «pedro» son la misma. */
 export function idDeudor(nombre: string): string {
   return nombre.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 }

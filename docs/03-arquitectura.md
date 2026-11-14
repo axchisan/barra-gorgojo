@@ -128,6 +128,9 @@ src/
 │   ├── catalogo.ts     # tipos y reglas fijas; el catálogo base viene de #negocio
 │   ├── jornada.ts      # resumen del día y CSV (E1)
 │   ├── pago.ts         # billetes y sugerencias de con cuánto pagan (F1, F2)
+│   ├── areas.ts        # barra y comida (docs/14, ADR-15)
+│   ├── deudas.ts       # deudores, saldo, comida y pagos de deudas (docs/15, ADR-16)
+│   ├── auditoria.ts    # cada operación en una frase (E4)
 │   ├── base.ts · formato.ts
 ├── app/
 │   ├── App.tsx         # solo sesión y qué pantalla se ve
@@ -137,13 +140,17 @@ src/
 │   ├── sincronizacion.ts # cola, WebSocket con respaldo HTTP, una conexión por celular
 │   ├── paquetes.ts · cuentas.ts · colores.ts · teclado.ts · ajustarNombres.ts · vibrar.ts
 │   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Dias,
-│   │                   # Productos, EditarProducto, Personas (y MiPin)
+│   │                   # Productos, EditarProducto, Platos, Personas (y MiPin), Auditoria,
+│   │                   # Deudas (y DeudorDetalle)
 │   └── componentes/    # TarjetaCuenta, TarjetasProducto, EditarLinea, Desglose, VistaCliente,
-│                       # HojaLibre (mecato y «Otro»), HojaMixto, TecladoPin, Apartados,
-│                       # EstadoConexion, NoExiste
+│                       # HojaLibre (mecato y «Otro»), HojaMixto, HojaNota (notas y plato de
+│                       # otro valor), Despacho (aviso, sonido, «Despachar», cancelar),
+│                       # TecladoPin, Apartados, EstadoConexion, NoExiste
 └── servidor/
     ├── worker.ts       # Worker (rutas, archivos, Cron a R2) y Durable Object `Barra`
-    └── acceso.ts       # personas, celulares, códigos, PIN y sesiones (ADR-10)
+    ├── esquema.ts      # forma de cada operación (Zod, solo en el Worker)
+    ├── correo.ts       # respaldo semanal por correo (listo, apagado en producción)
+    └── acceso.ts       # personas, áreas, permisos, celulares, códigos, PIN y sesiones (ADR-10)
 public/sw.js            # Service Worker propio: la app abre sin señal
 negocio.ejemplo/        # catálogo de ejemplo (el real, en negocio/, privado)
 scripts/                # preparar, recorrido, resumen-estado, migrar, admin, servidor-e2e

@@ -17,22 +17,22 @@ const base = () => [
 
 describe("deudas", () => {
   it("pasar la cuenta entera a deuda la cierra sin plata en caja y la deja a nombre de alguien", () => {
-    const e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "  Nilson " })]);
+    const e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "  Pedro " })]);
     const c = e.cuentas.m;
     expect(situacion(c)).toBe("cobrada");
     expect(saldo(c)).toBe(0);
     expect(efectivoDeJornada([c], jornada(c.pagos[0].en))).toBe(0);
-    const d = e.deudas!.nilson;
-    expect(d.nombre).toBe("Nilson");
+    const d = e.deudas!.pedro;
+    expect(d.nombre).toBe("Pedro");
     expect(saldoDeudor(d)).toBe(30_000);
     expect(comidaDeudor(d)).toBe(10_000);
     expect(d.movimientos[0]).toMatchObject({ tipo: "cargo", valor: 30_000, cuenta: { id: "m", nombre: "Mesa 2" } });
   });
 
   it("se pueden pasar a deuda solo unas pedidas o productos; lo demás se cobra normal", () => {
-    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Nilson", lineas: [{ linea: "s", cantidad: 1 }] })]);
+    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Pedro", lineas: [{ linea: "s", cantidad: 1 }] })]);
     expect(saldo(e.cuentas.m)).toBe(20_000);
-    expect(comidaDeudor(e.deudas!.nilson)).toBe(10_000);
+    expect(comidaDeudor(e.deudas!.pedro)).toBe(10_000);
     e = correr([op({ t: "cobrar", cuenta: "m", pago: "pe", medio: "efectivo" })], e);
     expect(efectivoDeJornada([e.cuentas.m], jornada(e.cuentas.m.pagos[1].en))).toBe(20_000);
   });
@@ -40,46 +40,46 @@ describe("deudas", () => {
   it("el mismo nombre escrito distinto es la misma persona; sin nombre no pasa nada", () => {
     const e = correr([...base(),
       op({ t: "cobrar", cuenta: "m", pago: "p0", medio: "deuda", deudor: "   " }),
-      op({ t: "cobrar", cuenta: "m", pago: "p1", medio: "deuda", deudor: "NILSON", monto: 5_000 }),
-      op({ t: "cobrar", cuenta: "m", pago: "p2", medio: "deuda", deudor: "nilson", monto: 5_000 })]);
-    expect(Object.keys(e.deudas!)).toEqual(["nilson"]);
-    expect(saldoDeudor(e.deudas!.nilson)).toBe(10_000);
+      op({ t: "cobrar", cuenta: "m", pago: "p1", medio: "deuda", deudor: "PEDRO", monto: 5_000 }),
+      op({ t: "cobrar", cuenta: "m", pago: "p2", medio: "deuda", deudor: "pedro", monto: 5_000 })]);
+    expect(Object.keys(e.deudas!)).toEqual(["pedro"]);
+    expect(saldoDeudor(e.deudas!.pedro)).toBe(10_000);
     expect(e.cuentas.m.pagos.map((p) => p.id)).toEqual(["p1", "p2"]);
   });
 
   it("deshacer el cobro o reabrir la cuenta anula su deuda", () => {
-    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Nilson" })]);
+    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Pedro" })]);
     e = correr([op({ t: "deshacer_pago", cuenta: "m", pago: "pd" })], e);
-    expect(saldoDeudor(e.deudas!.nilson)).toBe(0);
+    expect(saldoDeudor(e.deudas!.pedro)).toBe(0);
     expect(saldo(e.cuentas.m)).toBe(30_000);
-    e = correr([op({ t: "cobrar", cuenta: "m", pago: "pd2", medio: "deuda", deudor: "Nilson" }), op({ t: "reabrir", cuenta: "m" })], e);
-    expect(saldoDeudor(e.deudas!.nilson)).toBe(0);
+    e = correr([op({ t: "cobrar", cuenta: "m", pago: "pd2", medio: "deuda", deudor: "Pedro" }), op({ t: "reabrir", cuenta: "m" })], e);
+    expect(saldoDeudor(e.deudas!.pedro)).toBe(0);
   });
 
   it("los pagos de deudas bajan lo que debe, nunca de más, y van aparte de la caja", () => {
-    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Nilson" })]);
-    const pago = op({ t: "deuda_pago", deudor: "nilson", valor: 12_000, medio: "efectivo" });
-    e = correr([pago, pago, op({ t: "deuda_pago", deudor: "nilson", valor: 999_000, medio: "nequi" })], e);
-    const d = e.deudas!.nilson;
+    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Pedro" })]);
+    const pago = op({ t: "deuda_pago", deudor: "pedro", valor: 12_000, medio: "efectivo" });
+    e = correr([pago, pago, op({ t: "deuda_pago", deudor: "pedro", valor: 999_000, medio: "nequi" })], e);
+    const d = e.deudas!.pedro;
     expect(d.movimientos.filter((m) => m.tipo === "pago").map((m) => [m.valor, m.medio])).toEqual([[12_000, "efectivo"], [18_000, "nequi"]]);
     expect(saldoDeudor(d)).toBe(0);
     const fecha = jornada(d.movimientos[1].en);
     expect(pagosDeudasDe([d], fecha, jornada)).toEqual({ total: 30_000, efectivo: 12_000, nequi: 18_000, breve: 0 });
     expect(efectivoDeJornada(Object.values(e.cuentas), fecha)).toBe(0);
     // Ya no debe: otro pago no hace nada.
-    e = correr([op({ t: "deuda_pago", deudor: "nilson", valor: 1_000, medio: "efectivo" })], e);
-    expect(e.deudas!.nilson.movimientos.length).toBe(3);
+    e = correr([op({ t: "deuda_pago", deudor: "pedro", valor: 1_000, medio: "efectivo" })], e);
+    expect(e.deudas!.pedro.movimientos.length).toBe(3);
   });
 
   it("una deuda anotada a mano (de comida) se puede anular; la de una cuenta no se anula aquí", () => {
-    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Nilson" }),
-      op({ t: "deuda_cargo", deudor: "Nilson", valor: 25_000, concepto: " almuerzos ", comida: true }, "Administrador")]);
-    const d = () => e.deudas!.nilson;
+    let e = correr([...base(), op({ t: "cobrar", cuenta: "m", pago: "pd", medio: "deuda", deudor: "Pedro" }),
+      op({ t: "deuda_cargo", deudor: "Pedro", valor: 25_000, concepto: " almuerzos ", comida: true }, "Administrador")]);
+    const d = () => e.deudas!.pedro;
     expect(saldoDeudor(d())).toBe(55_000);
     expect(comidaDeudor(d())).toBe(35_000);
     const manual = d().movimientos[1];
     expect(manual).toMatchObject({ concepto: "almuerzos", comida: 25_000 });
-    e = correr([op({ t: "deuda_anular", deudor: "nilson", movimiento: manual.id }), op({ t: "deuda_anular", deudor: "nilson", movimiento: "pd" })], e);
+    e = correr([op({ t: "deuda_anular", deudor: "pedro", movimiento: manual.id }), op({ t: "deuda_anular", deudor: "pedro", movimiento: "pd" })], e);
     expect(saldoDeudor(d())).toBe(30_000);
     expect(d().movimientos[0].anulado).toBeUndefined();
   });

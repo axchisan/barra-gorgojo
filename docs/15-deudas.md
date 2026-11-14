@@ -20,7 +20,7 @@ anotaban aparte.
   quienes ya deben). Sirve para todo, para unas pedidas o productos, o para un valor. La
   cuenta queda saldada sin plata en caja (`cobrar` con `medio: "deuda"` y `deudor`), y se
   le carga a esa persona en `Estado.deudas` con la cuenta de donde salió y cuánto es comida.
-- **Una persona por nombre:** «Nilson», «NILSON» y « nilson » son la misma (`idDeudor`).
+- **Una persona por nombre:** «Pedro», «PEDRO» y « pedro » son la misma (`idDeudor`).
 - **Deudas a mano** (`deuda_cargo`): concepto, valor, comida o barra.
 - **Pagos** (`deuda_pago`): todo o una parte, en efectivo, Nequi o Breve; nunca más de lo
   que debe. «El día» los muestra como «Pagos de deudas hoy (aparte de la caja)».

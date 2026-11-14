@@ -16,15 +16,19 @@ Lee `docs/00-vision-y-problema.md` antes de cualquier decisión de producto y
 
 ## Estado
 
-**Versión 0.1 en producción** desde el 2026-10-04, usada de verdad desde el 2026-11-01.
-Se construyó con atajos para salir rápido. **El trabajo actual sigue
-`docs/12-plan-de-trabajo.md`**, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
+**En producción** desde el 2026-10-04, usada de verdad desde el 2026-11-01. **El
+trabajo actual parte de `docs/16-siguiente-etapa.md`** (estado al 2026-11-14, deuda
+técnica y siguiente etapa); el plan que lo precedió, ya cumplido, es
+`docs/12-plan-de-trabajo.md`, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.
 
 Hechas: fases A a G (la G el 2026-11-04: producción en la base `reten-del-gorgojo-v3`,
-solo con las ventas reales), más la revisión técnica de `docs/13-revision-tecnica.md` y
-el dominio propio. **Producción vuelve a tener solo datos reales: no probar ahí**; para
-probar, el entorno de pruebas. Lo siguiente es lo de fases 3 y 4 de `docs/07`.
+solo con las ventas reales), la revisión técnica de `docs/13-revision-tecnica.md`, el
+dominio propio, y del 2026-11-08 al 14: abonos y dividir entre varios, comida y áreas
+(`docs/14`), despacho con aviso sonoro, juntar cuentas, chicos y adicionales, y deudas
+(`docs/15`). **Producción tiene solo datos reales: no probar ahí**; para probar, el
+entorno de pruebas. **Lo siguiente está en `docs/16-siguiente-etapa.md`** (robustez,
+notificaciones push, rendimiento, pedidos por QR y NFC), con la deuda técnica conocida.
 
 ## Reglas no negociables
 

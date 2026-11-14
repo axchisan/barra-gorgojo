@@ -227,16 +227,11 @@ sitio) sigue igual y va después.
 
 ## Para iniciar la próxima sesión
 
-Abrir Claude Code en `Documents/Dev/Apps/BarraGorgojo` y pegar:
+**Las fases de este plan están hechas.** La siguiente etapa y cómo iniciar la sesión están
+en [16 · Estado y siguiente etapa](16-siguiente-etapa.md). Las reglas de producción de
+arriba siguen valiendo.
 
-> Vamos a seguir con la Barra del Gorgojo. Lee `AGENTS.md` y `docs/12-plan-de-trabajo.md`
-> (sobre todo la tabla de seguimiento y las fases F y G). Sigue con la **fase F** en orden
-> (F1 a F4) y después E2. Producción hoy tiene datos de prueba: se puede probar ahí, pero
-> pregúntame antes de cada despliegue a producción y antes de la fase G. Revisa cada cambio
-> en el celular y la tablet reales si están conectados por USB. Al terminar cada paso,
-> actualiza el estado en la tabla de seguimiento de 12.
-
-Contexto útil para esa sesión:
+Contexto útil (de las sesiones de este plan):
 
 - Aparatos reales (depuración USB): tablet en `negocio/docs/11`; probar en la **app
   instalada**, vertical y girada. Restaurar la rotación al terminar.
@@ -244,7 +239,8 @@ Contexto útil para esa sesión:
   `node scripts/admin.mjs .dev.vars.produccion foto migracion/<nombre>.json` y comparar con
   `pnpm resumen` (regla 2 de producción).
 - Pruebas: `pnpm build && pnpm desplegar:pruebas`. URLs en `negocio/README.md`.
-- Último estado comprobado (2026-11-03, después de F y E2): 94 pruebas de Vitest y 40 e2e pasando.
+- Último estado comprobado (2026-11-14): 167 pruebas de Vitest y 65 e2e pasando. En un
+  clon nuevo, `pnpm build` antes de `pnpm verificar` (las pruebas del Worker necesitan `dist`).
 
 ---
 
@@ -281,3 +277,6 @@ Contexto útil para esa sesión:
 | E7 Documentación al día | ✅ | 2026-11-03 | Comprobada contra el código. 01: estado de cada requerimiento y RF-30 a RF-36 (petacos, «Otro», precio de cancha, cantidad, comida, sugerencias, a la vista). 02: «Otro», cancha, cambiar cantidad, menú de la persona, productos y personas. 03: árbol real, stack real y ADR-12 (atajos quitados y los que se quedan: sin Zod, Tailwind ni Workbox, estado recalculado). 05: modelo real (registro, tablas, 13 operaciones, `Estado`), el diseño original aparte. 06: secretos, respaldo completo, observabilidad. 07, README y AGENTS.md |
 | G Base limpia definitiva | ✅ | 2026-11-04 | Autorizada. Base `reten-del-gorgojo-v3` con solo las 13 cuentas reales (las de B7) y el catálogo vigente; ensayada antes en pruebas y en la tablet; `pnpm importar-base` con verificación; importar apagado. Celulares y PIN se crean otra vez en la dirección propia (viven dentro de cada base). La dirección vieja lleva a la nueva. Detalle en `negocio/docs/09` |
 | Abonos (urgente) | ✅ | 2026-11-08 | Pedido del negocio: pagar por partes. Abono por productos (pedida o unidades) o por valor, dividir entre 2–5, varios medios, deshacer un abono; detalle con abonos y productos pagados. Compatible con el registro (sin subir `VERSION_PROYECCION`). En producción el mismo día (arreglo urgente, excepción a la regla 14): foto igual antes y después (`seq` 124). Ver 04 «Abonos» |
+| Comida y áreas | ✅ | 2026-11-08 | [14](14-comida-y-areas.md), ADR-15: una cuenta para barra y comida (un saldo, dos cajas), áreas por persona y por día, panel de comida con platos y notas, bebidas por despachar con aviso, crear la carta de una vez, comida solo cambia lo suyo. Juntar cuentas, chicos y adicionales en canchas, pedidas anuladas plegadas, totales a la vista, pedido rápido a la barra con detalles, dividir entre N contando quién ya pagó, poner quién pagó cada abono. En producción por partes, cada una con foto igual antes y después |
+| Deudas | ✅ | 2026-11-08 | [15](15-deudas.md), ADR-16: pasar a deuda (todo, pedidas o valor), deudas a mano, pagos aparte de la caja (regla del negocio), panel de deudas; permiso «Administra deudas» sin ser administrador |
+| Ajustes del 14 | ✅ | 2026-11-14 | Ocultar lo del otro panel desde la cabecera; detalle completo de lo fiado (cuentas viejas pedidas al servidor, `GET /api/cuentas`); sonido del aviso configurable (insistente por defecto, timbre de campana o ding-dong, pantalla despierta); cancelar un pedido a la barra. Arreglados de paso: pestaña «Bebidas» fuera de la pantalla en el celular girado y cabecera desbordada en celulares de 390 px. Siguiente etapa: [16](16-siguiente-etapa.md) |

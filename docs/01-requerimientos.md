@@ -16,7 +16,7 @@ Estado al 2026-11-03 (comprobado en el código): ✅ hecho · ◐ en parte · �
 | RF-03 | Ver todas las **cuentas abiertas** en una sola pantalla, con nombre, total y hace cuánto fue la última ronda, ordenadas por actividad reciente | M | ✅ |
 | RF-04 | **Buscar** una cuenta escribiendo parte del nombre o el número de mesa | M | ✅ |
 | RF-05 | Cambiar el nombre o el tipo de una cuenta | M | ◐ nombre sí; tipo no |
-| RF-06 | **Unir dos cuentas** («pásele lo de Pedro a la cuenta de Juan»). La cuenta de origen queda cerrada como unida y sus rondas pasan a la de destino | D | ⬜ |
+| RF-06 | **Unir dos cuentas** («pásele lo de Pedro a la cuenta de Juan»). La cuenta de origen queda cerrada como unida y sus rondas pasan a la de destino | D | ✅ 2026-11-08: «Juntar con otra cuenta» (pasan también los abonos) y «Separar»; ver 04 «Juntar cuentas» |
 | RF-07 | Anular una cuenta abierta por error. Si ya tiene rondas, solo un administrador | D | ✅ con motivo (fase D) |
 | RF-08 | Sugerir nombres de clientes frecuentes al escribir | F | ⬜ |
 
@@ -35,7 +35,7 @@ tejo trae su ronda) y **«pedida»** en las demás.
 | RF-14 | Cada ronda guarda **quién la anotó, desde qué celular y a qué hora** | M | ◐ quién y hora; el celular no |
 | RF-15 | Abrir cuenta y anotar la primera ronda en la **misma pantalla**, sin pasos intermedios | M | ✅ |
 | RF-16 | **Anular un producto** ya anotado (se equivocó, el cliente lo devolvió). Queda registrado quién lo anuló; nunca se borra | M | ✅ |
-| RF-17 | Nota libre opcional en una ronda («sin hielo», «para llevar») | D | ⬜ |
+| RF-17 | Nota libre opcional en una ronda («sin hielo», «para llevar») | D | ✅ 2026-11-08: notas por plato (rápidas y libres) y detalles en los pedidos a la barra; en las bebidas de la barra no hay nota |
 | RF-18 | Productos de **valor libre** (el mecato): al tocarlos se escoge un valor rápido o se escribe uno | M | ✅ |
 | RF-19 | Cancha con varios equipos que pagan por separado: por ahora se abren cuentas aparte («Cancha 2 · los de rojo»). Un selector «¿quién paga este chico?» queda para después | F | ⬜ |
 
@@ -51,8 +51,8 @@ tejo trae su ronda) y **«pedida»** en las demás.
 | RF-25 | **Venta rápida**: alguien compra y paga en el momento, sin cuenta con nombre. Es abrir, anotar y cobrar en un solo recorrido | M | ✅ «Cobrar ya» |
 | RF-26 | Si llegan rondas a una cuenta ya cobrada (porque otro celular anotó sin señal), la cuenta **se reabre sola con saldo pendiente** y avisa en todos los celulares | M | ✅ aviso en la tarjeta y el detalle |
 | RF-27 | Modo **«mostrar al cliente»**: pantalla limpia con el resumen y el total en letra grande, para girar el celular y enseñarlo. Desde el menú ⋮ del detalle y, a la vista, desde Cobrar (con cuánto paga y el cambio) | D | ✅ |
-| RF-28 | Pago en varias partes (dividir la cuenta o abonos) | F | ✅ 2026-11-08: abono por productos (pedida o unidades) o por valor, dividir entre 2–5, varios medios, deshacer un abono |
-| RF-29 | Fiado: cuenta a nombre de un cliente conocido que se paga otro día | F | ⬜ |
+| RF-28 | Pago en varias partes (dividir la cuenta o abonos) | F | ✅ 2026-11-08: abono por productos (pedida o unidades) o por valor, dividir entre N contando quién ya pagó, varios medios, quién pagó (editable), deshacer un abono |
+| RF-29 | Fiado: cuenta a nombre de un cliente conocido que se paga otro día | F | ✅ 2026-11-08: deudas ([15](15-deudas.md)) |
 
 ### Agregados con el uso (octubre y noviembre de 2026)
 

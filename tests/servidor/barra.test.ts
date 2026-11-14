@@ -868,18 +868,18 @@ describe("deudas en el servidor", () => {
     await s.ops(ana, [op({ t: "abrir", cuenta, nombre: "Fiado", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: "r1", lineas: lineas([["rubia", 3]]) })]);
     const sinNombre = (await s.ops(ana, [op({ t: "cobrar", cuenta, pago: `${cuenta}-x`, medio: "deuda" })])) as R;
     expect(sinNombre.rechazadas?.[0].motivo).toBe("Escriba a nombre de quién queda la deuda.");
-    const r = (await s.ops(ana, [op({ t: "cobrar", cuenta, pago: `${cuenta}-p`, medio: "deuda", deudor: "Nilson Servidor" })])) as R;
+    const r = (await s.ops(ana, [op({ t: "cobrar", cuenta, pago: `${cuenta}-p`, medio: "deuda", deudor: "Pedro Servidor" })])) as R;
     expect(r.rechazadas ?? []).toEqual([]);
-    expect(r.estado.deudas["nilson-servidor"].movimientos[0].valor).toBe(3 * RUBIA);
-    const manual = (await s.ops(ana, [op({ t: "deuda_cargo", deudor: "Nilson Servidor", valor: 5000, concepto: "almuerzo" })])) as R;
+    expect(r.estado.deudas["pedro-servidor"].movimientos[0].valor).toBe(3 * RUBIA);
+    const manual = (await s.ops(ana, [op({ t: "deuda_cargo", deudor: "Pedro Servidor", valor: 5000, concepto: "almuerzo" })])) as R;
     expect(manual.rechazadas?.[0].motivo).toMatch(/permiso de administrar deudas/);
-    const delAdmin = (await s.ops(admin, [op({ t: "deuda_cargo", deudor: "Nilson Servidor", valor: 5000, concepto: "almuerzo", comida: true })])) as R;
+    const delAdmin = (await s.ops(admin, [op({ t: "deuda_cargo", deudor: "Pedro Servidor", valor: 5000, concepto: "almuerzo", comida: true })])) as R;
     expect(delAdmin.rechazadas ?? []).toEqual([]);
-    const pago = (await s.ops(ana, [op({ t: "deuda_pago", deudor: "nilson-servidor", valor: 1_000_000, medio: "efectivo" })])) as R;
+    const pago = (await s.ops(ana, [op({ t: "deuda_pago", deudor: "pedro-servidor", valor: 1_000_000, medio: "efectivo" })])) as R;
     expect(pago.rechazadas ?? []).toEqual([]);
-    const otro = (await s.ops(ana, [op({ t: "deuda_pago", deudor: "nilson-servidor", valor: 1000, medio: "efectivo" })])) as R;
-    expect(otro.rechazadas?.[0].motivo).toBe("Nilson Servidor no debe nada.");
-    const anular = (await s.ops(admin, [op({ t: "deuda_anular", deudor: "nilson-servidor", movimiento: `${cuenta}-p` })])) as R;
+    const otro = (await s.ops(ana, [op({ t: "deuda_pago", deudor: "pedro-servidor", valor: 1000, medio: "efectivo" })])) as R;
+    expect(otro.rechazadas?.[0].motivo).toBe("Pedro Servidor no debe nada.");
+    const anular = (await s.ops(admin, [op({ t: "deuda_anular", deudor: "pedro-servidor", movimiento: `${cuenta}-p` })])) as R;
     expect(anular.rechazadas?.[0].motivo).toMatch(/se deshace desde el cobro de la cuenta/);
     // El detalle de la cuenta fiada se puede pedir por id (para «Deudas»).
     const r2 = await s.pedir(ana, `/api/cuentas?ids=${cuenta},no-existe`);

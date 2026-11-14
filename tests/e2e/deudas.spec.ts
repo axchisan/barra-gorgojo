@@ -19,17 +19,17 @@ test("una cuenta pasa a deuda, queda en el panel de deudas y se recibe un pago a
   await p.getByRole("button", { name: "📒 Deuda" }).click();
   const boton = p.locator(".pie-fijo .principal");
   await expect(boton).toBeDisabled(); // falta el nombre
-  await p.getByLabel("A nombre de quién queda la deuda").fill("Nilson Prueba");
+  await p.getByLabel("A nombre de quién queda la deuda").fill("Pedro Prueba");
   await p.keyboard.press("Enter");
   await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/a-deuda.png" });
   await boton.click();
-  await expect(p.locator(".aviso")).toContainText(`${nombre}: pasada a deuda de Nilson Prueba`);
+  await expect(p.locator(".aviso")).toContainText(`${nombre}: pasada a deuda de Pedro Prueba`);
   await expect(p.locator(".tarjetas .tarjeta", { hasText: nombre })).toHaveCount(0);
 
   // Panel de deudas.
   await p.getByRole("button", { name: /Administrador ▾/ }).click();
   await p.getByRole("button", { name: "📒 Deudas" }).click();
-  const tarjeta = p.locator(".tarjeta.deudor", { hasText: "Nilson Prueba" });
+  const tarjeta = p.locator(".tarjeta.deudor", { hasText: "Pedro Prueba" });
   await expect(tarjeta).toContainText(total.toLocaleString("es-CO"));
   await tarjeta.click();
   await expect(p.locator(".movimiento")).toContainText(`Cuenta «${nombre}»`);

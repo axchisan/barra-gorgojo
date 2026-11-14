@@ -1,24 +1,32 @@
 # Barra del Gorgojo
 
-Sistema de cuentas para el área de cerveza y bebidas del **Retén del Gorgojo**
-(Guavatá, Santander). Reemplaza el cuaderno: se abre una cuenta por grupo, persona o
-mesa o cancha de tejo, se anotan las pedidas con pocos toques, se ve el total al instante y se cobra al
-final. Funciona en cualquier celular, **sin internet si hace falta**, y todos los
+Sistema de cuentas de la barra y la comida del **Retén del Gorgojo** (Guavatá,
+Santander). Reemplaza el cuaderno: se abre una cuenta por grupo, persona, mesa o cancha de
+tejo, se anotan las pedidas con pocos toques, se ve el total al instante y se cobra al
+final, todo o por partes. Funciona en cualquier celular, **sin internet si hace falta**, y todos los
 celulares ven lo mismo.
 
 ## Estado
 
-**En uso** desde el 2026-10-04; en el local desde el 2026-11-01. Al 2026-11-03 están
-hechas las fases A a F y E2 del [plan de trabajo](docs/12-plan-de-trabajo.md), que es
-por donde se empieza para trabajar en el código.
+**En uso** desde el 2026-10-04; en el local desde el 2026-11-01. Al **2026-11-14**:
+fases A a G del [plan de trabajo](docs/12-plan-de-trabajo.md) hechas, más comida y
+áreas, despacho, abonos, juntar cuentas y deudas. **Para trabajar en el código, empezar
+por [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md).**
 
-Cuentas de grupo, persona, mesa y cancha; pedidas y chicos con un toque por producto,
-repetir, petacos y medios (puros o mixtos), mecato y «Otro» de valor libre, precio de
-cancha, cambiar cantidades; cobro en efectivo (con sugerencias de con cuánto pagan y el
-cambio), Nequi o Breve, «mostrar al cliente», mesas que se pasan a comida y lista de
-cocina; «el día» con cierre de caja, días anteriores y CSV; acceso por persona con PIN;
-tiempo real entre celulares y trabajo sin señal. Qué está hecho de cada requerimiento:
-[01](docs/01-requerimientos.md); qué atajos se quedan: [03](docs/03-arquitectura.md) ADR-12.
+- **Barra:** cuentas de grupo, persona, mesa y cancha; pedidas y chicos (y adicionales)
+  con un toque por producto; repetir; petacos; «Otro»; precio de cancha.
+- **Comida:** panel propio con platos y notas, la misma cuenta que la barra (un saldo, dos
+  cajas); bebidas pedidas desde comida y pedido rápido a la barra, con aviso sonoro hasta
+  despacharlas.
+- **Cobro:** efectivo con sugerencias de billetes y cambio, Nequi o Breve, mostrar al
+  cliente; abonos por productos, pedida o valor; dividir entre varios; juntar cuentas;
+  pasar a deuda.
+- **Deudas:** quién debe y cuánto, el detalle de lo fiado, pagos aparte de la caja.
+- **Administración:** el día con cierre por caja, días anteriores y CSV; auditoría;
+  personas con PIN, áreas y permisos; productos y platos desde la app.
+- Tiempo real entre celulares y trabajo sin señal.
+
+Qué está hecho de cada requerimiento: [01](docs/01-requerimientos.md).
 
 ```bash
 pnpm install
@@ -75,8 +83,9 @@ archivo son solo la semilla de una base nueva.
 | Quién la usa | Varias personas a la vez, cada una desde su celular |
 | Sin internet | Se anota y se cobra igual; se sincroniza sola al volver la señal |
 | Tiempo real | Lo que anota un celular aparece en los otros en uno o dos segundos |
-| Cobro | Al final, la cuenta completa. Efectivo, Nequi o Breve, con cuadre de caja al cerrar el día |
-| Bebidas de mesas de comida | Se anotan en la barra como cuenta de mesa; al final se cobran **en la barra o se pasan a la cuenta de comida**, y queda registrado cuál de las dos |
+| Cobro | Al final, todo o por partes. Efectivo, Nequi o Breve, con cuadre de caja por área al cerrar el día; o a deuda |
+| Comida y barra | **Una sola cuenta** por mesa o grupo, con un saldo: la cobra cualquiera de las dos cajas y cada pago guarda la suya (ADR-15) |
+| Deudas | Lo fiado es venta del día en que se fió; los pagos de deudas van aparte de la caja (ADR-16) |
 | Infraestructura | Cloudflare Workers + Durable Objects (SQLite). Costo esperado: $ 0 |
 
 ## Documentación
@@ -93,6 +102,9 @@ archivo son solo la semilla de una base nueva.
 | [07 · Roadmap](docs/07-roadmap.md) | Fases, entregables, adopción y riesgos |
 | [12 · Plan de trabajo](docs/12-plan-de-trabajo.md) | **Fases A–G en orden, seguimiento, reglas para producción y cómo iniciar la sesión** |
 | [13 · Revisión técnica](docs/13-revision-tecnica.md) | El stack planeado contra el que corre, con medidas, y qué cambiar y cuándo |
+| [14 · Comida y áreas](docs/14-comida-y-areas.md) | Una cuenta para barra y comida, áreas por persona, despacho de bebidas, dos cajas |
+| [15 · Deudas](docs/15-deudas.md) | Fiado: pasar a deuda, deudas a mano, pagos aparte de la caja, permiso |
+| [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md) | **Qué hay hoy, deuda técnica y el plan: push, QR y NFC, rendimiento, robustez** |
 
 Los documentos 08 a 11 (datos del negocio, auditoría, migración y revisión en teléfono
 con capturas) tienen datos reales y viven en `negocio/docs/`.
@@ -100,8 +112,9 @@ con capturas) tienen datos reales y viven en `negocio/docs/`.
 ## Cómo leer esto
 
 **00** para entender el problema, **02** para ver cómo se usa y **04** para entender
-por qué funciona sin internet. **Para trabajar en el código hoy: 12** (y, si se tiene
-acceso, `negocio/docs/09`). Los demás son de consulta.
+por qué funciona sin internet. Los demás son de consulta.
+
+**Para trabajar en el código hoy: 16**, y las reglas de producción de 12.
 
 Los datos generales del negocio (dirección, horarios, formas de pago) salen de
 `../ElrentendelGorgojo/docs/11-ficha-del-negocio.md`. **El catálogo y los precios de las

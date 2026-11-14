@@ -1,6 +1,8 @@
 # 14 · Comida y barra en una sola app: áreas, panel de comida y despacho (2026-11-08)
 
-**Estado:** pasos 1 a 4 construidos (ADR-15). Pendiente el paso 5 (push y cola de cocina).
+**Estado:** pasos 1 a 4 construidos (ADR-15), con el pedido rápido a la barra, cancelar
+pedidos y el aviso sonoro configurable. Pendiente el paso 5: notificaciones push y cola de
+cocina, planteados en [16](16-siguiente-etapa.md).
 
 Pedido del negocio: que el área de comida anote como la barra (rápido, con botones), que
 desde comida se puedan pedir bebidas y la barra reciba el aviso para despacharlas, que la
