@@ -121,6 +121,9 @@ Propuesta (para validar con el negocio, ver §4):
   cada e2e o darle a `espacio-movil` su propia base.
 - Avisar de una versión nueva del Service Worker sin recargar a la fuerza con
   pendientes (hoy se actualiza al recargar).
+- **Integración continua:** hoy no hay ningún flujo de GitHub Actions; las pruebas solo
+  corren en el Mac. Un flujo con `pnpm build`, `pnpm verificar` y `pnpm test:e2e` en cada
+  push (con el catálogo de ejemplo, sin `negocio/`) atraparía errores antes de desplegar.
 - Observabilidad: alertas si el Worker empieza a rechazar operaciones o a fallar
   (Workers Logs / Analytics) y un aviso al administrador.
 - Respaldo semanal por correo en producción (listo, desactivado por decisión del negocio
