@@ -23,7 +23,7 @@ const medio = (m: string) => (m === "efectivo" ? "en efectivo" : m === "nequi" ?
 function tipoCuenta(c: Cuenta | undefined, op: Extract<Operacion, { t: "abrir" }>): string {
   if (op.tipo === "mesa") return `mesa ${op.mesa || c?.mesa || ""}`.trim();
   if (op.tipo === "cancha") return `cancha ${nombreCancha(op.cancha ?? c?.cancha ?? "")}`.trim();
-  if (op.tipo === "domicilio") return `domicilio${op.direccion?.trim() ? ` a ${op.direccion.trim().slice(0, 80)}` : ""}`;
+  if (op.tipo === "domicilio") return `domicilio${op.direccion?.trim() ? ` a ${op.direccion.trim().slice(0, 80)}` : ""}${op.entrega ? ` para las ${horaDe(op.entrega)}` : ""}`;
   return op.tipo === "rapida" ? "venta rápida" : op.tipo;
 }
 
@@ -113,6 +113,10 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
     case "rechazar_solicitud": {
       const s = estado?.solicitudes?.[op.solicitud];
       return { texto: `No aceptó el pedido por QR${s ? ` de ${s.lugar.nombre}` : ""} · «${op.motivo}»`, atencion: true };
+    }
+    case "domicilio": {
+      const partes = [op.estado ? `pasó a «${({ recibido: "Recibido", preparacion: "En preparación", camino: "En camino", entregado: "Entregado" } as const)[op.estado]}»` : "", op.entrega === null ? "quitó la hora de entrega" : op.entrega ? `hora de entrega ${horaDe(op.entrega)}` : ""].filter(Boolean);
+      return { texto: `Domicilio: ${partes.join(" · ") || "sin cambios"}`, atencion: false };
     }
     case "apartado_entregado": {
       const r = cuenta?.rondas.find((x) => x.id === op.ronda);

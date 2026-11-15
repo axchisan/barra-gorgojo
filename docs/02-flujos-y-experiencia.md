@@ -404,8 +404,16 @@ Pedido por comida (se usa en los teléfonos):
 
 - **El número de mesa es opcional.** Sin él, la cuenta queda «Mesa · 1:15 p. m.» (o con el
   nombre que escriban). Antes no dejaba anotar.
-- **🛵 Domicilio**: quinto tipo de cuenta, con el nombre del cliente y la dirección o
-  referencia (opcionales). La tarjeta dice «🛵 Domicilio · …».
+- **🛵 Domicilio**: quinto tipo de cuenta, con el nombre del cliente, la dirección o
+  referencia y la **hora de entrega** (opcionales). La tarjeta dice «🛵 Domicilio · …».
+  En el inicio de comida sale **«🛵 Domicilios»** por hora de entrega, con el estado
+  (📥 Recibido → 🍳 En preparación → 🛵 En camino → ✅ Entregado) y un botón que pasa al
+  siguiente con un toque (con «Deshacer»); en el detalle, los cuatro estados y «cambiar» la
+  hora. **Recordatorio**: si pasa la hora sin entregarse, aviso rojo «⏰ Domicilio
+  atrasado» arriba de cualquier pantalla (para quien tiene comida) y timbre al atrasarse y
+  cada 5 minutos. Operación `domicilio` (`cuenta, estado?, entrega?`); los domicilios
+  abiertos antes quedan «Recibido» sin cambiar lo guardado. Prueba:
+  `tests/e2e/domicilios.spec.ts`.
 - **⏰ Apartar para más tarde**: al anotar (cuenta nueva o ya abierta), un chip que marca la
   pedida como apartada, con hora opcional («una picada para las 2»). En el inicio, arriba
   de las cuentas, sale **«⏰ Apartados»** por hora (los sin hora al final): quién, qué y

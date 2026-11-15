@@ -51,7 +51,8 @@ const producto = z.object({
 });
 
 const operacion = z.discriminatedUnion("t", [
-  z.object({ ...comun, t: z.literal("abrir"), cuenta: id, nombre: texto(200), tipo: z.enum(["grupo", "persona", "mesa", "cancha", "rapida", "domicilio"]), mesa: opcional(numero), cancha: opcional(z.enum(["1", "2", "pequena"])), direccion: opcional(texto(200)) }),
+  z.object({ ...comun, t: z.literal("abrir"), cuenta: id, nombre: texto(200), tipo: z.enum(["grupo", "persona", "mesa", "cancha", "rapida", "domicilio"]), mesa: opcional(numero), cancha: opcional(z.enum(["1", "2", "pequena"])), direccion: opcional(texto(200)), entrega: opcional(numero) }),
+  z.object({ ...comun, t: z.literal("domicilio"), cuenta: id, estado: opcional(z.enum(["recibido", "preparacion", "camino", "entregado"])), entrega: z.union([numero, z.null()]).optional() }),
   z.object({ ...comun, t: z.literal("apartado_entregado"), cuenta: id, ronda: id, valor: z.boolean() }),
   // Pedidos por QR (docs/20): la solicitud la escribe el servidor; desde un celular se rechaza con su porqué.
   z.object({ ...comun, t: z.literal("solicitud"), solicitud: z.object({ id }).passthrough() }),

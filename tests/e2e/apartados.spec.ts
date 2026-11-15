@@ -21,24 +21,38 @@ test("comida en el teléfono: mesa sin número, domicilio y una picada apartada 
   await p.locator(".pie-fijo .principal").click();
   await expect(p.locator(".tarjeta", { hasText: /Mesa · / }).first()).toBeVisible();
 
-  // Domicilio con dirección, apartado para las 11:59 p. m.
+  // Domicilio con dirección y hora de entrega (el domicilio no se «aparta»: tiene su hora).
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
   await p.getByRole("button", { name: "Domicilio", exact: true }).click();
   await p.getByLabel("Nombre del cliente (opcional)").fill("Doña Rosa");
   await p.getByLabel("Dirección del domicilio (opcional)").fill("Vereda El Carmen");
-  await p.getByRole("button", { name: "⏰ Apartar para más tarde" }).click();
-  await p.getByLabel("Hora del apartado (opcional)").fill("23:59");
-  for (const b of [p.getByRole("button", { name: "Domicilio", exact: true }), p.getByRole("button", { name: "⏰ Apartado" })]) await expect(b).toBeInViewport();
-  await p.screenshot({ path: "test-results/capturas/domicilio-apartado.png" });
+  await p.getByLabel("Hora de entrega (opcional)").fill("23:59");
+  await expect(p.getByRole("button", { name: /Apartar para más tarde/ })).toHaveCount(0);
   await p.locator('button[aria-label="Bebidas"]').click(); // en comida, anotar abre en «Comida»
   await p.locator("main > section .producto", { hasText: "RUBIA" }).first().click();
   await p.locator(".pie-fijo .principal").click();
+  await expect(p.locator(".domicilios")).toContainText("Doña Rosa · Vereda El Carmen");
+  await expect(p.locator(".domicilios")).toContainText("11:59");
+  // Se entrega (deja el servidor como estaba para las demás pruebas).
+  const rosa = p.locator(".domicilios .fila-domicilio-lista", { hasText: "Doña Rosa" });
+  for (const paso of ["🍳 En preparación", "🛵 En camino", "✅ Entregado"]) await rosa.getByRole("button", { name: paso }).click();
+  await expect(rosa).toHaveCount(0);
 
-  // En el inicio: «⏰ Apartados» con la hora; la tarjeta dice 🛵 y la dirección.
+  // Un apartado: «Juan», una cerveza para las 11:59 p. m.
+  await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+  await p.getByRole("button", { name: "Persona", exact: true }).click();
+  await p.getByLabel("Nombre de la persona (opcional)").fill("Juan apartado");
+  await p.getByRole("button", { name: "⏰ Apartar para más tarde" }).click();
+  await p.getByLabel("Hora del apartado (opcional)").fill("23:59");
+  await p.locator('button[aria-label="Bebidas"]').click();
+  await p.locator("main > section .producto", { hasText: "RUBIA" }).first().click();
+  await p.locator(".pie-fijo .principal").click();
+
+  // En el inicio: «⏰ Apartados» con la hora; la tarjeta lo dice.
   const lista = p.locator(".apartados-comida");
   await expect(lista).toContainText("11:59");
-  await expect(lista).toContainText("🛵 Doña Rosa · Vereda El Carmen");
-  await expect(p.locator(".tarjeta", { hasText: "Doña Rosa" })).toContainText("⏰ Apartado");
+  await expect(lista).toContainText("Juan apartado");
+  await expect(p.locator(".tarjeta", { hasText: "Juan apartado" })).toContainText("⏰ Apartado");
   await p.screenshot({ path: "test-results/capturas/apartados-inicio.png" });
   // Una bebida que comida misma lleva: «Sin avisar» y no queda por despachar.
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
@@ -53,7 +67,7 @@ test("comida en el teléfono: mesa sin número, domicilio y una picada apartada 
   await expect(p.locator(".tarjeta", { hasText: "Mesa 9" })).not.toContainText("Por despachar");
 
   // Entregado: sale de la lista (y «Deshacer» lo devolvería).
-  await lista.locator(".apartado", { hasText: "Doña Rosa" }).getByRole("button", { name: "Entregado" }).click();
+  await lista.locator(".apartado", { hasText: "Juan apartado" }).getByRole("button", { name: "Entregado" }).click();
   await expect(p.locator(".apartados-comida")).toHaveCount(0);
 
   // Deja el servidor como estaba: lo que quedó por despachar se despacha (por la API), y se

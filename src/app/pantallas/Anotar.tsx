@@ -71,6 +71,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const [mesa, setMesa] = useState("");
   // Domicilio: a dónde va (opcional). Apartado: para más tarde, con hora opcional (2026-11-15).
   const [direccion, setDireccion] = useState("");
+  const [horaEntrega, setHoraEntrega] = useState("");
   const [apartar, setApartar] = useState(false);
   const [horaApartado, setHoraApartado] = useState("");
   // Desde comida, las bebidas avisan a la barra; se apaga si comida misma las lleva (2026-11-15).
@@ -165,6 +166,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   // En las canchas rige el precio de cancha de cada producto (si lo tiene).
   const tipoCuenta = cuenta?.tipo ?? destinoCuenta?.tipo ?? (despacho ? "grupo" : tipo);
   const esCancha = tipoCuenta === "cancha";
+  const esDomicilio = tipoCuenta === "domicilio";
   const modo: ModoPrecio = !esCancha ? "normal" : !cuenta ? "cancha" : (aPrecioCancha ?? !adicional) ? "cancha" : "normal";
   const precioVisto = (p: Producto) => precioPara(p, modo === "cancha" ? tipoCuenta : undefined);
   const precioDe = (id: string) => { const p = productoDe(sinc.visible, idDe(id)); return p ? precioVisto(p) ?? 0 : 0; };
@@ -254,6 +256,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
         tipo: cobrarYa && tipo === "grupo" ? "rapida" : tipo,
         mesa: tipo === "mesa" && Number(mesa) > 0 ? Number(mesa) : undefined,
         ...(tipo === "domicilio" && direccion.trim() ? { direccion: direccion.trim() } : {}),
+        ...(tipo === "domicilio" && horaDeHoy(horaEntrega) ? { entrega: horaDeHoy(horaEntrega) } : {}),
         cancha: tipo === "cancha" ? cancha! : undefined,
       });
     }
@@ -267,7 +270,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       ...((cuenta?.tipo ?? tipo) === "cancha" ? { precio: cuenta ? modo : ("cancha" as const) } : {}),
       ...(despacho && detalle.trim() ? { detalle: detalle.trim() } : !despacho && notaLarga.trim() ? { detalle: notaLarga.trim() } : {}),
       ...(enComida && !despacho && !avisarBarra ? { sinDespacho: true } : {}),
-      ...(apartar && !despacho ? { apartado: (() => { const para = horaDeHoy(horaApartado); return para ? { para } : {}; })() } : {}),
+      ...(apartar && !despacho && (cuenta?.tipo ?? tipo) !== "domicilio" ? { apartado: (() => { const para = horaDeHoy(horaApartado); return para ? { para } : {}; })() } : {}),
     });
     const cuentaFinal = id;
     if (cobrarYa) return nav.ir({ v: "cobrar", id: cuentaFinal }, true);
@@ -347,8 +350,13 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
             <input placeholder="Nombre (opcional): los de rojo" enterKeyHint="done" autoCapitalize="sentences" onKeyDown={cerrarConEnter} value={nombre} onChange={(e) => setNombre(e.target.value)} />
           )}
           {tipo === "domicilio" && (
-            <input placeholder="Dirección o referencia (opcional)" aria-label="Dirección del domicilio (opcional)" enterKeyHint="done" autoCapitalize="sentences"
-              maxLength={80} onKeyDown={cerrarConEnter} value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+            <div className="fila-domicilio">
+              <input placeholder="Dirección o referencia (opcional)" aria-label="Dirección del domicilio (opcional)" enterKeyHint="done" autoCapitalize="sentences"
+                maxLength={80} onKeyDown={cerrarConEnter} value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+              <label className="hora-apartado">⏰
+                <input type="time" aria-label="Hora de entrega (opcional)" value={horaEntrega} onChange={(e) => setHoraEntrega(e.target.value)} />
+              </label>
+            </div>
           )}
         </section>
       )}
@@ -365,10 +373,13 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
               {avisarBarra ? "🔔 Avisar a la barra" : "🔕 Sin avisar: la llevo yo"}
             </button>
           )}
-          <button type="button" className={apartar ? "chip activo" : "chip"} aria-pressed={apartar} onClick={() => setApartar(!apartar)}>
-            ⏰ {apartar ? "Apartado" : "Apartar para más tarde"}
-          </button>
-          {apartar && (
+          {/* Un domicilio tiene su hora de entrega: ahí no hace falta apartar. */}
+          {!esDomicilio && (
+            <button type="button" className={apartar ? "chip activo" : "chip"} aria-pressed={apartar} onClick={() => setApartar(!apartar)}>
+              ⏰ {apartar ? "Apartado" : "Apartar para más tarde"}
+            </button>
+          )}
+          {apartar && !esDomicilio && (
             <label className="hora-apartado">para las
               <input type="time" aria-label="Hora del apartado (opcional)" value={horaApartado} onChange={(e) => setHoraApartado(e.target.value)} />
             </label>

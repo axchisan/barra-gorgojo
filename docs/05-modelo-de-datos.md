@@ -57,7 +57,8 @@ guarda.
 
 | `t` | Datos | Qué hace |
 |---|---|---|
-| `abrir` | `cuenta, nombre, tipo, mesa?, cancha?, direccion?` | Abre una cuenta (grupo, persona, mesa, cancha, rápida o domicilio). La mesa puede ir sin número; el domicilio guarda la dirección (opcional) |
+| `domicilio` | `cuenta, estado?, entrega?` | En qué va un domicilio (recibido, preparación, en camino, entregado) o su hora de entrega (`null` la quita) |
+| `abrir` | `cuenta, nombre, tipo, mesa?, cancha?, direccion?, entrega?` | Abre una cuenta (grupo, persona, mesa, cancha, rápida o domicilio). La mesa puede ir sin número; el domicilio guarda la dirección (opcional) |
 | `apartado_entregado` | `cuenta, ronda, valor` | Un apartado entregado (o deshacer «Entregado») |
 | `solicitud` | `solicitud` | Un pedido de un cliente por QR (lo escribe solo el servidor, persona «Cliente · Mesa 4»). Ver docs/20 |
 | `aceptar_solicitud` | `solicitud, cuenta, aceptadas?, motivo?` | El personal acepta el pedido (todo, o `aceptadas` con el motivo de lo demás); la pedida se anota aparte con `anotar` |

@@ -1,6 +1,6 @@
 // Apartados, domicilios y mesa sin número (2026-11-15, pedido de comida).
 import { describe, expect, it } from "vitest";
-import { aplicar, apartadosPendientes, estadoVacio, type Operacion } from "../src/dominio/estado";
+import { aplicar, apartadosPendientes, domiciliosPendientes, estadoDomicilio, estadoVacio, type Operacion } from "../src/dominio/estado";
 import { describir } from "../src/dominio/auditoria";
 
 const T0 = 1_800_000_000_000;
@@ -78,5 +78,38 @@ describe("bebidas desde comida sin avisar a la barra", () => {
     ]);
     expect(e.cuentas.a.lineas.map((l) => !!l.porDespachar)).toEqual([false, true]);
     expect(e.cuentas.a.lineas[0].despachada?.por).toBe("Comida"); // la llevó comida: sigue siendo «de comida»
+  });
+});
+
+describe("domicilios: estados y hora de entrega", () => {
+  it("un domicilio abierto antes (sin hora) no guarda nada nuevo: el registro viejo da lo mismo", () => {
+    const e = correr([op({ t: "abrir", cuenta: "d", nombre: "Doña Rosa", tipo: "domicilio" })]);
+    expect(e.cuentas.d.domicilio).toBeUndefined();
+    expect(estadoDomicilio(e.cuentas.d)).toBe("recibido");
+  });
+
+  it("con hora de entrega; los estados avanzan con quién y cuándo; la hora se cambia o se quita", () => {
+    const e = correr([
+      op({ t: "abrir", cuenta: "d", nombre: "Doña Rosa", tipo: "domicilio", entrega: T0 + 3600_000 }),
+      op({ t: "domicilio", cuenta: "d", estado: "preparacion" }),
+      op({ t: "domicilio", cuenta: "d", estado: "camino" }),
+    ]);
+    expect(e.cuentas.d.domicilio).toMatchObject({ estado: "camino", entrega: T0 + 3600_000 });
+    expect(e.cuentas.d.domicilio?.historial.map((h) => h.estado)).toEqual(["preparacion", "camino"]);
+    aplicar(e, op({ t: "domicilio", cuenta: "d", entrega: null }));
+    expect(e.cuentas.d.domicilio?.entrega).toBeUndefined();
+  });
+
+  it("pendientes por hora (los sin hora al final); entregados y otros tipos no salen", () => {
+    const e = correr([
+      op({ t: "abrir", cuenta: "a", nombre: "A", tipo: "domicilio", entrega: T0 + 2 * 3600_000 }), anotar("a", "ra"),
+      op({ t: "abrir", cuenta: "b", nombre: "B", tipo: "domicilio" }), anotar("b", "rb"),
+      op({ t: "abrir", cuenta: "c", nombre: "C", tipo: "domicilio", entrega: T0 + 3600_000 }), anotar("c", "rc"),
+      op({ t: "abrir", cuenta: "x", nombre: "X", tipo: "domicilio", entrega: T0 + 1800_000 }), anotar("x", "rx"), op({ t: "domicilio", cuenta: "x", estado: "entregado" }),
+      op({ t: "abrir", cuenta: "m", nombre: "Mesa", tipo: "mesa" }), anotar("m", "rm"),
+      op({ t: "domicilio", cuenta: "m", estado: "camino" }),
+    ]);
+    expect(domiciliosPendientes(Object.values(e.cuentas)).map((c) => c.id)).toEqual(["c", "a", "b"]);
+    expect(e.cuentas.m.domicilio).toBeUndefined();
   });
 });

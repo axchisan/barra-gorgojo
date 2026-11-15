@@ -1156,3 +1156,21 @@ html .inicio .panel-cuenta .pie-fijo {
 .producto.nota-larga.con { background: #e6f1f4; border-style: solid; }
 .nota-larga-vista { display: block; width: 100%; text-align: left; margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--azul-comida); background: #e6f1f4; font: inherit; font-weight: 600; white-space: pre-wrap; }
 .hoja-nota-larga textarea { width: 100%; min-height: 120px; font: inherit; font-size: 1.05rem; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--neutro-200); resize: vertical; }
+
+/* Domicilios (2026-11-15): estados, hora de entrega y recordatorio. */
+.fila-domicilio { display: flex; gap: 8px; align-items: center; }
+.fila-domicilio > input { flex: 1; min-width: 0; }
+.domicilios { display: grid; gap: 8px; margin-bottom: 12px; }
+.domicilios .seccion { margin: 0; }
+.fila-domicilio-lista { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--radio); background: #f3eefa; border: 2px solid #6D4C9F; }
+.fila-domicilio-lista.atrasado { background: #fde8e6; border-color: #C62828; }
+.fila-domicilio-lista .cuerpo { display: grid; gap: 2px; text-align: left; background: none; border: 0; padding: 0; min-height: 56px; }
+.fila-domicilio-lista .hora { font-size: 1.05rem; }
+.fila-domicilio-lista.atrasado .hora { color: #B71C1C; }
+.fila-domicilio-lista .quien { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fila-domicilio-lista .siguiente { min-height: 56px; padding: 0 12px; white-space: nowrap; }
+.estado-domicilio { font-weight: 700; font-size: 0.9rem; }
+.franja-domicilio { display: grid; gap: 6px; justify-items: center; margin: 6px 0; }
+.franja-domicilio .chips { justify-content: center; }
+.franja-domicilio .chip { min-height: 44px; }
+.aviso-domicilio { background: #C62828; color: #fff; border-color: #8e1c1c; }

@@ -77,6 +77,14 @@ export interface Ronda {
   entregado?: { por: string; en: number };
 }
 
+/** En qué va un domicilio, en orden. */
+export const ESTADOS_DOMICILIO = ["recibido", "preparacion", "camino", "entregado"] as const;
+export type EstadoDomicilio = (typeof ESTADOS_DOMICILIO)[number];
+export const esEstadoDomicilio = (x: unknown): x is EstadoDomicilio => ESTADOS_DOMICILIO.includes(x as EstadoDomicilio);
+export const nombreEstadoDomicilio: Record<EstadoDomicilio, string> = { recibido: "Recibido", preparacion: "En preparación", camino: "En camino", entregado: "Entregado" };
+/** El estado de un domicilio (sin datos: recibido). */
+export const estadoDomicilio = (c: Pick<Cuenta, "domicilio">): EstadoDomicilio => c.domicilio?.estado ?? "recibido";
+
 /** Precio de una pedida de cancha: el de cancha o el normal. */
 export type ModoPrecio = "cancha" | "normal";
 export const esModoPrecio = (x: unknown): x is ModoPrecio => x === "cancha" || x === "normal";
@@ -122,6 +130,11 @@ export interface Cuenta {
   cancha?: Cancha;
   /** Domicilio: a dónde va (opcional). */
   direccion?: string;
+  /**
+   * Domicilio (2026-11-15): en qué va y para qué hora es. Sin este campo, un domicilio está
+   * «recibido» y sin hora (los abiertos antes no lo tienen: el registro viejo da lo mismo).
+   */
+  domicilio?: { estado: EstadoDomicilio; entrega?: number; historial: { estado: EstadoDomicilio; por: string; en: number }[] };
   abiertaEn: number;
   abiertaPor: string;
   ultima: number;
@@ -243,7 +256,8 @@ interface Base {
 
 export type Operacion = Base &
   (
-    | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha; direccion?: string }
+    | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha; direccion?: string; entrega?: number }
+    | { t: "domicilio"; cuenta: string; estado?: EstadoDomicilio; entrega?: number | null }
     | { t: "apartado_entregado"; cuenta: string; ronda: string; valor: boolean }
     | { t: "solicitud"; solicitud: Omit<Solicitud, "estado" | "resuelta"> }
     | { t: "aceptar_solicitud"; solicitud: string; cuenta: string; aceptadas?: string[]; motivo?: string }
@@ -413,6 +427,19 @@ function anularCargoDeCuenta(estado: Estado, p: Pago, op: { persona: string; en:
   if (m && !m.anulado) m.anulado = { por: op.persona, en: op.en };
 }
 
+/** Una hora de entrega con sentido: desde una hora antes hasta dos días después. */
+function entregaValida(x: unknown, en: number): boolean {
+  const v = Number(x);
+  return x != null && Number.isFinite(v) && v > en - 3600_000 && v < en + 2 * 24 * 3600_000;
+}
+
+/** Domicilios por entregar (no anulados, con algo), por hora de entrega: los sin hora al final. */
+export function domiciliosPendientes(cuentas: Iterable<Cuenta>): Cuenta[] {
+  return [...cuentas]
+    .filter((c) => c.tipo === "domicilio" && !c.anulada && estadoDomicilio(c) !== "entregado" && c.lineas.some((l) => !l.anulada))
+    .sort((a, b) => (a.domicilio?.entrega ?? Infinity) - (b.domicilio?.entrega ?? Infinity) || a.abiertaEn - b.abiertaEn);
+}
+
 /** Apartados por entregar (de cuentas no anuladas, con algo vivo), por hora: los sin hora al final. */
 export function apartadosPendientes(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; ronda: Ronda; lineas: Linea[] }[] {
   const r: { cuenta: Cuenta; ronda: Ronda; lineas: Linea[] }[] = [];
@@ -527,6 +554,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         mesa: op.tipo === "mesa" && Number(op.mesa) > 0 ? Math.floor(Number(op.mesa)) : undefined,
         cancha: op.tipo === "cancha" ? op.cancha : undefined,
         ...(op.tipo === "domicilio" && typeof op.direccion === "string" && op.direccion.trim() ? { direccion: op.direccion.trim().slice(0, 80) } : {}),
+        // La hora de entrega, si la dijeron (dentro de los dos días siguientes).
+        ...(op.tipo === "domicilio" && entregaValida(op.entrega, op.en) ? { domicilio: { estado: "recibido" as const, entrega: Math.floor(Number(op.entrega)), historial: [] } } : {}),
         abiertaEn: op.en,
         abiertaPor: op.persona,
         ultima: op.en,
@@ -732,6 +761,19 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       if (!s || s.estado !== "pendiente" || !motivo) return estado;
       s.estado = "rechazada";
       s.resuelta = { por: op.persona, en: op.en, motivo };
+      return estado;
+    }
+    case "domicilio": {
+      // En qué va un domicilio, o su hora de entrega (null la quita).
+      if (!c || c.tipo !== "domicilio") return estado;
+      const d = (c.domicilio ??= { estado: "recibido", historial: [] });
+      if (esEstadoDomicilio(op.estado) && op.estado !== d.estado) {
+        d.estado = op.estado;
+        d.historial.push({ estado: op.estado, por: op.persona, en: op.en });
+      }
+      if (op.entrega === null) delete d.entrega;
+      else if (entregaValida(op.entrega, op.en)) d.entrega = Math.floor(Number(op.entrega));
+      c.ultima = op.en;
       return estado;
     }
     case "apartado_entregado": {

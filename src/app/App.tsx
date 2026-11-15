@@ -20,6 +20,7 @@ import { DeudorDetalle, Deudas } from "./pantallas/Deudas";
 import { Platos } from "./pantallas/Platos";
 import { AvisoSolicitudes, Solicitudes } from "./pantallas/Solicitudes";
 import { CodigosQR } from "./pantallas/CodigosQR";
+import { AvisoDomicilios } from "./componentes/Domicilios";
 import { Productos } from "./pantallas/Productos";
 import { sinc } from "./sincronizacion";
 
@@ -54,6 +55,7 @@ export function App() {
       <AvisoDespacho nav={nav} />
       <AvisoRechazo />
       <AvisoSolicitudes nav={nav} />
+      <AvisoDomicilios nav={nav} />
       {vista.v === "inicio" && <Inicio nav={nav} pestana={vista.pestana} />}
       {vista.v === "anotar" && <Anotar key={vista.despacho ? "despacho" : vista.cuenta ?? "nueva"} nav={nav} cuentaId={vista.cuenta} repetir={vista.repetir} despacho={vista.despacho} />}
       {vista.v === "cuenta" && <Detalle nav={nav} id={vista.id} />}

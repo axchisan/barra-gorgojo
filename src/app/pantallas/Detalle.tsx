@@ -12,6 +12,7 @@ import { TarjetasProducto } from "../componentes/TarjetasProducto";
 import { VistaCliente } from "../componentes/VistaCliente";
 import { CancelarPedido } from "../componentes/Despacho";
 import { ElegirProductos } from "../componentes/ElegirProductos";
+import { FranjaDomicilio } from "../componentes/Domicilios";
 import { colorDe, iconoTipo, resumen } from "../cuentas";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { useAtajos } from "../atajos";
@@ -133,6 +134,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         <span className="total">{pesos(s === "abierta" ? saldo(c) : total(c))}</span>
         <span className="meta">{unidades(c)} productos · {cuantasRondas(c)}</span>
         {totalComida(c) > 0 && <Desglose c={c} />}
+        {/* Domicilio (2026-11-15): en qué va y para qué hora. */}
+        {c.tipo === "domicilio" && !c.anulada && <FranjaDomicilio c={c} />}
         {s === "cobrada" && <span className="estado cobrada">Cobrada · {c.pagos.filter((p) => !p.deshecho).map((p) => p.medio === "deuda" ? `a deuda de ${sinc.visible.deudas?.[p.deudor ?? ""]?.nombre ?? "alguien"}` : `${p.medio} por ${p.persona}`).join(", ")}</span>}
         {s === "comida" && <span className="estado comida">Pasada a comida{c.comidaCobrada ? " · ya cobrada allá" : " · falta cobrar en comida"}</span>}
         {s === "anulada" && <span className="estado anulada">Anulada</span>}
