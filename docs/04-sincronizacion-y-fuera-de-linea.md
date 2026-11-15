@@ -291,6 +291,63 @@ operaciones nuevas, nada se borra (regla 4):
 | Cambiar a mecato u «Otro» (valor libre) | Se rechaza: se anula y se anota de nuevo |
 | Desde comida, cambiar algo de la barra | Se rechaza, como anular (solo lo suyo) |
 
+## Precio de los adicionales (2026-11-15)
+
+**El caso.** En una cancha, un «Adicional» (cervezas sueltas después del chivo) se había
+anotado como «Otro · Cerveza $ 12.000»: 4 Águila a precio **normal**. Al corregirlo con
+«Cambiar por otro producto» y la cantidad, la app las cobró a precio de **cancha**
+(4 × $ 3.200 = $ 12.800): el precio de cancha se aplicaba a todo lo de la cuenta. El
+negocio aclaró la regla: **lo adicional va a precio normal por defecto**, y se puede
+escoger precio de cancha al anotar o después.
+
+**La regla.** Cada pedida de cancha tiene su precio (`Ronda.precio`: `cancha` o
+`normal`), y todo lo que entra en ella (`anotar`, `agregar`, `cambiar_producto`) se cobra
+con ese precio:
+
+- Al **anotar**, el chico va a precio de cancha y el adicional a precio normal. Con
+  «Adicional» escogido, arriba del botón sale «Precio normal · cambiar» para cobrarlo a
+  precio de cancha (no agrega toques al caso común). El celular manda `precio`; si no lo
+  manda (versión anterior), el servidor pone el de siempre para su tipo.
+- **Después**, en el detalle, cada adicional con algún producto que tenga precio de
+  cancha muestra «🎯 Precio cancha» / «Precio normal» (en los chicos, solo si se les
+  cambió el precio de siempre): tocarlo es la operación
+  `precio_ronda`, que le cambia el precio a sus productos (con «Deshacer»).
+- **«Pasar a adicional» / «Pasar a chico»** (`marcar_ronda`) ahora también lleva el precio
+  que le toca (adicional: normal; chico: cancha) y lo aplica.
+- No cambian: lo anulado, lo de valor libre («Otro», mecato), lo ya pagado con un abono
+  por productos, ni nada de una cuenta **ya cobrada** (se reabre primero; el servidor lo
+  rechaza con el porqué).
+- Los precios nuevos los calcula **el servidor** con su catálogo y los guarda en la
+  operación (`precios: { línea: valor }`), como `precioFijado`: recalcular el registro
+  nunca depende del catálogo (regla 0). Lo que mande el celular en `precios` se descarta.
+
+**Compatibilidad (regla 0).** Las pedidas anotadas antes no tienen `precio`: siguen a
+precio de cancha, y como todas sus líneas tienen `precioFijado`, el registro viejo da el
+mismo estado. Un `marcar_ronda` viejo (sin `precio`) solo cambia el nombre, como antes.
+Sin subir `VERSION_PROYECCION`. Para corregir el caso de la cancha basta tocar «Precio
+cancha» en esa pedida (pasa a «Precio normal»: 4 × $ 3.000 = $ 12.000).
+
+| Conflicto | Regla |
+|---|---|
+| Cambiar el precio de una pedida de una cuenta ya cobrada | Se rechaza: «… ya se cobró: reábrala para cambiarle el precio» |
+| Cambiar el precio desde comida | Se rechaza: lo hace la barra |
+| Un producto de la pedida se pagó con un abono por productos | Ese producto conserva su precio; los demás cambian |
+| Agregar o cambiar producto en una pedida a precio normal | Lo nuevo entra a precio normal |
+| Anotar un adicional desde una versión anterior de la app | Precio normal (lo pone el servidor) |
+
+Pruebas: `tests/precio-ronda.test.ts` y `tests/servidor/empleados.test.ts`.
+
+## Lo que ve cada persona (2026-11-15)
+
+Desde los accesos de empleados ([17](17-accesos-de-empleados.md), ADR-17) el servidor ya
+no manda lo mismo a todos: la foto, las novedades y cada operación repartida van
+recortadas según los permisos de la persona (`src/dominio/vista.ts`). Quien ve menos
+recibe siempre la foto al conectarse, y de las operaciones ajenas solo `id`, `seq` y tipo
+(el celular toma los cambios que manda el servidor). Al entrar otra persona en el mismo
+celular, lo confirmado se descarta y llega la foto de la nueva; los pendientes se
+conservan. Fuera de su horario, el servidor solo acepta lo anotado dentro de él o hasta
+15 minutos después (regla 3); lo demás se rechaza con su porqué (regla 8).
+
 ## Juntar cuentas (2026-11-08)
 
 Para cobrar dos cuentas como una («Juntar con otra cuenta» en el menú ⋮ del detalle).

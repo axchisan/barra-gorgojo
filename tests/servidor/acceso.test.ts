@@ -129,6 +129,8 @@ describe("acceso por persona", () => {
 
     it("una persona desactivada no entra ni sigue con su sesión", async () => {
       await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "crear", nombre: "Temporal", rol: "operador" }) });
+      // Sin horario (las nuevas empiezan con el de empleado, docs/17): así entra cualquier día.
+      await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "horario", id: idDe("Temporal"), horario: null }) });
       const t = await s.token("Temporal");
       expect((await s.foto(t)).seq).toBeGreaterThanOrEqual(0);
       await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "activa", id: idDe("Temporal"), activa: false }) });

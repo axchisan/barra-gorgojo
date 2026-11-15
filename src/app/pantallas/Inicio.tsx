@@ -15,7 +15,8 @@ import { ElDia } from "./ElDia";
 export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" | "cocina" | "despacho" | "dia" }) {
   // «Cocina» ya no es pestaña (las pasadas a comida salen arriba de las cuentas): un
   // historial viejo que lleve allá abre las cuentas.
-  const pestana = pedida === "cocina" ? "cuentas" : pedida;
+  // Sin el permiso de ver el día (docs/17), «El día» no está: un historial viejo lleva a las cuentas.
+  const pestana = pedida === "cocina" || (pedida === "dia" && !sinc.veDia) ? "cuentas" : pedida;
   const cuentas = Object.values(sinc.visible.cuentas);
   const enCocina = cuentas.filter((c) => situacion(c) === "comida" && !c.comidaCobrada);
   const nDespacho = porDespachar(cuentas).length;
@@ -58,6 +59,9 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
       </header>
       {cambiar && (
         <div className="menu-persona">
+          {sinc.sesion?.horario && (
+            <p className="horario-sesion">⏰ {sinc.sesion.fin ? `Su acceso de hoy termina a las ${horaDe(sinc.sesion.fin)}.` : sinc.sesion.horario}</p>
+          )}
           {sinc.esAdministrador && (
             <>
               <button onClick={() => { setCambiar(false); nav.ir({ v: "productos" }); }}>Productos y precios</button>
@@ -93,7 +97,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
             Despachar{nDespacho ? ` (${nDespacho})` : ""}
           </button>
         )}
-        <button className={pestana === "dia" ? "activa" : ""} onClick={() => nav.ir({ v: "inicio", pestana: "dia" }, true)}>El día</button>
+        {sinc.veDia && <button className={pestana === "dia" ? "activa" : ""} onClick={() => nav.ir({ v: "inicio", pestana: "dia" }, true)}>El día</button>}
       </nav>
     </main>
   );

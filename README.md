@@ -11,7 +11,8 @@ celulares ven lo mismo.
 **En uso** desde el 2026-10-04; en el local desde el 2026-11-01. Al **2026-11-15**:
 fases A a G del [plan de trabajo](docs/12-plan-de-trabajo.md) hechas, más comida y
 áreas, despacho, abonos, juntar cuentas, deudas y editar pedidas. **Para trabajar en el código, empezar
-por [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md).**
+por [18 · Roadmap desde el 2026-11-15](docs/18-roadmap-2026-11.md)** (y la deuda técnica en
+[16](docs/16-siguiente-etapa.md)).
 
 - **Barra:** cuentas de grupo, persona, mesa y cancha; pedidas y chicos (y adicionales)
   con un toque por producto; repetir; petacos; «Otro»; precio de cancha.
@@ -106,7 +107,10 @@ archivo son solo la semilla de una base nueva.
 | [13 · Revisión técnica](docs/13-revision-tecnica.md) | El stack planeado contra el que corre, con medidas, y qué cambiar y cuándo |
 | [14 · Comida y áreas](docs/14-comida-y-areas.md) | Una cuenta para barra y comida, áreas por persona, despacho de bebidas, dos cajas |
 | [15 · Deudas](docs/15-deudas.md) | Fiado: pasar a deuda, deudas a mano, pagos aparte de la caja, permiso |
-| [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md) | **Qué hay hoy, deuda técnica y el plan: push, QR y NFC, rendimiento, robustez** |
+| [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md) | Qué había el 2026-11-15, deuda técnica, push, QR y NFC, rendimiento, robustez |
+| [17 · Accesos de empleados](docs/17-accesos-de-empleados.md) | Permisos de vista (el día, otros días) y horario de acceso por persona |
+| [18 · Roadmap desde el 2026-11-15](docs/18-roadmap-2026-11.md) | **El plan por fases**: urgente, pruebas, portátil, robustez, push, QR/NFC con el sitio web, impresora térmica, gestión |
+| [19 · Plan de pruebas](docs/19-plan-de-pruebas.md) | Casillas para probar en el celular, la tablet y el portátil |
 
 Los documentos 08 a 11 (datos del negocio, auditoría, migración y revisión en teléfono
 con capturas) tienen datos reales y viven en `negocio/docs/`.

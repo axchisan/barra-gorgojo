@@ -27,8 +27,10 @@ solo con las ventas reales), la revisión técnica de `docs/13-revision-tecnica.
 dominio propio, y del 2026-11-08 al 14: abonos y dividir entre varios, comida y áreas
 (`docs/14`), despacho con aviso sonoro, juntar cuentas, chicos y adicionales, deudas
 (`docs/15`) y, el 15, editar pedidas (agregar y cambiar producto, `docs/04`). **Producción tiene solo datos reales: no probar ahí**; para probar, el
-entorno de pruebas. **Lo siguiente está en `docs/16-siguiente-etapa.md`** (robustez,
-notificaciones push, rendimiento, pedidos por QR y NFC), con la deuda técnica conocida.
+entorno de pruebas. **Lo siguiente está en `docs/18-roadmap-2026-11.md`** (el plan por fases desde el
+2026-11-15), con la deuda técnica conocida en `docs/16`. La fase 0 de 18 (precio de los
+adicionales en `docs/04` y accesos de empleados con horario en `docs/17`, ADR-17) quedó
+hecha en código el 2026-11-15; el plan de pruebas en aparatos es `docs/19`.
 
 ## Reglas no negociables
 

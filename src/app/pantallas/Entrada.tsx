@@ -57,6 +57,8 @@ function Personas() {
     <main className="entrada">
       <img src="/icono-192.png" alt="" width={96} height={96} />
       <h1>Barra del Gorgojo</h1>
+      {/* Salió solo porque terminó su horario (docs/17). */}
+      {sinc.motivoSalida && <p className="aviso-horario" role="status">⏰ {sinc.motivoSalida}</p>}
       <p>¿Quién va a anotar?</p>
       <div className="personas">
         {visibles.map((p) => (

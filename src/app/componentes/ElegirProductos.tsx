@@ -3,7 +3,7 @@
 // (mecato, «Otro») no salen: esos se anotan como pedida nueva.
 import { useState } from "react";
 import { SECCIONES_COMIDA, type Producto } from "../../dominio/catalogo";
-import { catalogo, precioPara, type TipoCuenta } from "../../dominio/estado";
+import { catalogo, precioPara, type ModoPrecio, type TipoCuenta } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import { useAtrasCierra } from "../navegacion";
 import { sinc } from "../sincronizacion";
@@ -11,12 +11,14 @@ import { vibrar } from "../vibrar";
 
 export interface Elegido { producto: string; cantidad: number }
 
-export function ElegirProductos({ titulo, varios, tipo, sinProducto, cerrar, listo }: {
+export function ElegirProductos({ titulo, varios, tipo, modo, sinProducto, cerrar, listo }: {
   titulo: string;
   /** Varios con cantidades (agregar) o uno solo con un toque (cambiar). */
   varios: boolean;
   /** Tipo de la cuenta, para mostrar el precio que aplica (cancha). */
   tipo: TipoCuenta;
+  /** En las canchas: el precio de la pedida (los adicionales van a precio normal). */
+  modo?: ModoPrecio;
   /** Producto que no se ofrece (el que se está cambiando). */
   sinProducto?: string;
   cerrar: () => void;
@@ -26,7 +28,7 @@ export function ElegirProductos({ titulo, varios, tipo, sinProducto, cerrar, lis
   const [cant, setCant] = useState<Record<string, number>>({});
   const conComida = sinc.tieneArea("comida");
   const productos = catalogo(sinc.visible).filter((p) => p.activo && !p.libre && p.id !== sinProducto && (conComida || p.categoria !== "comida"));
-  const precio = (p: Producto) => precioPara(p, tipo) ?? 0;
+  const precio = (p: Producto) => precioPara(p, modo === "normal" ? undefined : tipo) ?? 0;
   const n = Object.values(cant).reduce((a, b) => a + b, 0);
   const valor = Object.entries(cant).reduce((t, [id, k]) => { const p = productos.find((x) => x.id === id); return t + (p ? precio(p) * k : 0); }, 0);
   const tocar = (p: Producto) => {

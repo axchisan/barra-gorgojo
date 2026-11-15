@@ -11,6 +11,8 @@ export const BLOQUEO_INTENTOS = 5;
 export const BLOQUEO_MS = 5 * MIN;
 export const VIGENCIA_CODIGO_MS = 10 * MIN;
 import { AREAS, esArea, type Area } from "../dominio/areas";
+import { dentroDeHorario, HORARIO_EMPLEADO, normalizarHorario, type Horario } from "../dominio/horario";
+import type { Vista } from "../dominio/vista";
 
 export const ADMIN = "admin";
 export type Rol = "admin" | "operador";
@@ -24,8 +26,10 @@ export interface Persona {
   tienePin: boolean;
   /** Áreas fijas, en orden: la primera es su pantalla principal (docs/14). */
   areas: Area[];
-  /** Permisos sueltos (docs/15): «deudas». */
+  /** Permisos sueltos: «deudas» (docs/15), «dia» y «historial» (docs/17). */
   permisos: Permiso[];
+  /** Horario de acceso (docs/17). `null`: sin restricción. El administrador nunca tiene. */
+  horario: Horario | null;
 }
 
 const COLORES = ["#C8312A", "#2F7D3A", "#1F4E8C", "#8E44AD", "#9A6410", "#2E6B7A", "#7A1F1C", "#5B3A1E"];
@@ -105,10 +109,15 @@ export async function leerSesion(firma: string, token: string | null): Promise<{
 
 // ── La parte guardada en el Durable Object ────────────────────────────
 
-type FilaPersona = { id: string; nombre: string; rol: Rol; color: string; activa: number; pin: string | null; areas: string | null; permisos: string | null };
+type FilaPersona = { id: string; nombre: string; rol: Rol; color: string; activa: number; pin: string | null; areas: string | null; permisos: string | null; horario: string | null };
 
-/** Permisos sueltos, además del rol y las áreas: «deudas» = administra deudas (docs/15). */
-export const PERMISOS = ["deudas"] as const;
+/**
+ * Permisos sueltos, además del rol y las áreas:
+ * - «deudas»: administra deudas (anotar a mano, anular), docs/15. Incluye ver todas.
+ * - «dia»: ve el día de ventas y los cierres de caja, y cierra la caja (docs/17).
+ * - «historial»: ve las deudas y las cuentas de otros días (docs/17).
+ */
+export const PERMISOS = ["deudas", "dia", "historial"] as const;
 export type Permiso = (typeof PERMISOS)[number];
 const esPermiso = (x: unknown): x is Permiso => PERMISOS.includes(x as Permiso);
 const leerPermisos = (t: string | null): Permiso[] => [...new Set((t ?? "").split(",").map((x) => x.trim()).filter(esPermiso))];
@@ -118,8 +127,12 @@ const leerAreas = (t: string | null): Area[] => {
   const a = [...new Set((t ?? "").split(",").map((x) => x.trim()).filter(esArea))];
   return a.length ? a : ["barra"];
 };
-const COLUMNAS = "id, nombre, rol, color, activa, pin, areas, permisos";
-const aPersona = (f: FilaPersona): Persona => ({ id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin, areas: leerAreas(f.areas), permisos: leerPermisos(f.permisos) });
+const COLUMNAS = "id, nombre, rol, color, activa, pin, areas, permisos, horario";
+const leerHorario = (t: string | null): Horario | null => { if (!t) return null; try { return normalizarHorario(JSON.parse(t)); } catch { return null; } };
+const aPersona = (f: FilaPersona): Persona => ({
+  id: f.id, nombre: f.nombre, rol: f.rol, color: f.color, activa: !!f.activa, tienePin: !!f.pin, areas: leerAreas(f.areas), permisos: leerPermisos(f.permisos),
+  horario: f.rol === ADMIN ? null : leerHorario(f.horario),
+});
 
 export class Acceso {
   constructor(private sql: SqlStorage, private secretoPines: string) {}
@@ -140,14 +153,24 @@ export class Acceso {
     if (!columnas.includes("areas")) this.sql.exec("ALTER TABLE personas ADD COLUMN areas TEXT");
     // Permisos sueltos (docs/15): columna nueva; vacía = ninguno.
     if (!columnas.includes("permisos")) this.sql.exec("ALTER TABLE personas ADD COLUMN permisos TEXT");
+    // Horario de acceso (docs/17): columna nueva; vacía = sin restricción. Al agregarla, los
+    // operadores que ya existían conservan lo que veían (el día y lo de otros días): el
+    // administrador se los quita a quien deba. Así nadie pierde acceso sin que se decida.
+    if (!columnas.includes("horario")) {
+      this.sql.exec("ALTER TABLE personas ADD COLUMN horario TEXT");
+      for (const f of this.sql.exec<{ id: string; permisos: string | null }>("SELECT id, permisos FROM personas WHERE rol <> ?", ADMIN).toArray()) {
+        this.sql.exec("UPDATE personas SET permisos = ? WHERE id = ?", [...new Set([...leerPermisos(f.permisos), "dia", "historial"])].join(","), f.id);
+      }
+    }
     // Un área dada por el administrador para un día (jornada AAAA-MM-DD).
     this.sql.exec("CREATE TABLE IF NOT EXISTS accesos_dia (persona TEXT NOT NULL, area TEXT NOT NULL, fecha TEXT NOT NULL, por TEXT NOT NULL, PRIMARY KEY (persona, area, fecha))");
     const hay = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM personas").one().n;
     if (hay > 0) return;
     semilla.forEach((nombre, i) => {
       const rol: Rol = nombre === "Administrador" ? ADMIN : "operador";
-      this.sql.exec("INSERT INTO personas (id, nombre, rol, color, activa, pin, creada) VALUES (?, ?, ?, ?, 1, NULL, ?)",
-        idDePersona(nombre), nombre, rol, COLORES[i % COLORES.length], Date.now());
+      // Las personas sembradas ven lo que veían antes de los accesos de empleados (docs/17).
+      this.sql.exec("INSERT INTO personas (id, nombre, rol, color, activa, pin, creada, permisos) VALUES (?, ?, ?, ?, 1, NULL, ?, ?)",
+        idDePersona(nombre), nombre, rol, COLORES[i % COLORES.length], Date.now(), rol === ADMIN ? "" : "dia,historial");
     });
   }
 
@@ -190,6 +213,26 @@ export class Acceso {
     this.sql.exec("UPDATE personas SET permisos = ? WHERE id = ?", [...new Set(permisos.filter(esPermiso))].join(","), id);
   }
 
+  /** Horario de acceso; `null` quita la restricción. Al administrador no se le pone. */
+  ponerHorario(id: string, horario: unknown) {
+    const h = horario === null ? null : normalizarHorario(horario);
+    this.sql.exec("UPDATE personas SET horario = ? WHERE id = ?", h ? JSON.stringify(h) : null, id);
+  }
+
+  /** Si puede usar la app en este momento (el administrador, siempre). */
+  enHorario(id: string, ahora = Date.now()): boolean {
+    const p = this.persona(id);
+    return !!p && dentroDeHorario(p.horario, ahora);
+  }
+
+  /** Qué ve (docs/17): el administrador, todo; los demás, según sus permisos. */
+  vista(id: string): Vista {
+    const p = this.persona(id);
+    if (!p) return { dia: false, historial: false };
+    if (p.rol === ADMIN) return { dia: true, historial: true };
+    return { dia: p.permisos.includes("dia"), historial: p.permisos.includes("historial") || p.permisos.includes("deudas") };
+  }
+
   /** Si administra deudas: el administrador siempre; los demás, con el permiso. */
   administraDeudas(id: string): boolean {
     const p = this.persona(id);
@@ -225,7 +268,9 @@ export class Acceso {
     const id = idDePersona(n);
     if (this.fila(id)) return { error: "Ya hay una persona con ese nombre." };
     const total = this.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM personas").one().n;
-    this.sql.exec("INSERT INTO personas (id, nombre, rol, color, activa, pin, creada) VALUES (?, ?, ?, ?, 1, NULL, ?)", id, n, rol, COLORES[total % COLORES.length], Date.now());
+    // Un empleado nuevo empieza con el horario de empleado y sin ver el día ni lo de otros días (docs/17).
+    this.sql.exec("INSERT INTO personas (id, nombre, rol, color, activa, pin, creada, horario, permisos) VALUES (?, ?, ?, ?, 1, NULL, ?, ?, ?)",
+      id, n, rol, COLORES[total % COLORES.length], Date.now(), rol === ADMIN ? null : JSON.stringify(HORARIO_EMPLEADO), "");
     return this.persona(id)!;
   }
 

@@ -30,10 +30,12 @@ export function Deudas({ nav }: { nav: Nav }) {
         <strong>📒 Deudas</strong>
       </header>
       <div className="cifras">
-        <div className="cifra grande"><span>Le deben al negocio</span><strong>{pesos(total)}</strong></div>
+        <div className="cifra grande"><span>{sinc.veHistorial ? "Le deben al negocio" : "Fiado hoy"}</span><strong>{pesos(total)}</strong></div>
         <div className="cifra en-comida"><span>🍽 De comida</span><strong>{pesos(comida)}</strong></div>
         <div className="cifra"><span>🍺 De barra</span><strong>{pesos(total - comida)}</strong></div>
       </div>
+      {/* Accesos de empleados (docs/17): sin el permiso, solo lo de hoy. */}
+      {!sinc.veHistorial && <p className="nota centrada">Aquí solo se ve lo fiado y lo pagado hoy.</p>}
       <input className="buscar" type="search" placeholder="Buscar por nombre" enterKeyHint="search" onKeyDown={cerrarConEnter}
         value={buscar} onChange={(e) => setBuscar(e.target.value)} />
       {conDeuda.length === 0 && <p className="vacio">{q ? "Nadie con ese nombre debe." : "Nadie debe nada."}</p>}

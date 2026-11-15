@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MEDIO_PETACO, PETACO, SECCIONES, SECCIONES_COMIDA, type Producto } from "../../dominio/catalogo";
 import {
   catalogo, jornada, precioPara, producto as productoDe, saldo, situacion,
-  type Cancha, type TipoCuenta,
+  type Cancha, type ModoPrecio, type TipoCuenta,
 } from "../../dominio/estado";
 import { nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
@@ -73,7 +73,11 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const pasoDe = (p: Producto) => (p.categoria === "cerveza" ? paso : 1);
   const [paquetes, setPaquetes] = useState<PaqueteEnArmado[]>([]);
   // Canchas: por defecto la pedida es un chico; «Adicional» si es algo suelto después del chivo.
-  const [adicional, setAdicional] = useState(false);
+  const [adicional, setAdicionalCrudo] = useState(false);
+  // Precio de la pedida en las canchas (docs/04): el chico a precio de cancha, el adicional
+  // a precio normal; se puede escoger el otro. Cambiar chico/adicional vuelve al de siempre.
+  const [aPrecioCancha, setAPrecioCancha] = useState<boolean | null>(null);
+  const setAdicional = (v: boolean) => { setAdicionalCrudo(v); setAPrecioCancha(null); };
   const enPaquetes = (id: string) => paquetes.reduce((s, pq) => s + (pq.items[id] ?? 0), 0);
 
   const cargarUltima = () => {
@@ -108,7 +112,9 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   };
   // En las canchas rige el precio de cancha de cada producto (si lo tiene).
   const tipoCuenta = cuenta?.tipo ?? destinoCuenta?.tipo ?? (despacho ? "grupo" : tipo);
-  const precioVisto = (p: Producto) => precioPara(p, tipoCuenta);
+  const esCancha = tipoCuenta === "cancha";
+  const modo: ModoPrecio = !esCancha ? "normal" : !cuenta ? "cancha" : (aPrecioCancha ?? !adicional) ? "cancha" : "normal";
+  const precioVisto = (p: Producto) => precioPara(p, modo === "cancha" ? tipoCuenta : undefined);
   const precioDe = (id: string) => { const p = productoDe(sinc.visible, idDe(id)); return p ? precioVisto(p) ?? 0 : 0; };
   /** Cuántos de un producto van, con nota o sin ella. */
   const cantDe = (id: string) => Object.entries(cant).reduce((s, [k, v]) => s + (idDe(k) === id ? v : 0), 0);
@@ -204,6 +210,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       // Un pedido a la barra va siempre como de comida: así queda por despachar.
       area: despacho ? "comida" : sinc.panel,
       ...(esAdicional ? { adicional: true } : {}),
+      ...((cuenta?.tipo ?? tipo) === "cancha" ? { precio: cuenta ? modo : ("cancha" as const) } : {}),
       ...(despacho && detalle.trim() ? { detalle: detalle.trim() } : {}),
     });
     const cuentaFinal = id;
@@ -422,6 +429,12 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
         )}
         {n > 0 && <button className="secundario chico" onClick={() => { setCant({}); setLibres([]); setPaquetes([]); }}>Limpiar</button>}
         {/* El primer pedido de una cancha siempre es chico: el selector sale al agregar. */}
+        {cuenta?.tipo === "cancha" && adicional && (
+          <button type="button" className={`precio-ronda-anotar${modo === "cancha" ? " cancha" : ""}`} aria-pressed={modo === "cancha"}
+            onClick={() => setAPrecioCancha(modo !== "cancha")}>
+            {modo === "cancha" ? "🎯 A precio de cancha" : "Precio normal"} · <u>cambiar</u>
+          </button>
+        )}
         {cuenta?.tipo === "cancha" && (
           <div className="segmentos tipo-ronda" role="group" aria-label="Chico o adicional">
             <button className={adicional ? "" : "activo"} aria-pressed={!adicional} onClick={() => setAdicional(false)}>Chico</button>

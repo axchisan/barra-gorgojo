@@ -449,3 +449,36 @@ calculan de las cuentas, porque el celular recorta las cuentas viejas. Los pagos
 deudas se registran en la deuda y no entran al efectivo esperado del cierre (lo pidió el
 negocio: lo fiado es venta del día en que se fió). Todo es campo opcional u operación
 nueva: el registro viejo da el mismo estado. Ver docs/15.
+
+### ADR-17 · Lo que ve cada persona y horario de acceso (2026-11-15)
+
+El negocio necesita que una empleada no vea las ventas del día ni las deudas de otros días,
+y que solo pueda entrar en un horario que decide la administración (docs/17). Hasta ahora
+el servidor mandaba la misma foto a todos y el celular escondía pantallas: eso no es
+seguridad, porque la foto traía todas las deudas y los cierres de caja.
+
+**Decisión.**
+
+- Dos permisos sueltos nuevos, `dia` e `historial`, y una columna `horario` (JSON con
+  franjas semanales y días especiales, en hora de Colombia) en `personas`. El
+  administrador ve todo y no tiene horario.
+- **El servidor recorta lo que manda** (`src/dominio/vista.ts`, puro y probado): foto,
+  novedades y cada operación repartida por WebSocket, por persona. Quien ve menos recibe
+  siempre la foto (nunca novedades desde su `seq`) y de las operaciones ajenas solo `id`,
+  `seq` y tipo. Al entrar otra persona en el celular se descarta lo confirmado (no los
+  pendientes).
+- **El horario se revisa en el servidor**: al entrar (antes del PIN), en cada pedido y en
+  cada mensaje del WebSocket. Una **alarma del Durable Object** suena al fin de la franja
+  más próxima de quienes están conectados y los saca. El celular también sale solo a la
+  hora (`fin`), por si no tiene señal.
+- **Regla 3 sobre la regla de horario**: fuera de su horario se acepta lo anotado dentro
+  de él o hasta 15 minutos después; lo demás se rechaza con su porqué (regla 8). Las
+  operaciones no cambian de forma: el registro viejo da el mismo estado (sin subir
+  `VERSION_PROYECCION`).
+- Al desplegar, los operadores que ya existían reciben `dia` e `historial` (nadie pierde
+  nada sin que se decida); las personas nuevas empiezan sin ellos y con el horario de
+  empleado (domingos de 8:00 a. m. a 3:00 p. m.).
+
+**Costo aceptado.** Quien ve menos baja la foto completa al reconectar (pocos KB). La
+foto ya no es una sola para todos: se arma por vista (con caché por combinación de
+permisos al repartir).

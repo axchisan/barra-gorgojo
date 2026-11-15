@@ -30,6 +30,10 @@ const linea = z.object({
   precioFijado: z.unknown().optional(), // lo escribe solo el servidor: se descarta después
 });
 
+// Precio de una pedida de cancha (docs/04 «Precio de los adicionales»). `precios` lo
+// escribe solo el servidor: lo que mande el celular se descarta.
+const modo = z.enum(["cancha", "normal"]);
+
 const producto = z.object({
   id: z.string().regex(/^[a-z0-9-]{1,40}$/),
   nombre: texto(100),
@@ -48,10 +52,11 @@ const producto = z.object({
 const operacion = z.discriminatedUnion("t", [
   z.object({ ...comun, t: z.literal("abrir"), cuenta: id, nombre: texto(200), tipo: z.enum(["grupo", "persona", "mesa", "cancha", "rapida"]), mesa: opcional(numero), cancha: opcional(z.enum(["1", "2", "pequena"])) }),
   z.object({ ...comun, t: z.literal("renombrar"), cuenta: id, nombre: texto(200) }),
-  z.object({ ...comun, t: z.literal("anotar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), adicional: opcional(z.boolean()), detalle: opcional(z.string().max(200)), lineas: z.array(linea).min(1).max(300) }),
+  z.object({ ...comun, t: z.literal("anotar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), adicional: opcional(z.boolean()), precio: opcional(modo), detalle: opcional(z.string().max(200)), lineas: z.array(linea).min(1).max(300) }),
   z.object({ ...comun, t: z.literal("despachar"), cuenta: id, lineas: opcional(z.array(id).max(300)) }),
   z.object({ ...comun, t: z.literal("juntar"), cuenta: id, desde: id }),
-  z.object({ ...comun, t: z.literal("marcar_ronda"), cuenta: id, ronda: id, adicional: z.boolean() }),
+  z.object({ ...comun, t: z.literal("marcar_ronda"), cuenta: id, ronda: id, adicional: z.boolean(), precio: opcional(modo), precios: z.unknown().optional() }),
+  z.object({ ...comun, t: z.literal("precio_ronda"), cuenta: id, ronda: id, precio: modo, precios: z.unknown().optional() }),
   z.object({ ...comun, t: z.literal("agregar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), lineas: z.array(linea).min(1).max(300) }),
   z.object({ ...comun, t: z.literal("cambiar_producto"), cuenta: id, linea: id, nueva: linea }),
   z.object({ ...comun, t: z.literal("separar"), cuenta: id, desde: id }),

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AREAS, nombreArea, type Area } from "../../dominio/areas";
 import { jornada } from "../../dominio/estado";
+import { describirHorario, HORARIO_EMPLEADO, minutosDe, textoMinutos, type Horario } from "../../dominio/horario";
 import { haceCuanto, horaDe } from "../../dominio/formato";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
@@ -8,7 +9,7 @@ import { cerrarConEnter } from "../teclado";
 
 interface PersonaAdmin {
   id: string; nombre: string; rol: string; color: string; activa: boolean; tienePin: boolean; pin: string | null;
-  areas?: Area[]; dias?: { area: Area; fecha: string }[]; permisos?: string[];
+  areas?: Area[]; dias?: { area: Area; fecha: string }[]; permisos?: string[]; horario?: Horario | null;
 }
 interface Celular { id: string; nombre: string; creado: number; por: string; ultimo_uso: number | null; revocado: number | null }
 interface Rechazada { id: string; persona: string; motivo: string; en: number }
@@ -84,7 +85,7 @@ export function Personas({ nav }: { nav: Nav }) {
             <button className="chip" onClick={() => { setCambiando(cambiando === p.id ? null : p.id); setPinNuevo(""); }}>Cambiar PIN</button>
             <button className="chip" onClick={() => accion({ accion: "activa", id: p.id, activa: !p.activa })}>{p.activa ? "Desactivar" : "Activar"}</button>
             <button className={permisos === p.id ? "chip activo" : "chip"} aria-expanded={permisos === p.id} onClick={() => setPermisos(permisos === p.id ? null : p.id)}>
-              {p.rol === "admin" ? "Todo" : `${(p.areas ?? ["barra"]).map(nombreArea).join(" y ")}${p.permisos?.includes("deudas") ? " · deudas" : ""}`} ▾
+              {p.rol === "admin" ? "Todo" : `${(p.areas ?? ["barra"]).map(nombreArea).join(" y ")}${p.permisos?.includes("deudas") ? " · deudas" : ""}${p.horario ? " · ⏰ con horario" : ""}`} ▾
             </button>
             {permisos === p.id && <Permisos p={p} accion={accion} />}
             {cambiando === p.id && (
@@ -202,11 +203,19 @@ function Permisos({ p, accion }: { p: PersonaAdmin; accion: (cuerpo: unknown) =>
         Administrador: ve y hace todo, en todas las áreas
       </label>
       {p.rol !== "admin" && (
-        <label className="interruptor">
-          <input type="checkbox" checked={!!p.permisos?.includes("deudas")}
-            onChange={(e) => accion({ accion: "permisos", id: p.id, permisos: e.target.checked ? ["deudas"] : [] })} />
-          📒 Administra deudas: anotar deudas a mano y anular movimientos
-        </label>
+        <>
+          {PERMISOS_VISTA.map(([permiso, texto]) => (
+            <label key={permiso} className="interruptor">
+              <input type="checkbox" checked={!!p.permisos?.includes(permiso)}
+                onChange={(e) => {
+                  const otros = (p.permisos ?? []).filter((x) => x !== permiso);
+                  void accion({ accion: "permisos", id: p.id, permisos: e.target.checked ? [...otros, permiso] : otros });
+                }} />
+              {texto}
+            </label>
+          ))}
+          <HorarioPersona p={p} accion={accion} />
+        </>
       )}
       <p className="etiqueta">Áreas fijas {p.rol === "admin" ? "(y su pantalla principal)" : ""}</p>
       <div className="chips">
@@ -240,6 +249,83 @@ function Permisos({ p, accion }: { p: PersonaAdmin; accion: (cuerpo: unknown) =>
           <p className="nota">El día va de las 5:00 a. m. a las 5:00 a. m. del día siguiente.</p>
         </>
       )}
+    </div>
+  );
+}
+
+/** Permisos sueltos, con lo que dejan hacer (docs/15 y docs/17). */
+const PERMISOS_VISTA: [string, string][] = [
+  ["dia", "📊 Ve el día de ventas: totales, cierres y cierra la caja"],
+  ["historial", "🗂 Ve deudas y cuentas de otros días (sin esto, solo lo de hoy)"],
+  ["deudas", "📒 Administra deudas: anotar deudas a mano y anular movimientos"],
+];
+
+const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+/**
+ * Horario de acceso (docs/17): sin horario, entra cuando quiera; con horario, solo en sus
+ * franjas semanales y en los días especiales (eventos). Fuera de ellas no entra, y si
+ * estaba adentro, sale al terminar.
+ */
+function HorarioPersona({ p, accion }: { p: PersonaAdmin; accion: (cuerpo: unknown) => Promise<void> }) {
+  const h = p.horario ?? null;
+  const hoy = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
+  const [dia, setDia] = useState(0);
+  const [desde, setDesde] = useState("08:00");
+  const [hasta, setHasta] = useState("15:00");
+  const [fecha, setFecha] = useState(hoy);
+  const [error, setError] = useState("");
+  const poner = (nuevo: Horario | null) => accion({ accion: "horario", id: p.id, horario: nuevo });
+  /** Las horas escritas; si «hasta» es menor que «desde», termina al día siguiente (evento de noche). */
+  const franja = () => {
+    const a = minutosDe(desde), b = minutosDe(hasta);
+    if (a == null || b == null || a === b) { setError("Escriba la hora de inicio y la de fin."); return null; }
+    setError("");
+    return { desde: a, hasta: b > a ? b : b + 1440 };
+  };
+  const finTexto = (m: number) => `${textoMinutos(m)}${m > 1440 ? " (día siguiente)" : ""}`;
+  return (
+    <div className="horario-persona">
+      <p className="etiqueta">⏰ Horario de acceso</p>
+      <p className="nota">{describirHorario(h, hoy)}</p>
+      <div className="chips">
+        <button className={h ? "chip" : "chip activo"} aria-pressed={!h} onClick={() => poner(null)}>Siempre</button>
+        <button className="chip" onClick={() => poner(HORARIO_EMPLEADO)}>Domingos 8 a. m.–3 p. m.</button>
+        {h && <button className="chip peligro-chip" onClick={() => poner({ semanal: [], especiales: [] })}>Sin acceso</button>}
+      </div>
+      {h && (
+        <>
+          {h.semanal.map((f, i) => (
+            <div key={`s${i}`} className="fila-dia">
+              <span>{DIAS_SEMANA[f.dia]} · {textoMinutos(f.desde)} a {finTexto(f.hasta)}</span>
+              <button className="chip peligro-chip" onClick={() => poner({ ...h, semanal: h.semanal.filter((_, j) => j !== i) })}>Quitar</button>
+            </div>
+          ))}
+          {h.especiales.filter((f) => f.fecha >= hoy).map((f) => (
+            <div key={`e${f.fecha}${f.desde}`} className="fila-dia">
+              <span>🎉 {f.fecha === hoy ? "Hoy" : f.fecha} · {textoMinutos(f.desde)} a {finTexto(f.hasta)}</span>
+              <button className="chip peligro-chip" onClick={() => poner({ ...h, especiales: h.especiales.filter((x) => x !== f) })}>Quitar</button>
+            </div>
+          ))}
+        </>
+      )}
+      <div className="fila-franja">
+        <input type="time" aria-label="Desde" value={desde} onChange={(e) => setDesde(e.target.value)} />
+        <span>a</span>
+        <input type="time" aria-label="Hasta" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+      </div>
+      <div className="fila-franja">
+        <select aria-label="Día de la semana" value={dia} onChange={(e) => setDia(Number(e.target.value))}>
+          {DIAS_SEMANA.map((d, i) => <option key={d} value={i}>{d}</option>)}
+        </select>
+        <button className="secundario" onClick={() => { const f = franja(); if (f) void poner({ semanal: [...(h?.semanal ?? []), { dia, ...f }], especiales: h?.especiales ?? [] }); }}>＋ Cada semana</button>
+      </div>
+      <div className="fila-franja">
+        <input type="date" aria-label="Día especial" value={fecha} min={hoy} onChange={(e) => setFecha(e.target.value)} />
+        <button className="secundario" disabled={!fecha} onClick={() => { const f = franja(); if (f) void poner({ semanal: h?.semanal ?? [], especiales: [...(h?.especiales ?? []).filter((x) => x.fecha >= hoy), { fecha, ...f }] }); }}>＋ Día especial</button>
+      </div>
+      {error && <p className="error" role="alert">{error}</p>}
+      <p className="nota">Un día especial (evento) se suma al horario de cada semana. Al terminar la franja, la app la saca sola; lo anotado no se pierde.</p>
     </div>
   );
 }

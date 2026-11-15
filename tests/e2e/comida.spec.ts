@@ -16,6 +16,9 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   const id = ((await creada.json()) as { persona?: { id: string } }).persona?.id;
   expect(id, "persona de comida").toBeTruthy();
   expect((await api("/api/admin/personas", { accion: "areas", id, areas: ["comida"] })).ok()).toBe(true);
+  // Sin horario ni restricciones de vista (las nuevas empiezan con las de empleado, docs/17).
+  await api("/api/admin/personas", { accion: "horario", id, horario: null });
+  await api("/api/admin/personas", { accion: "permisos", id, permisos: ["dia", "historial"] });
 
   // Comida: entra directo a su panel; los platos van primero.
   const cocina = await celular(browser, "Cocina");
@@ -107,6 +110,7 @@ test("pedido rápido a la barra: bebidas con detalles, a una cuenta nueva, y la 
   const creada = await api("/api/admin/personas", { accion: "crear", nombre: "Apoyo e2e", rol: "operador" });
   const id = ((await creada.json()) as { persona?: { id: string } }).persona?.id;
   await api("/api/admin/personas", { accion: "areas", id, areas: ["comida"] });
+  await api("/api/admin/personas", { accion: "horario", id, horario: null });
 
   const apoyo = await celular(browser, "Apoyo e2e");
   await apoyo.getByRole("button", { name: "Pedir a la barra" }).click();
@@ -182,6 +186,7 @@ test("comida cancela un pedido a la barra que aún no se despacha; la barra deja
   await permisos.getByRole("button", { name: /🍽 Comida/ }).click(); // agrega comida
   await expect(permisos.getByRole("button", { name: /🍽 Comida/ })).toHaveAttribute("aria-pressed", "true");
   await permisos.getByRole("button", { name: /🍺 Barra/ }).click(); // quita barra
+  await permisos.getByRole("button", { name: "Siempre" }).click(); // sin horario de empleado (docs/17)
   await expect(barra.locator(".fila-persona", { hasText: "Cocina cancela" }).first()).toContainText("Comida ▾");
   await barra.goBack();
 

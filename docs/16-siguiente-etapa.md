@@ -1,5 +1,9 @@
 # 16 · Estado al 2026-11-15 y siguiente etapa
 
+> **El plan vigente es [18 · Roadmap desde el 2026-11-15](18-roadmap-2026-11.md)**, que
+> recoge lo de aquí (deuda técnica, push, QR, rendimiento, robustez) en fases. Este
+> documento queda como el estado y la deuda técnica de ese día.
+
 Punto de partida para la próxima sesión de trabajo. Resume qué hay en producción, qué
 deuda técnica quedó, y plantea la siguiente etapa: **pedidos de los clientes por QR y
 NFC, notificaciones push, rendimiento y escala, robustez y conectividad**. Las cifras del

@@ -981,3 +981,22 @@ html.apaisada-baja .segmentos.pestanas-anotar button { padding: 0 8px; }
 .tipo-ronda-etiqueta { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 1rem; letter-spacing: 0.02em; }
 .tipo-ronda-etiqueta.chico { background: var(--verde); color: #fff; }
 .tipo-ronda-etiqueta.adicional { background: var(--ambar); color: #fff; }
+
+/* Precio de la pedida en las canchas (docs/04 «Precio de los adicionales», 2026-11-15). */
+.precio-ronda { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }
+.precio-ronda.cancha { background: #e3f0e5; border-color: var(--verde); color: #1d4d25; }
+.precio-ronda.normal { background: #fff; border-style: dashed; }
+.precio-ronda-anotar {
+  position: absolute; right: 12px; bottom: 100%; margin-bottom: 2px; min-height: 40px; padding: 6px 14px;
+  border-radius: 999px; border: 2px dashed var(--ambar); background: #fff8e6; color: var(--cafe, #241206);
+  font: inherit; font-size: 0.95rem; font-weight: 700; box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+}
+.precio-ronda-anotar.cancha { border-style: solid; border-color: var(--verde); background: #e3f0e5; }
+html.apaisada .anotar .precio-ronda-anotar { position: static; width: 100%; }
+
+/* Accesos de empleados (docs/17). */
+.aviso-horario { background: #fff3d6; border: 2px solid var(--ambar); border-radius: var(--radio); padding: 10px 14px; font-weight: 700; max-width: 420px; text-align: center; }
+.horario-sesion { margin: 0; padding: 8px 12px; font-weight: 700; color: var(--cafe, #241206); background: #fff3d6; border-radius: 8px; }
+.horario-persona { display: grid; gap: 8px; }
+.horario-persona .fila-franja { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.horario-persona select, .horario-persona input[type="time"], .horario-persona input[type="date"] { min-height: 44px; font: inherit; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--neutro-300, #c9bca8); background: #fff; }

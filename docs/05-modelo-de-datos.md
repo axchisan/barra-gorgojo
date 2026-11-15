@@ -38,7 +38,9 @@ CREATE TABLE cuenta_jornadas (fecha, cuenta, PRIMARY KEY (fecha, cuenta));  -- d
 CREATE TABLE proyeccion (clave PRIMARY KEY, valor);  -- version, seq, productos, orden, jornadas
 
 -- src/servidor/acceso.ts (fase D, ADR-10)
-CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada, areas, permisos);  -- permisos «deudas» (docs/15)  -- pin cifrado; areas «comida,barra» (la primera, la principal)
+CREATE TABLE personas (id, nombre UNIQUE, rol, color, activa, pin, creada, areas, permisos, horario);
+  -- pin cifrado; areas «comida,barra» (la primera, la principal); permisos «deudas» (docs/15), «dia» e «historial» (docs/17)
+  -- horario: JSON { semanal: [{ dia, desde, hasta }], especiales: [{ fecha, desde, hasta }] } en minutos; vacío = sin restricción (docs/17)
 CREATE TABLE accesos_dia (persona, area, fecha, por, PRIMARY KEY (persona, area, fecha));  -- un área solo ese día (docs/14)
 CREATE TABLE dispositivos (id, nombre, token_hash UNIQUE, creado, por, ultimo_uso, revocado);
 CREATE TABLE codigos (codigo_hash, vence, por, usado);      -- vinculación de 6 dígitos
@@ -57,8 +59,9 @@ guarda.
 |---|---|---|
 | `abrir` | `cuenta, nombre, tipo, mesa?, cancha?` | Abre una cuenta (grupo, persona, mesa, cancha o rápida) |
 | `renombrar` | `cuenta, nombre` | Cambia el nombre |
-| `marcar_ronda` | `cuenta, ronda, adicional` | En las canchas: la pedida es un chico o un adicional (no cambia el valor) |
-| `anotar` | `cuenta, ronda, lineas[], area?, adicional?, detalle?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado` y el `area` (barra o comida). Desde comida, las bebidas quedan `porDespachar` |
+| `marcar_ronda` | `cuenta, ronda, adicional, precio?, precios?` | En las canchas: la pedida es un chico o un adicional. Desde el 2026-11-15 lleva `precio` (adicional: normal; chico: cancha) y el servidor escribe `precios` (`{ línea: valor }`); sin ellos (operación vieja), solo cambia el nombre |
+| `precio_ronda` | `cuenta, ronda, precio, precios?` | En las canchas: la pedida a precio normal o de cancha (docs/04 «Precio de los adicionales»). El servidor escribe `precios`. No en cuentas cobradas |
+| `anotar` | `cuenta, ronda, lineas[], area?, adicional?, precio?, detalle?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado`, el `area` (barra o comida) y, en las canchas, el `precio` de la pedida (`cancha` o `normal`). Desde comida, las bebidas quedan `porDespachar` |
 | `juntar` | `cuenta, desde` | Suma la cuenta `desde` a `cuenta`: sus pedidas, productos y abonos pasan allá (marcados `de`); `desde` queda «juntada» |
 | `separar` | `cuenta, desde` | Deshace `juntar`, si después no se cobró nada en `cuenta` |
 | `despachar` | `cuenta, lineas?` | La barra entregó bebidas pedidas desde comida (las dichas, o todas las de la cuenta) |

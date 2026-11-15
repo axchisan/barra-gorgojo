@@ -26,6 +26,16 @@ function tipoCuenta(c: Cuenta | undefined, op: Extract<Operacion, { t: "abrir" }
   return op.tipo === "rapida" ? "venta rápida" : op.tipo;
 }
 
+/** Cuánto cambió una pedida al cambiarle el precio: «4 Águila a $ 3.000». */
+function cambioDePrecio(precios: Record<string, number> | undefined, cuenta?: Cuenta): string {
+  if (!precios || typeof precios !== "object") return "";
+  const partes = Object.entries(precios).map(([id, v]) => {
+    const l = cuenta?.lineas.find((x) => x.id === id);
+    return l ? `${l.cantidad} ${l.nombre} a ${pesos(v)}` : "";
+  }).filter(Boolean);
+  return partes.join(", ");
+}
+
 /** La operación en una frase. `cuenta` es la cuenta como está ahora; `estado`, para cierres y productos. */
 export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas">): { texto: string; atencion: boolean } {
   const linea = (id: string) => cuenta?.lineas.find((l) => l.id === id);
@@ -93,7 +103,14 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
     }
     case "marcar_ronda": {
       const r = cuenta?.rondas.find((x) => x.id === op.ronda);
-      return { texto: `Marcó ${r ? `la pedida ${r.numero}` : "una pedida"} como ${op.adicional ? "adicional" : "chico"}`, atencion: false };
+      const cambio = cambioDePrecio(op.precios, cuenta);
+      return { texto: `Marcó ${r ? `la pedida ${r.numero}` : "una pedida"} como ${op.adicional ? "adicional" : "chico"}${cambio ? ` · pasó a precio ${op.precio === "normal" ? "normal" : "de cancha"} (${cambio})` : ""}`, atencion: !!cambio };
+    }
+    case "precio_ronda": {
+      const r = cuenta?.rondas.find((x) => x.id === op.ronda);
+      const donde = r && cuenta ? `la ${nombreRonda(cuenta, r).toLowerCase()}` : "una pedida";
+      const cambio = cambioDePrecio(op.precios, cuenta);
+      return { texto: `Puso ${donde} a precio ${op.precio === "normal" ? "normal" : "de cancha"}${cambio ? ` (${cambio})` : ""}`, atencion: true };
     }
     case "juntar": {
       const j = cuenta?.juntadas?.find((x) => x.cuenta === op.desde);

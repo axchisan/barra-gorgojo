@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  abonos, porPagarPorLinea, producto as productoDe, puedeEditarLinea, saldo, situacion, total, totalComida, unidades,
+  abonos, modoPorDefecto, modoPrecio, porPagarPorLinea, producto as productoDe, puedeEditarLinea, saldo, situacion, total, totalComida, unidades,
   type Cuenta, type Linea,
 } from "../../dominio/estado";
 import { cuantasRondas, horaDe, nombreRonda, palabraRonda, pesos, rondaViva } from "../../dominio/formato";
@@ -108,7 +108,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
       {agregarA && (() => {
         const r = c.rondas.find((x) => x.id === agregarA);
         return r ? (
-          <ElegirProductos titulo={`Agregar a la ${nombreRonda(c, r).toLowerCase()}`} varios tipo={c.tipo} cerrar={() => setAgregarA(null)}
+          <ElegirProductos titulo={`Agregar a la ${nombreRonda(c, r).toLowerCase()}`} varios tipo={c.tipo} modo={modoPrecio(c, r)} cerrar={() => setAgregarA(null)}
             listo={(elegidos) => {
               const lineas = elegidos.map((e) => ({ id: crypto.randomUUID(), producto: e.producto, cantidad: e.cantidad }));
               sinc.emitir({ t: "agregar", cuenta: c.id, ronda: r.id, lineas, area: sinc.panel });
@@ -210,8 +210,21 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                     <button className="chip agregar-pedida" aria-label={`Agregar a la ${nombreRonda(c, r).toLowerCase()}`} onClick={() => setAgregarA(r.id)}>＋ Agregar</button>
                   )}
                   {c.tipo === "cancha" && s === "abierta" && rondaViva(c, r.id) && (
-                    <button className="chip marcar-ronda" onClick={() => sinc.emitir({ t: "marcar_ronda", cuenta: c.id, ronda: r.id, adicional: !r.adicional })}>
+                    <button className="chip marcar-ronda" onClick={() => sinc.emitir({ t: "marcar_ronda", cuenta: c.id, ronda: r.id, adicional: !r.adicional, precio: modoPorDefecto(!r.adicional) })}>
                       {r.adicional ? "Pasar a chico" : "Pasar a adicional"}
+                    </button>
+                  )}
+                  {/* Precio de la pedida (docs/04): los adicionales van a precio normal; se puede cambiar. */}
+                  {/* En los chicos solo sale si alguien les cambió el precio de siempre: no recarga la pantalla. */}
+                  {c.tipo === "cancha" && s === "abierta" && rondaViva(c, r.id) && sinc.tieneArea("barra") && tienePrecioCancha(lineas)
+                    && (r.adicional || modoPrecio(c, r) !== modoPorDefecto(false)) && (
+                    <button className={`chip precio-ronda ${modoPrecio(c, r)}`} aria-label={`Cambiar a precio ${modoPrecio(c, r) === "cancha" ? "normal" : "de cancha"}`}
+                      onClick={() => {
+                        const nuevo = modoPrecio(c, r) === "cancha" ? "normal" : "cancha";
+                        sinc.emitir({ t: "precio_ronda", cuenta: c.id, ronda: r.id, precio: nuevo });
+                        ponerAviso({ texto: `${nombreRonda(c, r)} a precio ${nuevo === "normal" ? "normal" : "de cancha"}`, deshacer: () => sinc.emitir({ t: "precio_ronda", cuenta: c.id, ronda: r.id, precio: nuevo === "normal" ? "cancha" : "normal" }) });
+                      }}>
+                      {modoPrecio(c, r) === "cancha" ? "🎯 Precio cancha" : "Precio normal"}
                     </button>
                   )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
@@ -317,4 +330,13 @@ function HojaJuntar({ c, nav, cerrar }: { c: Cuenta; nav: Nav; cerrar: () => voi
       </div>
     </div>
   );
+}
+
+/** Si en la pedida hay algo con precio de cancha distinto del normal: solo ahí tiene sentido escoger. */
+function tienePrecioCancha(lineas: Linea[]): boolean {
+  return lineas.some((l) => {
+    if (l.anulada) return false;
+    const p = productoDe(sinc.visible, l.producto);
+    return !!p && !p.libre && !!p.precioCancha && p.precioCancha !== p.precio;
+  });
 }

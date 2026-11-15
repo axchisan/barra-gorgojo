@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { producto as productoDe, type Cuenta, type Linea } from "../../dominio/estado";
+import { modoPrecio, producto as productoDe, type Cuenta, type Linea } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { useAtrasCierra } from "../navegacion";
@@ -48,7 +48,7 @@ export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Line
         <button className="secundario cambiar-producto" onClick={() => setCambiar(true)}>⇄ Cambiar por otro producto</button>
       )}
       {cambiar && (
-        <ElegirProductos titulo={`Cambiar ${l.cantidad} ${l.nombre} por…`} varios={false} tipo={c.tipo} sinProducto={l.producto}
+        <ElegirProductos titulo={`Cambiar ${l.cantidad} ${l.nombre} por…`} varios={false} tipo={c.tipo} modo={modoPrecio(c, c.rondas.find((r) => r.id === l.ronda))} sinProducto={l.producto}
           cerrar={() => setCambiar(false)}
           listo={([e]) => {
             const nombre = productoDe(sinc.visible, e.producto)?.nombre ?? "otro";

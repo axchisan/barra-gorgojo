@@ -16,7 +16,13 @@ import { BASE_ORIGINAL } from "../dominio/base";
 import { estadoVacio, type Estado, type Operacion } from "../dominio/estado";
 
 /** `areas`: las de hoy según el servidor; `panel`: el área que se está usando en este celular. */
-export interface Sesion { token: string; persona: string; rol?: string; areas?: Area[]; panel?: Area; deudas?: boolean }
+export interface Sesion {
+  token: string; persona: string; rol?: string; areas?: Area[]; panel?: Area; deudas?: boolean;
+  /** Ve el día de ventas y lo de otros días (docs/17). Sin decirlo (sesión de antes): sí. */
+  dia?: boolean; historial?: boolean;
+  /** Su horario en una frase y cuándo termina la franja en curso (docs/17). */
+  horario?: string; fin?: number | null;
+}
 /** Una persona como la ve la entrada de un celular vinculado (sin PIN). */
 export interface PersonaPublica { id: string; nombre: string; color: string; admin: boolean; tienePin: boolean }
 export type Apartado = Operacion & { base: string };

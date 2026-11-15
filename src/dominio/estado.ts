@@ -58,7 +58,27 @@ export interface Ronda {
   adicional?: true;
   /** Detalles de un pedido a la barra: para dónde o para quién («para el limón»). */
   detalle?: string;
+  /**
+   * En las canchas: con qué precio se cobra la pedida (docs/04 «Precio de los adicionales»).
+   * Sin él (lo anotado antes del 2026-11-15), el de cancha. Desde entonces el servidor lo
+   * escribe siempre: los chicos van a precio de cancha y los adicionales a precio normal,
+   * salvo que se escoja otra cosa al anotar o después («precio_ronda»).
+   */
+  precio?: ModoPrecio;
 }
+
+/** Precio de una pedida de cancha: el de cancha o el normal. */
+export type ModoPrecio = "cancha" | "normal";
+export const esModoPrecio = (x: unknown): x is ModoPrecio => x === "cancha" || x === "normal";
+
+/** El precio con que se cobra una pedida: en las canchas, el que diga (o el de cancha); fuera de ellas, el normal. */
+export function modoPrecio(c: Pick<Cuenta, "tipo">, r: Pick<Ronda, "precio"> | undefined): ModoPrecio {
+  if (c.tipo !== "cancha") return "normal";
+  return r?.precio ?? "cancha";
+}
+
+/** El modo por defecto de una pedida nueva de cancha: los adicionales, a precio normal. */
+export const modoPorDefecto = (adicional: boolean): ModoPrecio => (adicional ? "normal" : "cancha");
 
 export interface Pago {
   id: string;
@@ -196,10 +216,11 @@ export type Operacion = Base &
   (
     | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha }
     | { t: "renombrar"; cuenta: string; nombre: string }
-    | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean }
+    | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean; precio?: ModoPrecio; precios?: Record<string, number> }
+    | { t: "precio_ronda"; cuenta: string; ronda: string; precio: ModoPrecio; precios?: Record<string, number> }
     | { t: "agregar"; cuenta: string; ronda: string; area?: Area; lineas: LineaAnotada[] }
     | { t: "cambiar_producto"; cuenta: string; linea: string; nueva: LineaAnotada }
-    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; detalle?: string; lineas: LineaAnotada[] }
+    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; precio?: ModoPrecio; detalle?: string; lineas: LineaAnotada[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
@@ -317,7 +338,7 @@ export function puedeEditarLinea(areas: readonly Area[], l: Linea): boolean {
  * anotar, agregar y cambiar producto, para que las tres fijen precio, comida, nota y
  * despacho igual. `null` si no sirve (producto que no existe, cantidad o precio inválidos).
  */
-function construirLinea(estado: Estado, c: Cuenta, l: LineaAnotada, ronda: string, area: Area | undefined, en: number): Linea | null {
+function construirLinea(estado: Estado, c: Cuenta, l: LineaAnotada, ronda: string, area: Area | undefined, en: number, modo: ModoPrecio): Linea | null {
   const p = producto(estado, l.producto);
   const cantidad = Math.floor(l.cantidad);
   if (!p || !(cantidad > 0) || cantidad > 3000) return null;
@@ -328,7 +349,7 @@ function construirLinea(estado: Estado, c: Cuenta, l: LineaAnotada, ronda: strin
     ? Math.floor(l.precio ?? 0)
     : typeof l.precioFijado === "number"
       ? l.precioFijado
-      : precioPara(p, en >= PRECIO_CANCHA_DESDE ? c.tipo : undefined);
+      : precioPara(p, en >= PRECIO_CANCHA_DESDE && modo === "cancha" ? c.tipo : undefined);
   if (precio == null || !(precio > 0) || precio > TOPE_VALOR_LIBRE) return null;
   const nombre = p.conNombre ? (l.nombre ?? "").trim().slice(0, 40) || p.nombre : p.nombre;
   const pq = l.paquete;
@@ -366,6 +387,42 @@ export function porDespachar(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; linea
     if (lineas.length) r.push({ cuenta: c, lineas });
   }
   return r;
+}
+
+/**
+ * Los precios que tendrían las líneas de una pedida con este modo: solo las vivas, de
+ * productos con precio fijo (no «Otro» ni el mecato) y sin pagar con un abono por
+ * productos. Las que no cambian no salen. El servidor guarda el resultado en la operación
+ * (`precios`) para que recalcular el registro nunca dependa del catálogo (regla 0).
+ */
+export function preciosParaModo(estado: Estado, c: Cuenta, rondaId: string, modo: ModoPrecio): Record<string, number> {
+  const pagadas = pagadoPorLinea(c);
+  const r: Record<string, number> = {};
+  for (const l of c.lineas) {
+    if (l.ronda !== rondaId || l.anulada || (pagadas.get(l.id) ?? 0) > 0) continue;
+    const p = producto(estado, l.producto);
+    if (!p || p.libre) continue;
+    const precio = precioPara(p, modo === "cancha" ? "cancha" : undefined);
+    if (precio != null && precio > 0 && precio <= TOPE_VALOR_LIBRE && precio !== l.precio) r[l.id] = precio;
+  }
+  return r;
+}
+
+/**
+ * Pone el modo de precio de una pedida y, si la cuenta sigue abierta, le cambia el precio a
+ * sus líneas: el que fijó el servidor (`precios`) o, en el celular antes de confirmarse,
+ * el del catálogo. Una cuenta ya cobrada no cambia de valor (se reabre primero).
+ */
+function cambiarPrecioRonda(estado: Estado, c: Cuenta, r: Ronda, modo: ModoPrecio, precios: Record<string, number> | undefined, en: number) {
+  r.precio = modo;
+  if (situacion(c) !== "abierta") return;
+  const nuevos = precios && typeof precios === "object" ? precios : preciosParaModo(estado, c, r.id, modo);
+  for (const l of c.lineas) {
+    const v = Math.floor(Number(nuevos[l.id]));
+    if (l.ronda !== r.id || l.anulada || !(v > 0) || v > TOPE_VALOR_LIBRE || v === l.precio) continue;
+    l.precio = v;
+  }
+  c.ultima = en;
 }
 
 export function aplicar(estado: Estado, op: Operacion): Estado {
@@ -438,15 +495,18 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
     }
     case "anotar": {
       if (!c || c.rondas.some((r) => r.id === op.ronda)) return estado;
+      // Precio de la pedida en las canchas: el que diga la operación (el servidor lo escribe
+      // siempre desde el 2026-11-15); sin él, el de cancha, como se anotaba antes.
+      const modo = c.tipo === "cancha" && esModoPrecio(op.precio) ? op.precio : undefined;
       const nuevas: Linea[] = [];
       for (const l of op.lineas) {
-        const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en);
+        const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en, modo ?? "cancha");
         if (linea) nuevas.push(linea);
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
       const detalle = typeof op.detalle === "string" ? op.detalle.trim().slice(0, 80) : "";
-      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}), ...(detalle ? { detalle } : {}) });
+      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}), ...(modo ? { precio: modo } : {}), ...(detalle ? { detalle } : {}) });
       c.lineas.push(...nuevas);
       c.ultima = op.en;
       if (c.anulada) c.anulada = false; // si alguien anotó, había clientes
@@ -459,11 +519,13 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
     case "agregar": {
       // Edición de una pedida (2026-11-15): productos que se suman a una pedida ya anotada.
       // Quedan marcados como agregados (quién y cuándo); la auditoría lo muestra como edición.
-      if (!c || c.anulada || !c.rondas.some((r) => r.id === op.ronda)) return estado;
+      const ronda = c?.rondas.find((r) => r.id === op.ronda);
+      if (!c || c.anulada || !ronda) return estado;
       const nuevas: Linea[] = [];
       for (const l of op.lineas) {
         if (c.lineas.some((x) => x.id === l.id)) continue; // reintento
-        const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en);
+        // Lo agregado se cobra con el precio de la pedida (cancha o normal).
+        const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en, modoPrecio(c, ronda));
         if (linea) nuevas.push({ ...linea, agregada: { por: op.persona, en: op.en } });
       }
       if (!nuevas.length) return estado;
@@ -479,7 +541,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       const vieja = c?.lineas.find((x) => x.id === op.linea);
       if (!c || !vieja || vieja.anulada || !op.nueva || c.lineas.some((x) => x.id === op.nueva.id)) return estado;
       if ((pagadoPorLinea(c).get(vieja.id) ?? 0) > 0) return estado; // ya pagada con un abono por productos
-      const nueva = construirLinea(estado, c, { ...op.nueva, cantidad: vieja.cantidad }, vieja.ronda, vieja.porDespachar ? "comida" : undefined, op.en);
+      const nueva = construirLinea(estado, c, { ...op.nueva, cantidad: vieja.cantidad }, vieja.ronda, vieja.porDespachar ? "comida" : undefined, op.en, modoPrecio(c, c.rondas.find((r) => r.id === vieja.ronda)));
       if (!nueva || nueva.producto === vieja.producto) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida";
       vieja.anulada = { por: op.persona, en: op.en };
@@ -570,11 +632,21 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       return estado;
     }
     case "marcar_ronda": {
-      // Chico o adicional (canchas): solo cambia cómo se llama la pedida, no lo que vale.
+      // Chico o adicional (canchas). Antes del 2026-11-15 solo cambiaba el nombre; desde
+      // entonces la operación trae el precio que le toca (adicional: normal; chico: cancha)
+      // y, si la cuenta está abierta, la pedida se vuelve a cobrar con ese precio.
       const r = c?.rondas.find((x) => x.id === op.ronda);
-      if (!r) return estado;
+      if (!c || !r) return estado;
       if (op.adicional === true) r.adicional = true;
       else delete r.adicional;
+      if (c.tipo === "cancha" && esModoPrecio(op.precio)) cambiarPrecioRonda(estado, c, r, op.precio, op.precios, op.en);
+      return estado;
+    }
+    case "precio_ronda": {
+      // Precio normal o de cancha para una pedida de cancha ya anotada (docs/04).
+      const r = c?.rondas.find((x) => x.id === op.ronda);
+      if (!c || !r || c.tipo !== "cancha" || !esModoPrecio(op.precio)) return estado;
+      cambiarPrecioRonda(estado, c, r, op.precio, op.precios, op.en);
       return estado;
     }
     case "juntar": {

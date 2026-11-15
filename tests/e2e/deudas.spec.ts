@@ -62,6 +62,11 @@ test("el permiso «Administra deudas» deja anotar deudas a mano sin ser adminis
   await admin.getByPlaceholder("Nombre de la persona nueva").fill("Mamá e2e");
   await admin.getByRole("button", { name: "Agregar" }).click();
   await expect(admin.locator(".fila-persona", { hasText: "Mamá e2e" })).toBeVisible();
+  // Las personas nuevas empiezan con horario de empleado (docs/17): sin horario, entra cualquier día.
+  await admin.locator(".fila-persona", { hasText: "Mamá e2e" }).first().getByRole("button", { name: /▾$/ }).click();
+  await admin.locator(".permisos").getByRole("button", { name: "Siempre" }).click();
+  await expect(admin.locator(".fila-persona", { hasText: "Mamá e2e" }).first()).not.toContainText("con horario");
+  await admin.locator(".fila-persona", { hasText: "Mamá e2e" }).first().getByRole("button", { name: /▾$/ }).click();
 
   const mama = await celular(browser, "Mamá e2e");
   await mama.getByRole("button", { name: /Mamá e2e ▾/ }).click();

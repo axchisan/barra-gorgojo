@@ -257,6 +257,15 @@ Personas con su rol y su PIN (el administrador lo ve, ADR-10): agregar, activar 
 desactivar y quitar el PIN (la persona crea uno nuevo al entrar). Celulares: vincular uno
 con un código de 6 números y quitar uno perdido (RF-72).
 
+### 10 b · Accesos de empleados (administrador, 2026-11-15)
+
+En «Personas y celulares», al tocar la persona: «📊 Ve el día de ventas», «🗂 Ve deudas y
+cuentas de otros días» y «⏰ Horario de acceso» (Siempre · Domingos 8 a. m.–3 p. m. · Sin
+acceso; franjas por semana y días especiales). Quien no ve el día no tiene la pestaña «El
+día»; quien no ve el historial ve en Deudas «Fiado hoy». Fuera de su horario la entrada
+dice cuándo puede entrar, y al terminar la franja la app vuelve sola a la entrada con
+«⏰ Terminó su horario». Ver [17](17-accesos-de-empleados.md).
+
 ### 11 · Auditoría (administrador, E4)
 
 Desde el menú de la persona. Un día a la vez (◀ ▶, empieza en hoy): cada operación en una
@@ -325,6 +334,16 @@ adicional solo si la cancha no tiene ningún chico.
 
 Una pedida con todo anulado (por «Deshacer» o a mano) no se cuenta ni se numera, y en el
 detalle queda plegada al final en «▸ Pedidas anuladas (n)». Sigue en la auditoría.
+
+**Precio de los adicionales (2026-11-15).** El adicional va a **precio normal** y el chico
+a precio de cancha (docs/04). Con «Adicional» escogido sale, arriba del botón, una
+etiqueta «Precio normal · cambiar»: tocarla lo cobra a precio de cancha. Los botones de
+productos muestran el precio que va a cobrar. En el detalle, cada **adicional** con
+productos de precio de cancha tiene el chip «🎯 Precio cancha» / «Precio normal» para
+cambiarlo después (con «Deshacer»); en los chicos solo sale si alguien les cambió el
+precio de siempre, para no recargar la pantalla. **No agrega toques al caso común** (anotar un chico o
+un adicional normal sigue igual); solo el caso raro (adicional a precio de cancha) lleva
+un toque más.
 
 ### Pedido rápido a la barra (2026-11-08)
 

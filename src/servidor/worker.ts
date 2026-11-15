@@ -4,7 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esOperacion, esVigente, estadoVacio, jornada, pagadoPorLinea, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, esModoPrecio, esOperacion, modoPorDefecto, preciosParaModo, esVigente, estadoVacio, jornada, pagadoPorLinea, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
 import { saldoDeudor } from "../dominio/deudas";
@@ -13,6 +13,8 @@ import { describirConEnvio, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
 import { enviarRespaldo, esDiaDeCorreo, type ConfigCorreo } from "./correo";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
+import { dentroDeHorario, describirHorario, finDeFranja, mensajeFueraDeHorario, type Horario } from "../dominio/horario";
+import { esCompleta, limitarCambios, limitarEstado, cuentaDeHoy, type Vista } from "../dominio/vista";
 
 interface Env extends ConfigCorreo {
   BARRA: DurableObjectNamespace<Barra>;
@@ -112,7 +114,25 @@ const TOCA_DEUDAS = new Set<Operacion["t"]>(["cobrar", "deshacer_pago", "reabrir
 /** Hasta cuántas operaciones atrás se mandan novedades al reconectar; más, la foto completa. */
 const MAX_NOVEDADES = 500;
 /** `deudas`: administra deudas (anotar a mano, anular): el administrador o con el permiso. */
-interface Quien { id: string; nombre: string; rol: Rol; dispositivo: string; areas: Area[]; deudas: boolean }
+interface Quien {
+  id: string; nombre: string; rol: Rol; dispositivo: string; areas: Area[]; deudas: boolean;
+  /** Qué ve (docs/17): el día de ventas y lo de otros días. */
+  vista: Vista;
+  /** Su horario de acceso (docs/17); `null`: sin restricción. */
+  horario: Horario | null;
+  /** Está fuera de su horario ahora: solo puede enviar lo que anotó dentro de él. */
+  fuera: boolean;
+}
+/**
+ * Después de terminar su franja, lo anotado hasta este rato después todavía se acepta: un
+ * celular sin señal que lo envía tarde no pierde nada (regla 3).
+ */
+const GRACIA_HORARIO = 15 * 60_000;
+/** Lo que el celular sabe de quien lo usa: se manda al entrar y con cada foto. */
+const yoDe = (q: Pick<Quien, "rol" | "areas" | "deudas" | "vista" | "horario">, ahora = Date.now()) => ({
+  rol: q.rol, areas: q.areas, deudas: q.deudas, dia: q.vista.dia, historial: q.vista.historial,
+  ...(q.horario ? { horario: describirHorario(q.horario, jornada(ahora)), fin: finDeFranja(q.horario, ahora) } : {}),
+});
 interface Rechazo { id: string; motivo: string }
 
 /** La base a la que el celular dice mandar sus operaciones. Sin decirlo: la original. */
@@ -171,9 +191,12 @@ export class Barra extends DurableObject<Env> {
     return nombreBase(this.env);
   }
 
-  private foto() {
+  /** Lo vigente, recortado a lo que puede ver esta persona (docs/17). Sin vista: todo (terminal, pruebas). */
+  private foto(vista?: Vista) {
     this.podar();
-    return { tipo: "foto" as const, base: this.base, estado: recortar(this.estado, Date.now()), seq: this.seq };
+    const ahora = Date.now();
+    const estado = recortar(this.estado, ahora);
+    return { tipo: "foto" as const, base: this.base, estado: vista ? limitarEstado(estado, vista, ahora) : estado, seq: this.seq };
   }
 
   // ── Proyección (E3) ──────────────────────────────────────────────────
@@ -311,7 +334,10 @@ export class Barra extends DurableObject<Env> {
    * Lo que cambió después de `desde`, si el celular es de esta base y no se quedó muy
    * atrás; si no, null (y se le manda la foto completa).
    */
-  private novedades(desde: unknown, base: unknown): { tipo: "novedades"; base: string; seq: number; cambios: Cambios } | null {
+  private novedades(desde: unknown, base: unknown, vista?: Vista): { tipo: "novedades"; base: string; seq: number; cambios: Cambios } | null {
+    // Quien ve menos recibe siempre la foto: lo que guardó su celular otro día (deudas de
+    // otra jornada) no debe quedarse ahí como si fuera de hoy.
+    if (vista && !esCompleta(vista)) return null;
     if (typeof desde !== "number" || !Number.isInteger(desde) || desde <= 0 || desde > this.seq) return null;
     if (baseDelEnvio(base) !== this.base || this.seq - desde > MAX_NOVEDADES) return null;
     const cambios: Cambios = {};
@@ -375,9 +401,28 @@ export class Barra extends DurableObject<Env> {
     }
   }
 
-  private avisarATodos(mensaje: unknown) {
-    const texto = JSON.stringify(mensaje);
+  /**
+   * Manda a todos los celulares conectados una foto o una operación con sus cambios, a
+   * cada uno recortada a lo que puede ver su persona (docs/17).
+   */
+  private avisarATodos(mensaje: { tipo: "foto"; estado: Estado; [k: string]: unknown } | { tipo: "op"; op: Operacion; cambios: Cambios }) {
+    const completo = JSON.stringify(mensaje);
+    const porVista = new Map<string, string>();
+    const ahora = Date.now();
     for (const ws of this.ctx.getWebSockets()) {
+      const persona = this.ctx.getTags(ws).find((t) => t.startsWith("p:"))?.slice(2) ?? "";
+      const vista = this.acceso.vista(persona);
+      let texto = completo;
+      if (!esCompleta(vista)) {
+        const clave = `${vista.dia}-${vista.historial}`;
+        if (!porVista.has(clave)) {
+          porVista.set(clave, JSON.stringify(mensaje.tipo === "foto"
+            ? { ...mensaje, estado: limitarEstado(mensaje.estado, vista, ahora) }
+            // De la operación, solo lo que el celular necesita para seguir el orden; el resto va en los cambios.
+            : { tipo: "op", op: { id: mensaje.op.id, seq: mensaje.op.seq, t: mensaje.op.t }, cambios: limitarCambios(mensaje.cambios, vista, ahora) }));
+        }
+        texto = porVista.get(clave)!;
+      }
       try { ws.send(texto); } catch { /* conexión muerta: se limpia sola */ }
     }
   }
@@ -387,10 +432,55 @@ export class Barra extends DurableObject<Env> {
   private avisarYo(id: string) {
     const p = this.acceso.persona(id);
     if (!p) return;
-    const yo = { rol: p.rol, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) };
+    const ahora = Date.now();
+    if (!dentroDeHorario(p.horario, ahora)) return this.sacarPorHorario(id);
+    const vista = this.acceso.vista(p.id);
+    const yo = yoDe({ rol: p.rol, areas: this.acceso.areasDeHoy(p.id, jornada(ahora)), deudas: this.acceso.administraDeudas(p.id), vista, horario: p.horario }, ahora);
+    // Con la foto: si ahora ve menos, lo que tenía de más se reemplaza ya (docs/17).
+    const texto = JSON.stringify({ ...this.foto(vista), yo });
     for (const ws of this.ctx.getWebSockets(`p:${id}`)) {
-      try { ws.send(JSON.stringify({ tipo: "yo", yo })); } catch { /* ya cerrada */ }
+      try { ws.send(texto); } catch { /* ya cerrada */ }
     }
+    this.programarFinDeHorario();
+  }
+
+  /** Terminó (o le quitaron) su horario: sus celulares salen a la entrada con el porqué. */
+  private sacarPorHorario(id: string) {
+    const p = this.acceso.persona(id);
+    const mensaje = mensajeFueraDeHorario(p?.horario ?? null, Date.now());
+    for (const ws of this.ctx.getWebSockets(`p:${id}`)) {
+      try { ws.send(JSON.stringify({ tipo: "horario", mensaje })); ws.close(4003, "horario"); } catch { /* ya cerrada */ }
+    }
+  }
+
+  /**
+   * Pone la alarma del Durable Object en el fin de la franja más próxima de quienes están
+   * conectados con horario; al sonar, saca a quien ya quedó fuera (ver `alarm`).
+   */
+  private programarFinDeHorario() {
+    const ahora = Date.now();
+    let proximo: number | null = null;
+    const vistas = new Set<string>();
+    for (const ws of this.ctx.getWebSockets()) {
+      const id = this.ctx.getTags(ws).find((t) => t.startsWith("p:"))?.slice(2) ?? "";
+      if (!id || vistas.has(id)) continue;
+      vistas.add(id);
+      const fin = finDeFranja(this.acceso.persona(id)?.horario ?? null, ahora);
+      if (fin && (proximo == null || fin < proximo)) proximo = fin;
+    }
+    if (proximo != null) void this.ctx.storage.setAlarm(proximo + 1000);
+  }
+
+  async alarm() {
+    const ahora = Date.now();
+    const revisadas = new Set<string>();
+    for (const ws of this.ctx.getWebSockets()) {
+      const id = this.ctx.getTags(ws).find((t) => t.startsWith("p:"))?.slice(2) ?? "";
+      if (!id || revisadas.has(id)) continue;
+      revisadas.add(id);
+      if (!this.acceso.enHorario(id, ahora)) this.sacarPorHorario(id);
+    }
+    this.programarFinDeHorario();
   }
 
   private cortar(etiqueta: string) {
@@ -448,8 +538,10 @@ export class Barra extends DurableObject<Env> {
       return null;
     }
     if (op.t === "producto" || op.t === "orden") return "Solo el administrador cambia productos y precios.";
+    if (op.t === "cerrar_jornada" && !quien.vista.dia) return "El cierre de caja lo hace la administración.";
     // Áreas (docs/14): despachar es de la barra; anotar platos, de la comida.
     if (op.t === "despachar" && !quien.areas.includes("barra")) return "Solo la barra despacha las bebidas.";
+    if (op.t === "precio_ronda" && !quien.areas.includes("barra")) return "Solo la barra cambia el precio de una pedida.";
     if ((op.t === "anotar" || op.t === "agregar") && !quien.areas.includes("comida") && op.lineas.some((l) => productoDe(this.estado, l.producto)?.categoria === "comida")) return "Solo el área de comida anota platos.";
     if (op.t === "cambiar_producto") {
       const c = this.estado.cuentas[op.cuenta];
@@ -492,6 +584,14 @@ export class Barra extends DurableObject<Env> {
    */
   /** Editar una pedida (agregar o cambiar producto): lo que no se puede, con su porqué (regla 8). */
   private ediciones(op: Operacion): string | null {
+    if (op.t === "precio_ronda") {
+      const c = this.estado.cuentas[op.cuenta];
+      if (!c || c.anulada) return "Esa cuenta ya no está abierta.";
+      if (c.tipo !== "cancha") return "El precio de cancha solo aplica en las canchas.";
+      if (!c.rondas.some((r) => r.id === op.ronda)) return "Esa pedida ya no existe.";
+      if (situacion(c) !== "abierta") return `${c.nombre} ya se cobró: reábrala para cambiarle el precio.`;
+      return null;
+    }
     if (op.t !== "agregar" && op.t !== "cambiar_producto") return null;
     const c = this.estado.cuentas[op.cuenta];
     if (!c || c.anulada) return "Esa cuenta ya no está abierta.";
@@ -590,6 +690,15 @@ export class Barra extends DurableObject<Env> {
       }
       const v = validar(crudo);
       if ("motivo" in v) { rechazar(idCrudo, (crudo as { t?: unknown }).t, crudo, v.motivo); continue; }
+      // Fuera de su horario (docs/17) solo entra lo que se anotó dentro de él (o hasta un
+      // rato después): lo anotado sin señal que llega tarde no se pierde (regla 3).
+      if (quien.fuera) {
+        const en = Math.min(ahora, Math.max(ahora - DIA, v.op.en));
+        if (!dentroDeHorario(quien.horario, en) && !dentroDeHorario(quien.horario, en - GRACIA_HORARIO)) {
+          rechazar(idCrudo, v.op.t, crudo, "Se anotó fuera de su horario de acceso. Avise al administrador.");
+          continue;
+        }
+      }
       // Quién la hizo: quien envía (la sesión), salvo que la operación traiga la sesión
       // firmada de otra persona de este celular (ver `autores`). Los permisos se revisan
       // siempre con quien envía. La firma no se guarda.
@@ -608,6 +717,21 @@ export class Barra extends DurableObject<Env> {
       if (motivo) { rechazar(op.id, op.t, crudo, motivo); continue; }
       // El precio fijado solo lo pone el servidor: lo que mande el celular se descarta.
       if (op.t === "anotar" || op.t === "agregar") op.lineas = op.lineas.map(({ precioFijado: _, ...l }) => l);
+      // Precio de la pedida en las canchas (docs/04 «Precio de los adicionales»): queda
+      // escrito en la operación. Si el celular no lo dice (versión anterior), el de siempre
+      // para su tipo: chico a precio de cancha, adicional a precio normal.
+      if (op.t === "anotar" || op.t === "marcar_ronda") {
+        const c = this.estado.cuentas[op.cuenta];
+        if (c?.tipo === "cancha") op.precio = esModoPrecio(op.precio) ? op.precio : modoPorDefecto(op.adicional === true);
+        else delete op.precio;
+      }
+      // Los precios nuevos de una pedida los calcula el servidor con su catálogo y los
+      // guarda en la operación: recalcular el registro da siempre lo mismo (regla 0).
+      if ((op.t === "marcar_ronda" || op.t === "precio_ronda")) {
+        const c = this.estado.cuentas[op.cuenta];
+        delete op.precios;
+        if (c && esModoPrecio(op.precio) && situacion(c) === "abierta") op.precios = preciosParaModo(this.estado, c, op.ronda, op.precio);
+      }
       if (op.t === "cambiar_producto" && op.nueva) { const { precioFijado: _, ...n } = op.nueva; op.nueva = n; }
       try {
         aplicar(this.estado, op);
@@ -658,7 +782,17 @@ export class Barra extends DurableObject<Env> {
     if (!s || s.dispositivo !== disp.id) return json({ error: "sesion" }, 401);
     const p = this.acceso.persona(s.persona);
     if (!p || !p.activa) return json({ error: "sesion" }, 401);
-    return { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo: disp.id, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) };
+    return this.quienEs(p.id, disp.id)!;
+  }
+
+  /** Todo lo que el servidor necesita saber de quien hace el pedido, ahora. */
+  private quienEs(id: string, dispositivo: string, ahora = Date.now()): Quien | null {
+    const p = this.acceso.persona(id);
+    if (!p) return null;
+    return {
+      id: p.id, nombre: p.nombre, rol: p.rol, dispositivo, areas: this.acceso.areasDeHoy(p.id, jornada(ahora)), deudas: this.acceso.administraDeudas(p.id),
+      vista: this.acceso.vista(p.id), horario: p.horario, fuera: !dentroDeHorario(p.horario, ahora),
+    };
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -700,28 +834,34 @@ export class Barra extends DurableObject<Env> {
     // ── Con sesión ──────────────────────────────────────────────────
     const q = await this.quien(req, url);
     if (q instanceof Response) return q;
+    // Fuera de su horario (docs/17): nada, salvo enviar lo que anotó dentro de él.
+    if (q.fuera && ruta !== "/api/ops") return json({ error: "horario", mensaje: mensajeFueraDeHorario(q.horario, Date.now()) }, 403);
 
     if (ruta === "/api/ws") {
       if (req.headers.get("upgrade") !== "websocket") return json({ error: "Se esperaba WebSocket" }, 426);
       const { 0: cliente, 1: servidor } = new WebSocketPair();
       this.ctx.acceptWebSocket(servidor, [q.nombre, `p:${q.id}`, `d:${q.dispositivo}`]);
+      if (q.horario) this.programarFinDeHorario();
       return new Response(null, { status: 101, webSocket: cliente });
     }
     if (ruta === "/api/ops" && req.method === "POST") {
       const { ops, base, seq } = await cuerpo<{ ops?: unknown[]; base?: unknown; seq?: unknown }>();
       const lista = Array.isArray(ops) ? ops : [];
-      if (lista.length && this.esDeOtraBase(base, q.nombre, lista.length)) return json({ error: "base", ok: [], rechazadas: [], ...this.foto() }, 409);
+      if (lista.length && this.esDeOtraBase(base, q.nombre, lista.length)) return json({ error: "base", ok: [], rechazadas: [], ...this.foto(q.vista) }, 409);
       const { aceptadas, rechazadas } = this.recibir(lista, q, await this.autores(lista, q));
+      // Fuera de su horario: lo enviado queda (o se rechaza con su porqué), y nada más.
+      if (q.fuera) return json({ ok: aceptadas, rechazadas, error: "horario", mensaje: mensajeFueraDeHorario(q.horario, Date.now()) }, 403);
       // Con `seq`, solo lo nuevo (el respaldo HTTP pregunta cada 5 s); sin él, la foto.
-      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base) ?? this.foto()), yo: { rol: q.rol, areas: q.areas, deudas: q.deudas } });
+      return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base, q.vista) ?? this.foto(q.vista)), yo: yoDe(q) });
     }
-    if (ruta === "/api/foto") return json(this.foto());
+    if (ruta === "/api/foto") return json(this.foto(q.vista));
     // Cuentas por id, aunque ya no estén en el celular (las de días anteriores): para ver
     // el detalle de lo fiado en «Deudas» (docs/15). Solo lectura, hasta 50 a la vez.
     if (ruta === "/api/cuentas" && req.method === "GET") {
       const ids = (url.searchParams.get("ids") ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 50);
       const cuentas: Record<string, Cuenta> = {};
-      for (const id of ids) { const c = this.cuentaGuardada(id); if (c) cuentas[id] = c; }
+      // Quien no ve lo de otros días (docs/17) solo recibe las cuentas de hoy.
+      for (const id of ids) { const c = this.cuentaGuardada(id); if (c && (q.vista.historial || cuentaDeHoy(c, Date.now()))) cuentas[id] = c; }
       return json({ cuentas });
     }
     if (ruta === "/api/mi-pin" && req.method === "POST") {
@@ -737,7 +877,7 @@ export class Barra extends DurableObject<Env> {
     if (ruta.startsWith("/api/admin/") && q.rol !== ADMIN) return json({ error: "Solo el administrador." }, 403);
     if (ruta === "/api/admin/personas" && req.method === "GET") return json({ personas: await this.acceso.personasConPin() });
     if (ruta === "/api/admin/personas" && req.method === "POST") {
-      const b = await cuerpo<{ accion?: string; id?: string; nombre?: string; rol?: string; pin?: string | null; activa?: boolean; areas?: unknown[]; permisos?: unknown[]; area?: unknown; fecha?: unknown; dar?: boolean }>();
+      const b = await cuerpo<{ accion?: string; id?: string; nombre?: string; rol?: string; pin?: string | null; activa?: boolean; areas?: unknown[]; permisos?: unknown[]; area?: unknown; fecha?: unknown; dar?: boolean; horario?: unknown }>();
       if (b.accion === "crear") {
         const r = this.acceso.crearPersona(String(b.nombre ?? ""), b.rol === ADMIN ? ADMIN : "operador");
         return "error" in r ? json(r, 400) : json({ persona: r });
@@ -756,6 +896,13 @@ export class Barra extends DurableObject<Env> {
       }
       if (b.accion === "permisos") {
         this.acceso.ponerPermisos(p.id, Array.isArray(b.permisos) ? b.permisos : []);
+        this.avisarYo(p.id);
+        return json({ ok: true });
+      }
+      if (b.accion === "horario") {
+        // Horario de acceso (docs/17): `null` lo quita. Al administrador no se le pone.
+        if (p.rol === ADMIN) return json({ error: "El administrador no tiene horario." }, 400);
+        this.acceso.ponerHorario(p.id, b.horario ?? null);
         this.avisarYo(p.id);
         return json({ ok: true });
       }
@@ -854,6 +1001,8 @@ export class Barra extends DurableObject<Env> {
     if (!disp) return json({ error: "dispositivo" }, 401);
     const p = b.persona ? this.acceso.persona(b.persona) : undefined;
     if (!p || !p.activa) return json({ error: "Escoja quién es." }, 400);
+    // Fuera de su horario no entra (docs/17). Se revisa antes del PIN: no gasta intentos.
+    if (!dentroDeHorario(p.horario, Date.now())) return json({ error: mensajeFueraDeHorario(p.horario, Date.now()), horario: true }, 403);
     if (!p.tienePin) {
       // Primera vez: la persona crea su PIN.
       if (!esPin(b.pinNuevo)) return json({ error: "sin-pin" }, 409);
@@ -867,7 +1016,8 @@ export class Barra extends DurableObject<Env> {
         return json({ error: `El PIN no es correcto.${r.quedan ? ` Quedan ${r.quedan} ${r.quedan === 1 ? "intento" : "intentos"}.` : ""}` }, 401);
       }
     }
-    return json({ token: await firmarSesion(this.env.FIRMA, p.id, disp.id), persona: p.nombre, rol: p.rol, base: this.base, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) });
+    const q = this.quienEs(p.id, disp.id)!;
+    return json({ token: await firmarSesion(this.env.FIRMA, p.id, disp.id), persona: p.nombre, base: this.base, ...yoDe(q) });
   }
 
   async webSocketMessage(ws: WebSocket, mensaje: string | ArrayBuffer) {
@@ -883,7 +1033,7 @@ export class Barra extends DurableObject<Env> {
       try { ws.close(4001, "acceso"); } catch { /* ya cerrada */ }
       return;
     }
-    const quien: Quien = { id: p.id, nombre: p.nombre, rol: p.rol, dispositivo, areas: this.acceso.areasDeHoy(p.id, jornada(Date.now())), deudas: this.acceso.administraDeudas(p.id) };
+    const quien = this.quienEs(p.id, dispositivo)!;
     // Versión y pendientes que reporta el celular, para «Personas y celulares».
     const antes = (ws.deserializeAttachment() ?? {}) as DeConexion;
     ws.serializeAttachment({
@@ -891,9 +1041,18 @@ export class Barra extends DurableObject<Env> {
       pendientes: typeof m.pendientes === "number" && Number.isInteger(m.pendientes) && m.pendientes >= 0 ? m.pendientes : antes.pendientes,
       visto: Date.now(),
     } satisfies DeConexion);
-    if (m.tipo === "hola") ws.send(JSON.stringify({ ...(this.novedades(m.seq, m.base) ?? this.foto()), yo: { rol: quien.rol, areas: quien.areas, deudas: quien.deudas } }));
+    if (quien.fuera) {
+      // Terminó su horario (docs/17): recibe lo que anotó dentro de él y sale.
+      if (m.tipo === "ops" && Array.isArray(m.ops) && m.ops.length && !this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) {
+        const { aceptadas, rechazadas } = this.recibir(m.ops, quien, await this.autores(m.ops, quien));
+        ws.send(JSON.stringify({ tipo: "ok", ids: aceptadas, rechazadas }));
+      }
+      this.sacarPorHorario(quien.id);
+      return;
+    }
+    if (m.tipo === "hola") ws.send(JSON.stringify({ ...(this.novedades(m.seq, m.base, quien.vista) ?? this.foto(quien.vista)), yo: yoDe(quien) }));
     else if (m.tipo === "ops" && Array.isArray(m.ops)) {
-      if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto()));
+      if (m.ops.length && this.esDeOtraBase(m.base, quien.nombre, m.ops.length)) ws.send(JSON.stringify(this.foto(quien.vista)));
       else {
         const { aceptadas, rechazadas } = this.recibir(m.ops, quien, await this.autores(m.ops, quien));
         ws.send(JSON.stringify({ tipo: "ok", ids: aceptadas, rechazadas }));

@@ -71,6 +71,8 @@ class Sincronizador {
   conexion: Conexion = "conectando";
   visible: Estado = estadoVacio();
   version = 0;
+  /** Por qué se salió solo (terminó el horario, docs/17): lo muestra la entrada. */
+  motivoSalida = "";
   /** Esta pestaña tiene la conexión del celular (el candado de Web Locks). */
   lider = false;
   /** Dónde quedó la memoria: «indexeddb», o «localstorage» si IndexedDB no abrió. */
@@ -228,6 +230,10 @@ class Sincronizador {
   tieneArea(a: Area) { return this.areas.includes(a); }
   /** Administra deudas (anotar a mano, anular): el administrador o con el permiso (docs/15). */
   get administraDeudas() { return this.esAdministrador || !!this.sesion?.deudas; }
+  /** Ve el día de ventas y los cierres (docs/17). */
+  get veDia() { return this.esAdministrador || this.sesion?.dia !== false; }
+  /** Ve las deudas y cuentas de otros días (docs/17). */
+  get veHistorial() { return this.esAdministrador || this.sesion?.historial !== false; }
   ponerPanel(panel: Area) {
     if (!this.sesion || !this.areas.includes(panel)) return;
     this.sesion = { ...this.sesion, panel };
@@ -236,12 +242,13 @@ class Sincronizador {
   }
 
   /** El servidor dice el rol y las áreas de hoy (pueden cambiar sin volver a entrar). */
-  private tomarYo(yo: { rol?: string; areas?: unknown[]; deudas?: boolean } | undefined) {
+  private tomarYo(yo: Yo | undefined) {
     if (!yo || !this.sesion) return;
-    const areas = (yo.areas ?? []).filter(esArea);
-    const deudas = !!yo.deudas;
-    if (yo.rol === this.sesion.rol && areas.join() === (this.sesion.areas ?? []).join() && deudas === !!this.sesion.deudas) return;
-    this.sesion = { ...this.sesion, rol: yo.rol, areas, deudas };
+    const nuevo = datosDeYo(yo);
+    const s = this.sesion;
+    if (nuevo.rol === s.rol && nuevo.areas.join() === (s.areas ?? []).join() && nuevo.deudas === !!s.deudas && nuevo.dia === s.dia
+      && nuevo.historial === s.historial && nuevo.horario === s.horario && nuevo.fin === s.fin) return;
+    this.sesion = { ...this.sesion, ...nuevo };
     void this.guardar({ ajustes: { sesion: this.sesion } });
     this.avisar();
   }
@@ -281,14 +288,19 @@ class Sincronizador {
    */
   async entrar(persona: string, pin: string, pinNuevo?: string): Promise<string | null> {
     try {
-      const { status, datos } = await pedir<{ token?: string; persona?: string; rol?: string; base?: string; areas?: unknown[]; deudas?: boolean }>("/api/entrar", {
+      const { status, datos } = await pedir<Yo & { token?: string; persona?: string; base?: string }>("/api/entrar", {
         method: "POST", body: JSON.stringify({ persona, pin, pinNuevo }),
       });
       if (status === 401 && datos.error === "dispositivo") { this.vinculado = false; this.avisar(); return "Este celular no está vinculado."; }
       if (!datos.token) return datos.error ?? "No se pudo entrar.";
       if (datos.base) this.cambiarDeBase(datos.base);
-      this.sesion = { token: datos.token, persona: datos.persona!, rol: datos.rol, areas: (datos.areas ?? []).filter(esArea), deudas: !!datos.deudas };
-      void this.guardar({ ajustes: { sesion: this.sesion } });
+      this.sesion = { token: datos.token, persona: datos.persona!, ...datosDeYo(datos) };
+      this.motivoSalida = "";
+      // Cada persona recibe solo lo que puede ver (docs/17): lo que dejó en este celular la
+      // anterior se descarta y llega la foto de esta. Los pendientes se conservan.
+      this.confirmado = { estado: estadoVacio(), seq: 0 };
+      void this.guardar({ ajustes: { sesion: this.sesion, confirmado: this.confirmado } });
+      this.recalcular();
       if (this.lider) { this.cerrarSocket(); this.conectar(); }
       this.avisar();
       return null;
@@ -338,6 +350,7 @@ class Sincronizador {
         ...(cuerpo === undefined ? {} : { body: JSON.stringify(cuerpo) }),
       });
       if (status === 401) this.salir();
+      if (status === 403 && datos.error === "horario") this.salir((datos as { mensaje?: string }).mensaje);
       return datos;
     } catch {
       return { error: "Sin señal." } as Respuesta<T>;
@@ -362,7 +375,8 @@ class Sincronizador {
   }
 
   /** Cambiar de persona. Los pendientes se conservan y salen con la próxima sesión. */
-  salir() {
+  salir(motivo = "") {
+    this.motivoSalida = motivo;
     this.sesion = null;
     void this.guardar({ ajustes: { sesion: null } });
     this.cerrarSocket();
@@ -494,6 +508,9 @@ class Sincronizador {
       this.quitarPendientes([op.id]);
       void this.guardar({ ajustes: { confirmado: this.confirmado } });
       this.recalcular();
+    } else if (m.tipo === "horario") {
+      // Terminó su horario (docs/17): a la entrada, con el porqué. Lo pendiente se queda.
+      this.salir(typeof m.mensaje === "string" ? m.mensaje : "Terminó su horario.");
     } else if (m.tipo === "acceso") {
       // Quitaron este celular o desactivaron a la persona: a la entrada, y se revisa la vinculación.
       this.salir();
@@ -556,6 +573,9 @@ class Sincronizador {
 
   /** Cada 5 s: latido del WebSocket, y si no hay WebSocket, respaldo por HTTP. */
   private async vigilar() {
+    // Terminó la franja aunque no haya señal para que el servidor lo diga (docs/17): lo
+    // anotado se queda en el celular y sale con la próxima sesión.
+    if (this.sesion?.fin && Date.now() > this.sesion.fin) return this.salir("Terminó su horario de acceso.");
     if (!this.lider || !this.sesion) return;
     const ws = this.ws;
     if (ws?.readyState === WebSocket.OPEN) {
@@ -577,8 +597,17 @@ class Sincronizador {
         if (e.error === "dispositivo") this.vinculado = false;
         return this.salir();
       }
+      if (r.status === 403) {
+        // Fuera de su horario: lo enviado ya se recibió (o se rechazó con su porqué).
+        const d = (await r.json().catch(() => ({}))) as { ok?: string[]; rechazadas?: { id: string; motivo: string }[]; error?: string; mensaje?: string };
+        if (d.ok) this.quitarPendientes(d.ok);
+        this.rechazar(d.rechazadas);
+        this.recalcular();
+        if (d.error === "horario") return this.salir(d.mensaje ?? "Fuera de su horario.");
+        throw new Error();
+      }
       if (!r.ok && r.status !== 409) throw new Error(); // 409: otra base; llega su foto
-      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios; yo?: { rol?: string; areas?: unknown[]; deudas?: boolean } };
+      const d = (await r.json()) as { ok: string[]; rechazadas?: { id: string; motivo: string }[]; tipo?: string; estado: Estado; seq: number; base?: string; cambios?: Cambios; yo?: Yo };
       this.tomarYo(d.yo);
       this.quitarPendientes(d.ok);
       this.rechazar(d.rechazadas);
@@ -589,6 +618,18 @@ class Sincronizador {
       this.ponerConexion("sin-senal");
     }
   }
+}
+
+/** Lo que el servidor dice de quien usa el celular (al entrar y con cada foto). */
+interface Yo { rol?: string; areas?: unknown[]; deudas?: boolean; dia?: boolean; historial?: boolean; horario?: string; fin?: number | null }
+
+function datosDeYo(yo: Yo) {
+  return {
+    rol: yo.rol, areas: (yo.areas ?? []).filter(esArea), deudas: !!yo.deudas,
+    dia: yo.dia !== false, historial: yo.historial !== false,
+    horario: typeof yo.horario === "string" ? yo.horario : undefined,
+    fin: typeof yo.fin === "number" ? yo.fin : undefined,
+  };
 }
 
 export const sinc = new Sincronizador();
