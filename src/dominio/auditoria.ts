@@ -4,7 +4,7 @@
 // valores que la operación sola no trae.
 
 import type { Cuenta, Estado, Operacion } from "./estado";
-import { nombreCancha, nombreRonda, pesos } from "./formato";
+import { horaDe, nombreCancha, nombreRonda, pesos } from "./formato";
 
 export interface Evento {
   seq: number;
@@ -21,8 +21,9 @@ export interface Evento {
 const medio = (m: string) => (m === "efectivo" ? "en efectivo" : m === "nequi" ? "por Nequi" : m === "breve" ? "por Breve" : m);
 
 function tipoCuenta(c: Cuenta | undefined, op: Extract<Operacion, { t: "abrir" }>): string {
-  if (op.tipo === "mesa") return `mesa ${op.mesa ?? c?.mesa ?? ""}`.trim();
+  if (op.tipo === "mesa") return `mesa ${op.mesa || c?.mesa || ""}`.trim();
   if (op.tipo === "cancha") return `cancha ${nombreCancha(op.cancha ?? c?.cancha ?? "")}`.trim();
+  if (op.tipo === "domicilio") return `domicilio${op.direccion?.trim() ? ` a ${op.direccion.trim().slice(0, 80)}` : ""}`;
   return op.tipo === "rapida" ? "venta rápida" : op.tipo;
 }
 
@@ -49,8 +50,10 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       if (!ls.length) return { texto: `Anotó ${op.lineas.length} producto${op.lineas.length === 1 ? "" : "s"} (no quedó en la cuenta)`, atencion: true };
       const partes = ls.map((l) => `${op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad} ${l.nombre}${l.nota ? ` (${l.nota})` : ""}`);
       const valor = ls.reduce((s, l) => s + l.precio * (op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad), 0);
-      const detalle = cuenta?.rondas.find((r) => r.id === op.ronda)?.detalle;
-      return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}${op.area === "comida" ? " · desde comida" : ""}${detalle ? ` · «${detalle}»` : ""}`, atencion: false };
+      const ronda = cuenta?.rondas.find((r) => r.id === op.ronda);
+      const detalle = ronda?.detalle;
+      const apartado = ronda?.apartado ? ` · apartado${ronda.apartado.para ? ` para las ${horaDe(ronda.apartado.para)}` : ""}` : "";
+      return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}${op.area === "comida" ? ` · desde comida${op.sinDespacho ? " (sin avisar a la barra)" : ""}` : ""}${detalle ? ` · «${detalle}»` : ""}${apartado}`, atencion: false };
     }
     case "agregar": {
       // Edición de una pedida: productos sumados después.
@@ -100,6 +103,10 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
     case "despachar": {
       const ls = cuenta?.lineas.filter((l) => l.despachada && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];
       return { texto: `Despachó ${ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : "las bebidas"} pedidas desde comida`, atencion: false };
+    }
+    case "apartado_entregado": {
+      const r = cuenta?.rondas.find((x) => x.id === op.ronda);
+      return { texto: `${op.valor ? "Entregó" : "Quitó «entregado» de"} ${r && cuenta ? `la ${nombreRonda(cuenta, r).toLowerCase()}` : "un apartado"} apartada`, atencion: !op.valor };
     }
     case "rechazar_despacho": {
       const ls = cuenta?.lineas.filter((l) => l.rechazada && l.rechazada.en === op.en && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];

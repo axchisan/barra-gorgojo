@@ -6,6 +6,7 @@ import { Apartados } from "../componentes/Apartados";
 import { HojaSonido, PorDespachar } from "../componentes/Despacho";
 import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
+import { ListaApartados } from "../componentes/ListaApartados";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
 import { useAtajos } from "../atajos";
@@ -96,6 +97,8 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
           <Cocina nav={nav} cuentas={enCocina} />
         </details>
       )}
+      {/* Los apartados se manejan en comida (en la barra, la tarjeta dice «⏰ Apartado»). */}
+      {pestana === "cuentas" && panel === "comida" && <ListaApartados nav={nav} cuentas={cuentas} />}
       {pestana === "cuentas" && <ListaCuentas nav={nav} cuentas={cuentas} ocultar={ocultar} mostrar={() => setOcultar(false)} />}
       {pestana === "despacho" && <PorDespachar nav={nav} cuentas={cuentas} />}
       {pestana === "dia" && <ElDia nav={nav} cuentas={cuentas} />}

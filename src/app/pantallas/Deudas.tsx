@@ -196,7 +196,7 @@ function DetalleFiado({ c, pago, cargando }: { c?: Cuenta; pago: string; cargand
     return l ? `${l.nombre}${r ? ` (${nombreRonda(c, r)})` : ""}` : "producto";
   };
   const otros = c.pagos.filter((x) => x.id !== pago && !x.deshecho);
-  const tipo = c.tipo === "mesa" ? `Mesa ${c.mesa}` : c.tipo === "cancha" ? `Cancha ${nombreCancha(c.cancha ?? "")}` : null;
+  const tipo = c.tipo === "mesa" ? (c.mesa ? `Mesa ${c.mesa}` : "Mesa") : c.tipo === "cancha" ? `Cancha ${nombreCancha(c.cancha ?? "")}` : c.tipo === "domicilio" ? "Domicilio" : null;
   return (
     <div className="detalle-fiado">
       <p className="que-se-fio">

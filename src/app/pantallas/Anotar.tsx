@@ -4,7 +4,8 @@ import {
   catalogo, enCuadricula, jornada, opcionesDe, precioPara, producto as productoDe, saldo, situacion,
   type Cancha, type ModoPrecio, type TipoCuenta,
 } from "../../dominio/estado";
-import { nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
+import { horaDe, nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
+import { horaDeHoy } from "../cuentas";
 import { ponerAviso } from "../avisos";
 import { HojaLibre, type Libre } from "../componentes/HojaLibre";
 import { HojaMixto } from "../componentes/HojaMixto";
@@ -23,7 +24,7 @@ import { vibrar } from "../vibrar";
 const idDe = (clave: string) => clave.split("|")[0];
 const notaDe = (clave: string) => (clave.includes("|") ? clave.slice(clave.indexOf("|") + 1) : undefined);
 
-const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mesa", "🍽", "Mesa"], ["cancha", "🎯", "Cancha"]] as const;
+const TIPOS = [["grupo", "👥", "Grupo"], ["persona", "👤", "Persona"], ["mesa", "🍽", "Mesa"], ["cancha", "🎯", "Cancha"], ["domicilio", "🛵", "Domicilio"]] as const;
 
 export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav; cuentaId?: string; repetir?: boolean; despacho?: boolean }) {
   const cuenta = cuentaId ? sinc.visible.cuentas[cuentaId] : undefined;
@@ -65,6 +66,12 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState<TipoCuenta>(enComida ? "mesa" : "grupo");
   const [mesa, setMesa] = useState("");
+  // Domicilio: a dónde va (opcional). Apartado: para más tarde, con hora opcional (2026-11-15).
+  const [direccion, setDireccion] = useState("");
+  const [apartar, setApartar] = useState(false);
+  const [horaApartado, setHoraApartado] = useState("");
+  // Desde comida, las bebidas avisan a la barra; se apaga si comida misma las lleva (2026-11-15).
+  const [avisarBarra, setAvisarBarra] = useState(true);
   const [cancha, setCancha] = useState<Cancha | null>(null);
   const [error, setError] = useState("");
   // Las cervezas se pueden anotar por unidad, por medio petaco (15) o por petaco (30).
@@ -230,18 +237,20 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       sinc.emitir({ t: "abrir", cuenta: id, nombre: detalle.trim().slice(0, 40) || "Pedido a la barra", tipo: "grupo" });
     }
     if (!id) {
-      if (tipo === "mesa" && !(Number(mesa) > 0)) return setError("Escriba el número de la mesa.");
+      // El número de mesa es opcional (lo pidió comida el 2026-11-15): sin él, «Mesa · 1:15 p. m.».
       if (tipo === "cancha" && !cancha) return setError("Escoja la cancha.");
       id = crypto.randomUUID();
       const abiertasHoy = Object.values(sinc.visible.cuentas).filter((c) => jornada(c.abiertaEn) === jornada(Date.now())).length;
       const auto =
-        tipo === "mesa" ? `Mesa ${Number(mesa)}` :
+        tipo === "mesa" ? (Number(mesa) > 0 ? `Mesa ${Number(mesa)}` : `Mesa · ${horaDe(Date.now())}`) :
+        tipo === "domicilio" ? `Domicilio ${abiertasHoy + 1}` :
         tipo === "cancha" ? `Cancha ${nombreCancha(cancha!)}` :
         cobrarYa ? "Venta rápida" : `Cuenta ${abiertasHoy + 1}`;
       sinc.emitir({
         t: "abrir", cuenta: id, nombre: nombre.trim() || auto,
         tipo: cobrarYa && tipo === "grupo" ? "rapida" : tipo,
-        mesa: tipo === "mesa" ? Number(mesa) : undefined,
+        mesa: tipo === "mesa" && Number(mesa) > 0 ? Number(mesa) : undefined,
+        ...(tipo === "domicilio" && direccion.trim() ? { direccion: direccion.trim() } : {}),
         cancha: tipo === "cancha" ? cancha! : undefined,
       });
     }
@@ -254,6 +263,8 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       ...(esAdicional ? { adicional: true } : {}),
       ...((cuenta?.tipo ?? tipo) === "cancha" ? { precio: cuenta ? modo : ("cancha" as const) } : {}),
       ...(despacho && detalle.trim() ? { detalle: detalle.trim() } : {}),
+      ...(enComida && !despacho && !avisarBarra ? { sinDespacho: true } : {}),
+      ...(apartar && !despacho ? { apartado: (() => { const para = horaDeHoy(horaApartado); return para ? { para } : {}; })() } : {}),
     });
     const cuentaFinal = id;
     if (cobrarYa) return nav.ir({ v: "cobrar", id: cuentaFinal }, true);
@@ -261,7 +272,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
     else nav.aInicio();
     const bebidas = (enComida || despacho) && ls.some((l) => productoDe(sinc.visible, l.producto)?.categoria !== "comida" && !("comida" in l && l.comida));
     ponerAviso({
-      texto: despacho ? `Pedido enviado a la barra · ${n} · ${pesos(valor)}` : `Anotado · ${n} · ${pesos(valor)}${bebidas ? " · bebidas avisadas a la barra" : ""}`,
+      texto: despacho ? `Pedido enviado a la barra · ${n} · ${pesos(valor)}` : `Anotado · ${n} · ${pesos(valor)}${bebidas && (despacho || avisarBarra) ? " · bebidas avisadas a la barra" : ""}`,
       deshacer: () => { for (const l of ls) sinc.emitir({ t: "anular", cuenta: cuentaFinal, linea: l.id }); },
     });
   };
@@ -313,11 +324,11 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
                 </button>
               ))}
             </div>
-            {(tipo === "grupo" || tipo === "persona") && (
-              <input placeholder="Nombre" enterKeyHint="done" autoCapitalize="sentences" onKeyDown={cerrarConEnter} aria-label={tipo === "grupo" ? "Nombre de la cuenta (opcional)" : "Nombre de la persona (opcional)"} value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            {(tipo === "grupo" || tipo === "persona" || tipo === "domicilio") && (
+              <input placeholder="Nombre" enterKeyHint="done" autoCapitalize="sentences" onKeyDown={cerrarConEnter} aria-label={tipo === "grupo" ? "Nombre de la cuenta (opcional)" : tipo === "domicilio" ? "Nombre del cliente (opcional)" : "Nombre de la persona (opcional)"} value={nombre} onChange={(e) => setNombre(e.target.value)} />
             )}
             {tipo === "mesa" && (
-              <input className="numero" inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="N.º de mesa" aria-label="Número de mesa" value={mesa} onChange={(e) => setMesa(e.target.value.replace(/\D/g, ""))} autoFocus />
+              <input className="numero" inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="N.º" aria-label="Número de mesa (opcional)" value={mesa} onChange={(e) => setMesa(e.target.value.replace(/\D/g, ""))} />
             )}
             {tipo === "cancha" && (
               <div className="segmentos canchas" role="group" aria-label="Cancha">
@@ -332,7 +343,28 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
           {(tipo === "mesa" || tipo === "cancha") && (
             <input placeholder="Nombre (opcional): los de rojo" enterKeyHint="done" autoCapitalize="sentences" onKeyDown={cerrarConEnter} value={nombre} onChange={(e) => setNombre(e.target.value)} />
           )}
+          {tipo === "domicilio" && (
+            <input placeholder="Dirección o referencia (opcional)" aria-label="Dirección del domicilio (opcional)" enterKeyHint="done" autoCapitalize="sentences"
+              maxLength={80} onKeyDown={cerrarConEnter} value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+          )}
         </section>
+      )}
+      {/* Solo en comida (2026-11-15): apartar para más tarde («una picada para las 2», hora
+          opcional) y avisar o no a la barra. En la barra no ocupan espacio. */}
+      {enComida && !despacho && (
+        <div className="fila-apartar">
+          <button type="button" className={avisarBarra ? "chip activo" : "chip"} aria-pressed={avisarBarra} onClick={() => setAvisarBarra(!avisarBarra)}>
+            {avisarBarra ? "🔔 Avisar a la barra" : "🔕 Sin avisar: la llevo yo"}
+          </button>
+          <button type="button" className={apartar ? "chip activo" : "chip"} aria-pressed={apartar} onClick={() => setApartar(!apartar)}>
+            ⏰ {apartar ? "Apartado" : "Apartar para más tarde"}
+          </button>
+          {apartar && (
+            <label className="hora-apartado">para las
+              <input type="time" aria-label="Hora del apartado (opcional)" value={horaApartado} onChange={(e) => setHoraApartado(e.target.value)} />
+            </label>
+          )}
+        </div>
       )}
 
       {ultima && !despacho && (

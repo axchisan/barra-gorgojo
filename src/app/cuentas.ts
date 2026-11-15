@@ -4,7 +4,20 @@ import { nombreCancha } from "../dominio/formato";
 import { sinc } from "./sincronizacion";
 
 export const iconoTipo = (c: Cuenta) =>
-  c.tipo === "mesa" ? `🍽 Mesa ${c.mesa}` : c.tipo === "cancha" ? `🎯 Cancha ${nombreCancha(c.cancha!)}` : null;
+  c.tipo === "mesa" ? (c.mesa ? `🍽 Mesa ${c.mesa}` : "🍽 Mesa") :
+  c.tipo === "cancha" ? `🎯 Cancha ${nombreCancha(c.cancha!)}` :
+  c.tipo === "domicilio" ? `🛵 Domicilio${c.direccion ? ` · ${c.direccion}` : ""}` : null;
+
+/** «14:00» → la hora de hoy en Colombia (ms); si ya pasó hace más de una hora, la de mañana. */
+export function horaDeHoy(texto: string, ahora = Date.now()): number | undefined {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(texto.trim());
+  if (!m) return undefined;
+  const DIA = 24 * 3600_000;
+  const medianoche = Math.floor((ahora - 5 * 3600_000) / DIA) * DIA + 5 * 3600_000;
+  let en = medianoche + (Number(m[1]) * 60 + Number(m[2])) * 60_000;
+  if (en < ahora - 3600_000) en += DIA;
+  return en;
+}
 
 export interface Renglon { producto: string; nombre: string; cantidad: number; precio?: number; valor: number; comida?: boolean }
 

@@ -16,6 +16,9 @@ async function anotar(p: Page, nombre: string) {
 /** ¿El aviso se monta sobre algo con que se vende? Solo puede quedar sobre la barra superior. */
 const tapa = (p: Page) =>
   p.evaluate(() => {
+    // En la posición normal, arriba: con muchas cuentas la lista puede quedar desplazada y
+    // el buscador pasa por debajo de la cabecera (y del aviso), que no es tapar la venta.
+    scrollTo(0, 0);
     const a = document.querySelector(".aviso")!.getBoundingClientRect();
     const venta = [...document.querySelectorAll(".pie-fijo button, .pestanas button, .tarjeta, .producto, .chip, main input")];
     return venta.filter((e) => {
@@ -23,7 +26,7 @@ const tapa = (p: Page) =>
       // Con la misma tolerancia de 4 px que se le da abajo frente a la barra superior (la
       // altura del texto cambia un poco con la fuente del sistema: Roboto, SF).
       return b.width > 0 && b.left < a.right && b.right > a.left && b.top < a.bottom - 4 && b.bottom > a.top + 4;
-    }).map((e) => e.textContent?.trim().slice(0, 20));
+    }).map((e) => e.textContent?.trim().slice(0, 20) || `<${e.tagName.toLowerCase()} class="${e.className}">`);
   });
 
 test("el aviso va arriba, no tapa la venta, se quita tocándolo o deslizándolo y uno nuevo reemplaza al anterior", async ({ browser }) => {

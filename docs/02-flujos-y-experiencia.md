@@ -382,6 +382,31 @@ una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso
 sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
 como cualquier otra.
 
+### Mesa sin número, domicilios y apartados (2026-11-15)
+
+Pedido por comida (se usa en los teléfonos):
+
+- **El número de mesa es opcional.** Sin él, la cuenta queda «Mesa · 1:15 p. m.» (o con el
+  nombre que escriban). Antes no dejaba anotar.
+- **🛵 Domicilio**: quinto tipo de cuenta, con el nombre del cliente y la dirección o
+  referencia (opcionales). La tarjeta dice «🛵 Domicilio · …».
+- **⏰ Apartar para más tarde**: al anotar (cuenta nueva o ya abierta), un chip que marca la
+  pedida como apartada, con hora opcional («una picada para las 2»). En el inicio, arriba
+  de las cuentas, sale **«⏰ Apartados»** por hora (los sin hora al final): quién, qué y
+  «Entregado» (con «Deshacer»). Los atrasados, en rojo. La tarjeta dice «⏰ Apartado · 2:00
+  p. m.» y en el detalle la pedida tiene «⏰ Apartado · Entregado». No suma toques al caso
+  común: el chip solo se toca cuando es un apartado.
+
+- **🔔 Avisar a la barra** (en comida, prendido de entrada): las bebidas que anota comida
+  le suenan a la barra para despacharlas. Si comida misma la lleva, se apaga («🔕 Sin
+  avisar: la llevo yo») y la bebida queda despachada por quien la anotó: no suena, no queda
+  pendiente y la cuenta sigue en la lista de comida.
+- El chip de apartar, el de avisar a la barra y la lista «⏰ Apartados» salen **solo en el
+  panel de comida**: en la barra no ocupan espacio (la tarjeta sí dice «⏰ Apartado»).
+
+La pedida apartada cuenta en la cuenta como cualquier otra (se cobra igual). Pruebas:
+`tests/apartados.test.ts`, `tests/e2e/apartados.spec.ts` (teléfono 360 × 740).
+
 ### No se puede despachar (2026-11-15)
 
 En «Despachar», la barra tiene «🚫 No se puede» junto a «Despachado»: una hoja con los

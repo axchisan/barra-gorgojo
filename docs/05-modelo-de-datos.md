@@ -57,11 +57,12 @@ guarda.
 
 | `t` | Datos | Qué hace |
 |---|---|---|
-| `abrir` | `cuenta, nombre, tipo, mesa?, cancha?` | Abre una cuenta (grupo, persona, mesa, cancha o rápida) |
+| `abrir` | `cuenta, nombre, tipo, mesa?, cancha?, direccion?` | Abre una cuenta (grupo, persona, mesa, cancha, rápida o domicilio). La mesa puede ir sin número; el domicilio guarda la dirección (opcional) |
+| `apartado_entregado` | `cuenta, ronda, valor` | Un apartado entregado (o deshacer «Entregado») |
 | `renombrar` | `cuenta, nombre` | Cambia el nombre |
 | `marcar_ronda` | `cuenta, ronda, adicional, precio?, precios?` | En las canchas: la pedida es un chico o un adicional. Desde el 2026-11-15 lleva `precio` (adicional: normal; chico: cancha) y el servidor escribe `precios` (`{ línea: valor }`); sin ellos (operación vieja), solo cambia el nombre |
 | `precio_ronda` | `cuenta, ronda, precio, precios?` | En las canchas: la pedida a precio normal o de cancha (docs/04 «Precio de los adicionales»). El servidor escribe `precios`. No en cuentas cobradas |
-| `anotar` | `cuenta, ronda, lineas[], area?, adicional?, precio?, detalle?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado`, el `area` (barra o comida) y, en las canchas, el `precio` de la pedida (`cancha` o `normal`). Desde comida, las bebidas quedan `porDespachar` |
+| `anotar` | `cuenta, ronda, lineas[], area?, adicional?, precio?, detalle?, apartado?, sinDespacho?` | Una pedida o chico. Cada línea: `producto, cantidad`, y `precio`/`nombre` (valor libre, «Otro»), `paquete` (petaco o medio, puro o mixto), `comida`, `nota` (plato: «solo carne»). El servidor agrega `precioFijado`, el `area` (barra o comida) y, en las canchas, el `precio` de la pedida (`cancha` o `normal`). Desde comida, las bebidas quedan `porDespachar` |
 | `juntar` | `cuenta, desde` | Suma la cuenta `desde` a `cuenta`: sus pedidas, productos y abonos pasan allá (marcados `de`); `desde` queda «juntada» |
 | `separar` | `cuenta, desde` | Deshace `juntar`, si después no se cobró nada en `cuenta` |
 | `despachar` | `cuenta, lineas?` | La barra entregó bebidas pedidas desde comida (las dichas, o todas las de la cuenta) |

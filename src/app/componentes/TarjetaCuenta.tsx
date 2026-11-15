@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { abonos, saldo, totalComida, unidades, type Cuenta } from "../../dominio/estado";
-import { haceCuanto, pesos } from "../../dominio/formato";
+import { haceCuanto, horaDe, pesos } from "../../dominio/formato";
 import { iconoTipo } from "../cuentas";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
@@ -27,7 +27,8 @@ export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
       onClick={() => { if (!largo.current) nav.ir({ v: "cuenta", id: c.id }); }}
     >
       <span className="nombre">{c.nombre}</span>
-      {tipo && c.nombre !== tipo.slice(3) && <span className="tipo">{tipo}</span>}
+      {/* El tipo, si el nombre no lo dice ya («Mesa 4», «Mesa · 1:15 p. m.»). */}
+      {tipo && !c.nombre.startsWith(tipo.slice(3)) && <span className="tipo">{tipo}</span>}
       <span className="valor">{pesos(saldo(c))}</span>
       {/* Con abonos, el valor es lo que falta. */}
       {/* Comida y bebidas por despachar, en la misma línea: la tarjeta no crece (C2). */}
@@ -37,6 +38,13 @@ export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
         {totalComida(c) > 0 && <span className="marca-comida" title="Con comida"> · 🍽{sinc.panel === "comida" ? ` ${pesos(totalComida(c))}` : ""}</span>}
       </span>
       {c.lineas.some((l) => l.porDespachar && !l.anulada) && <span className="alerta despacho">🔔 Por despachar</span>}
+      {(() => {
+        // Apartado por entregar (2026-11-15): la hora más próxima, o «sin hora».
+        const r = c.rondas.filter((x) => x.apartado && !x.entregado && c.lineas.some((l) => l.ronda === x.id && !l.anulada));
+        if (!r.length) return null;
+        const horas = r.map((x) => x.apartado!.para).filter((x): x is number => !!x).sort((a, b) => a - b);
+        return <span className={`alerta apartado${horas[0] && horas[0] < Date.now() ? " atrasado" : ""}`}>⏰ Apartado{horas[0] ? ` · ${horaDe(horas[0])}` : ""}</span>;
+      })()}
       {c.reabierta && <span className="alerta">Anotaron después del cobro</span>}
     </button>
   );

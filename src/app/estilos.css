@@ -1089,3 +1089,24 @@ input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; u
 .hoja-atajos th { text-align: left; font-weight: 700; padding: 6px 8px 6px 0; color: var(--cafe, #241206); white-space: nowrap; }
 .hoja-atajos td { padding: 6px 8px; border-bottom: 1px solid var(--neutro-200); }
 kbd { display: inline-block; min-width: 1.6em; padding: 2px 8px; border-radius: 6px; border: 1px solid #b9a98f; border-bottom-width: 3px; background: #fff; font: 700 0.9rem/1.4 ui-monospace, monospace; text-align: center; }
+
+/* Apartados y domicilios (2026-11-15, pedido de comida; se usa en el teléfono). */
+.fila-apartar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 8px; }
+.fila-apartar .chip { min-height: 44px; }
+.hora-apartado { display: flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+.hora-apartado input { min-height: 44px; font: inherit; padding: 4px 8px; border-radius: 10px; border: 2px solid var(--neutro-200); background: #fff; }
+.apartados-comida { display: grid; gap: 8px; margin-bottom: 12px; }
+.apartados-comida .seccion { margin: 0; }
+.apartado { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--radio); background: #fff6df; border: 2px solid var(--ambar); }
+.apartado.atrasado { background: #fde8e6; border-color: #C62828; }
+.apartado .cuerpo { display: grid; gap: 2px; text-align: left; background: none; border: 0; padding: 0; min-height: 56px; }
+.apartado .hora { font-size: 1.1rem; }
+.apartado.atrasado .hora { color: #B71C1C; }
+.apartado .quien { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apartado .que { font-size: 0.9rem; color: var(--cafe, #241206); }
+.apartado .entregar { min-height: 56px; padding: 0 14px; }
+.alerta.apartado { background: #fff1c9; color: #6b4a00; }
+.alerta.apartado.atrasado { background: #fde0dc; color: #B71C1C; }
+.apartado-chip { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; background: #fff1c9; }
+.apartado-chip.entregado { background: #e3f0e5; }
+.tarjeta.domicilio { border-color: #6D4C9F; background: #f3eefa; }

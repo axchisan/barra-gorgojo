@@ -6,7 +6,7 @@ import { areaDe, esArea, type Area } from "./areas";
 import { idDeudor, saldoDeudor, type Deudor } from "./deudas";
 import { CATALOGO, ESPECIALES, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "./catalogo";
 
-export type TipoCuenta = "grupo" | "persona" | "mesa" | "cancha" | "rapida";
+export type TipoCuenta = "grupo" | "persona" | "mesa" | "cancha" | "rapida" | "domicilio";
 /** «deuda»: no entra plata; queda como deuda de alguien (docs/15). */
 export type Medio = "efectivo" | "nequi" | "breve" | "comida" | "deuda";
 export type Cancha = "1" | "2" | "pequena";
@@ -67,6 +67,13 @@ export interface Ronda {
    * salvo que se escoja otra cosa al anotar o después («precio_ronda»).
    */
   precio?: ModoPrecio;
+  /**
+   * Apartada para más tarde (2026-11-15, pedido de comida): «apártenme una picada para las
+   * 2». `para`: la hora (ms), si la dijeron. Se ve en «⏰ Apartados» hasta que se entregue.
+   */
+  apartado?: { para?: number };
+  /** Un apartado ya entregado: quién y cuándo. */
+  entregado?: { por: string; en: number };
 }
 
 /** Precio de una pedida de cancha: el de cancha o el normal. */
@@ -112,6 +119,8 @@ export interface Cuenta {
   tipo: TipoCuenta;
   mesa?: number;
   cancha?: Cancha;
+  /** Domicilio: a dónde va (opcional). */
+  direccion?: string;
   abiertaEn: number;
   abiertaPor: string;
   ultima: number;
@@ -231,13 +240,14 @@ interface Base {
 
 export type Operacion = Base &
   (
-    | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha }
+    | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha; direccion?: string }
+    | { t: "apartado_entregado"; cuenta: string; ronda: string; valor: boolean }
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean; precio?: ModoPrecio; precios?: Record<string, number> }
     | { t: "precio_ronda"; cuenta: string; ronda: string; precio: ModoPrecio; precios?: Record<string, number> }
     | { t: "agregar"; cuenta: string; ronda: string; area?: Area; lineas: LineaAnotada[] }
     | { t: "cambiar_producto"; cuenta: string; linea: string; nueva: LineaAnotada }
-    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; precio?: ModoPrecio; detalle?: string; lineas: LineaAnotada[] }
+    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; precio?: ModoPrecio; detalle?: string; apartado?: { para?: number }; sinDespacho?: boolean; lineas: LineaAnotada[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
     | { t: "rechazar_despacho"; cuenta: string; lineas?: string[]; motivo: string }
     | { t: "juntar"; cuenta: string; desde: string }
@@ -396,6 +406,20 @@ function anularCargoDeCuenta(estado: Estado, p: Pago, op: { persona: string; en:
   if (m && !m.anulado) m.anulado = { por: op.persona, en: op.en };
 }
 
+/** Apartados por entregar (de cuentas no anuladas, con algo vivo), por hora: los sin hora al final. */
+export function apartadosPendientes(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; ronda: Ronda; lineas: Linea[] }[] {
+  const r: { cuenta: Cuenta; ronda: Ronda; lineas: Linea[] }[] = [];
+  for (const c of cuentas) {
+    if (c.anulada) continue;
+    for (const ronda of c.rondas) {
+      if (!ronda.apartado || ronda.entregado) continue;
+      const lineas = c.lineas.filter((l) => l.ronda === ronda.id && !l.anulada);
+      if (lineas.length) r.push({ cuenta: c, ronda, lineas });
+    }
+  }
+  return r.sort((a, b) => (a.ronda.apartado!.para ?? Infinity) - (b.ronda.apartado!.para ?? Infinity) || a.ronda.en - b.ronda.en);
+}
+
 /** Bebidas pedidas desde comida que la barra no ha despachado, de todas las cuentas vivas. */
 export function porDespachar(cuentas: Iterable<Cuenta>): { cuenta: Cuenta; lineas: Linea[] }[] {
   const r: { cuenta: Cuenta; lineas: Linea[] }[] = [];
@@ -493,8 +517,9 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         id: op.cuenta,
         nombre: op.nombre.trim().slice(0, 60) || "Cuenta",
         tipo: op.tipo,
-        mesa: op.tipo === "mesa" ? op.mesa : undefined,
+        mesa: op.tipo === "mesa" && Number(op.mesa) > 0 ? Math.floor(Number(op.mesa)) : undefined,
         cancha: op.tipo === "cancha" ? op.cancha : undefined,
+        ...(op.tipo === "domicilio" && typeof op.direccion === "string" && op.direccion.trim() ? { direccion: op.direccion.trim().slice(0, 80) } : {}),
         abiertaEn: op.en,
         abiertaPor: op.persona,
         ultima: op.en,
@@ -519,12 +544,20 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       const nuevas: Linea[] = [];
       for (const l of op.lineas) {
         const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en, modo ?? "cancha");
+        // Desde comida, «sin avisar a la barra» (2026-11-15): la bebida la lleva comida misma.
+        // Queda como despachada por quien la anotó: no suena, y sigue siendo «de comida».
+        if (linea?.porDespachar && op.sinDespacho === true) { delete linea.porDespachar; linea.despachada = { por: op.persona, en: op.en }; }
         if (linea) nuevas.push(linea);
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
       const detalle = typeof op.detalle === "string" ? op.detalle.trim().slice(0, 80) : "";
-      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}), ...(modo ? { precio: modo } : {}), ...(detalle ? { detalle } : {}) });
+      // Apartado para más tarde: con hora si la dijeron (dentro de los dos días siguientes).
+      const para = Number(op.apartado?.para);
+      const apartado = op.apartado && typeof op.apartado === "object"
+        ? { ...(Number.isFinite(para) && para > op.en - 3600_000 && para < op.en + 2 * 24 * 3600_000 ? { para: Math.floor(para) } : {}) }
+        : undefined;
+      c.rondas.push({ id: op.ronda, numero: c.rondas.length + 1, persona: op.persona, en: op.en, ...(op.adicional === true ? { adicional: true as const } : {}), ...(modo ? { precio: modo } : {}), ...(detalle ? { detalle } : {}), ...(apartado ? { apartado } : {}) });
       c.lineas.push(...nuevas);
       c.ultima = op.en;
       if (c.anulada) c.anulada = false; // si alguien anotó, había clientes
@@ -647,6 +680,15 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         delete l.porDespachar;
         l.despachada = { por: op.persona, en: op.en };
       }
+      return estado;
+    }
+    case "apartado_entregado": {
+      // Un apartado entregado (o deshacer «Entregado»).
+      const r = c?.rondas.find((x) => x.id === op.ronda);
+      if (!c || !r?.apartado) return estado;
+      if (op.valor) r.entregado = { por: op.persona, en: op.en };
+      else delete r.entregado;
+      c.ultima = op.en;
       return estado;
     }
     case "rechazar_despacho": {

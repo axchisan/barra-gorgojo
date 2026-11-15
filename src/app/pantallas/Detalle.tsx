@@ -236,6 +236,12 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                     </button>
                   )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
+                  {/* Apartado para más tarde (2026-11-15): la hora y «Entregado». */}
+                  {r.apartado && rondaViva(c, r.id) && (
+                    r.entregado
+                      ? <button className="chip apartado-chip entregado" onClick={() => sinc.emitir({ t: "apartado_entregado", cuenta: c.id, ronda: r.id, valor: false })}>✓ Apartado entregado</button>
+                      : <button className="chip apartado-chip" onClick={() => sinc.emitir({ t: "apartado_entregado", cuenta: c.id, ronda: r.id, valor: true })}>⏰ Apartado{r.apartado.para ? ` · ${horaDe(r.apartado.para)}` : ""} · Entregado</button>
+                  )}
                   {s === "abierta" && lineas.some((l) => l.porDespachar && !l.anulada) && (
                     <span className="cancelar-pedido"><CancelarPedido c={c} lineas={lineas.filter((l) => l.porDespachar && !l.anulada)} /></span>
                   )}
