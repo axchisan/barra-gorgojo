@@ -20,7 +20,7 @@ export const MODOS_SONIDO: { id: ModoSonido; nombre: string; detalle: string }[]
   { id: "una", nombre: "Una vez", detalle: "Solo cuando llega el pedido" },
   { id: "silencio", nombre: "Sin sonido", detalle: "Solo la franja y la vibración" },
 ];
-const LLAVE_SONIDO = "sonido-despacho";
+export const LLAVE_SONIDO = "sonido-despacho";
 export function leerModoSonido(): ModoSonido {
   try { const v = localStorage.getItem(LLAVE_SONIDO); return MODOS_SONIDO.some((m) => m.id === v) ? (v as ModoSonido) : "insistente"; } catch { return "insistente"; }
 }
@@ -29,7 +29,7 @@ export function guardarModoSonido(m: ModoSonido) {
   window.dispatchEvent(new Event(LLAVE_SONIDO));
 }
 /** Cada cuánto se repite el sonido mientras quede algo por despachar (null: no se repite). */
-const REPETIR: Record<ModoSonido, number | null> = { insistente: 4_000, minuto: 60_000, una: null, silencio: null };
+export const REPETIR: Record<ModoSonido, number | null> = { insistente: 4_000, minuto: 60_000, una: null, silencio: null };
 
 let audio: AudioContext | null = null;
 /** El navegador solo deja sonar después de un toque: se prepara con el primero. */
@@ -129,7 +129,7 @@ export function sonar(forzar = false, timbre: Timbre = leerTimbre()) {
 function vibrarAviso() { try { navigator.vibrate?.([400, 150, 400, 150, 400]); } catch { /* sin vibración */ } }
 
 /** Con algo por despachar, que la pantalla no se apague sola (la tablet de la barra). */
-function useMantenerDespierta(activo: boolean) {
+export function useMantenerDespierta(activo: boolean) {
   useEffect(() => {
     if (!activo) return;
     type Candado = { release: () => Promise<void> };

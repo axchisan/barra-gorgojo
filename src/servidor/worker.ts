@@ -4,7 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esModoPrecio, esOperacion, modoPorDefecto, preciosParaModo, esVigente, estadoVacio, jornada, pagadoPorLinea, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, catalogo, enCuadricula, esModoPrecio, esOperacion, modoPorDefecto, precioPara, preciosParaModo, esVigente, estadoVacio, jornada, pagadoPorLinea, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
 import { saldoDeudor } from "../dominio/deudas";
@@ -15,6 +15,8 @@ import { enviarRespaldo, esDiaDeCorreo, type ConfigCorreo } from "./correo";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
 import { dentroDeHorario, describirHorario, finDeFranja, mensajeFueraDeHorario, type Horario } from "../dominio/horario";
 import { esCompleta, limitarCambios, limitarEstado, cuentaDeHoy, type Vista } from "../dominio/vista";
+import { solicitudesVigentes, TOPE_LINEAS, TOPE_UNIDADES, TOPE_VALOR, valorSolicitud, type LineaSolicitud } from "../dominio/solicitudes";
+import { Lugares } from "./qr";
 
 interface Env extends ConfigCorreo {
   BARRA: DurableObjectNamespace<Barra>;
@@ -70,6 +72,8 @@ export default {
     if (propia && url.host !== propia.host && !url.pathname.startsWith("/api/") && req.method === "GET" && (req.headers.get("sec-fetch-mode") === "navigate" || req.headers.get("sec-fetch-dest") === "document")) {
       return Response.redirect(new URL(url.pathname + url.search, propia).toString(), 302);
     }
+    // La página del cliente que pide con el QR (docs/20): /m/<código> sirve cliente.html.
+    if (url.pathname.startsWith("/m/") && req.method === "GET") return env.ASSETS.fetch(new Request(new URL("/cliente", url), req));
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     return barraDe(env).fetch(req);
   },
@@ -108,9 +112,12 @@ interface Cambios {
   orden?: Estado["orden"];
   jornadas?: Estado["jornadas"];
   deudas?: Estado["deudas"];
+  solicitudes?: Estado["solicitudes"];
 }
 /** Las operaciones que pueden cambiar las deudas (docs/15). */
 const TOCA_DEUDAS = new Set<Operacion["t"]>(["cobrar", "deshacer_pago", "reabrir", "deuda_cargo", "deuda_pago", "deuda_anular"]);
+/** Las que cambian los pedidos de los clientes por QR (docs/20). */
+const TOCA_SOLICITUDES = new Set<Operacion["t"]>(["solicitud", "aceptar_solicitud", "rechazar_solicitud"]);
 /** Hasta cuántas operaciones atrás se mandan novedades al reconectar; más, la foto completa. */
 const MAX_NOVEDADES = 500;
 /** `deudas`: administra deudas (anotar a mano, anular): el administrador o con el permiso. */
@@ -142,10 +149,12 @@ export class Barra extends DurableObject<Env> {
   private estado: Estado = estadoVacio();
   private seq = 0;
   private acceso: Acceso;
+  private lugares: Lugares;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.acceso = new Acceso(ctx.storage.sql, env.PINES ?? "");
+    this.lugares = new Lugares(ctx.storage.sql);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     ctx.blockConcurrencyWhile(async () => {
       const sql = ctx.storage.sql;
@@ -174,6 +183,7 @@ export class Barra extends DurableObject<Env> {
       // Auditoría (E4): las operaciones de un día por su hora, sin recorrer el registro.
       sql.exec("CREATE INDEX IF NOT EXISTS operaciones_en ON operaciones (json_extract(datos, '$.en'))");
       this.acceso.preparar(PERSONAS);
+      this.lugares.preparar();
       this.cargar();
     });
   }
@@ -215,6 +225,7 @@ export class Barra extends DurableObject<Env> {
     if (meta.has("orden")) estado.orden = JSON.parse(meta.get("orden")!);
     if (meta.has("jornadas")) estado.jornadas = JSON.parse(meta.get("jornadas")!);
     if (meta.has("deudas")) estado.deudas = JSON.parse(meta.get("deudas")!);
+    if (meta.has("solicitudes")) estado.solicitudes = JSON.parse(meta.get("solicitudes")!);
     for (const f of sql.exec<{ datos: string }>("SELECT datos FROM cuentas WHERE viva = 1 OR ultima >= ?", Date.now() - VENTANA_VIGENTE)) {
       const c = JSON.parse(f.datos) as Cuenta;
       estado.cuentas[c.id] = c;
@@ -232,7 +243,7 @@ export class Barra extends DurableObject<Env> {
       sql.exec("DELETE FROM cuenta_jornadas");
       sql.exec("DELETE FROM proyeccion");
       for (const c of Object.values(this.estado.cuentas)) this.guardarCuenta(c);
-      this.guardarGeneral(["productos", "orden", "jornadas", "deudas"]);
+      this.guardarGeneral(["productos", "orden", "jornadas", "deudas", "solicitudes"]);
     });
     console.log(JSON.stringify({ aviso: "proyeccion-reconstruida", seq: this.seq, cuentas: Object.keys(this.estado.cuentas).length }));
   }
@@ -257,7 +268,7 @@ export class Barra extends DurableObject<Env> {
   }
 
   /** Lo general de la proyección: siempre la versión y el seq; lo demás, lo que cambió. */
-  private guardarGeneral(claves: ("productos" | "orden" | "jornadas" | "deudas")[] = []) {
+  private guardarGeneral(claves: ("productos" | "orden" | "jornadas" | "deudas" | "solicitudes")[] = []) {
     const sql = this.ctx.storage.sql;
     const poner = (clave: string, valor: string) =>
       sql.exec("INSERT INTO proyeccion (clave, valor) VALUES (?, ?) ON CONFLICT (clave) DO UPDATE SET valor = excluded.valor", clave, valor);
@@ -327,6 +338,7 @@ export class Barra extends DurableObject<Env> {
     if (op.t === "orden") cambios.orden = this.estado.orden ?? [];
     if (op.t === "cerrar_jornada") cambios.jornadas = this.estado.jornadas ?? {};
     if (TOCA_DEUDAS.has(op.t) && this.estado.deudas) cambios.deudas = this.estado.deudas;
+    if (TOCA_SOLICITUDES.has(op.t) && this.estado.solicitudes) cambios.solicitudes = solicitudesVigentes(this.estado.solicitudes, Date.now());
     return cambios;
   }
 
@@ -387,6 +399,9 @@ export class Barra extends DurableObject<Env> {
   private podar() {
     const ahora = Date.now();
     for (const [id, c] of Object.entries(this.estado.cuentas)) if (!esVigente(c, ahora)) delete this.estado.cuentas[id];
+    // Las solicitudes resueltas hace más de 36 h ya no cambian nada (aceptar y rechazar solo
+    // tocan las pendientes): salen de memoria, y de la proyección la próxima vez que se escriba.
+    if (this.estado.solicitudes) this.estado.solicitudes = solicitudesVigentes(this.estado.solicitudes, ahora);
   }
 
   /** Rearma el estado aplicando el registro guardado, en orden (solo para reconstruir). */
@@ -528,6 +543,14 @@ export class Barra extends DurableObject<Env> {
    * esconder un botón no es seguridad (docs/03 «Acceso y seguridad»).
    */
   private permiso(op: Operacion, quien: Quien, ahora: number): string | null {
+    // Las solicitudes llegan solo por la ruta pública del QR, nunca de un celular del personal.
+    if (op.t === "solicitud") return "Los pedidos de los clientes llegan solo por el QR.";
+    if (op.t === "aceptar_solicitud" || op.t === "rechazar_solicitud") {
+      const s = this.estado.solicitudes?.[op.solicitud];
+      if (!s) return "Ese pedido ya no existe.";
+      if (s.estado !== "pendiente") return `Ese pedido ya se ${s.estado === "aceptada" ? "aceptó" : "rechazó"}${s.resuelta ? ` (${s.resuelta.por})` : ""}.`;
+      if (op.t === "rechazar_solicitud" && !(typeof op.motivo === "string" && op.motivo.trim())) return "Escriba por qué no se puede.";
+    }
     const juntas = this.juntas(op) ?? this.deudas(op, quien) ?? this.ediciones(op);
     if (juntas) return juntas;
     if (quien.rol === ADMIN) {
@@ -775,7 +798,7 @@ export class Barra extends DurableObject<Env> {
         const c = "cuenta" in op ? this.estado.cuentas[op.cuenta] : undefined;
         if (c) this.guardarCuenta(c);
         if (op.t === "juntar" || op.t === "separar") { const o = this.estado.cuentas[op.desde]; if (o) this.guardarCuenta(o); }
-        this.guardarGeneral(op.t === "producto" ? ["productos"] : op.t === "orden" ? ["orden"] : op.t === "cerrar_jornada" ? ["jornadas"] : TOCA_DEUDAS.has(op.t) ? ["deudas"] : []);
+        this.guardarGeneral(op.t === "producto" ? ["productos"] : op.t === "orden" ? ["orden"] : op.t === "cerrar_jornada" ? ["jornadas"] : TOCA_DEUDAS.has(op.t) ? ["deudas"] : TOCA_SOLICITUDES.has(op.t) ? ["solicitudes"] : []);
       });
       aceptadas.push(op.id);
       this.avisarATodos({ tipo: "op", op, cambios: this.cambiosDe(op) });
@@ -840,6 +863,8 @@ export class Barra extends DurableObject<Env> {
       return json({ personas: this.personasPublicas() });
     }
     if (ruta === "/api/entrar" && req.method === "POST") return this.entrar(req, await cuerpo());
+    // Pedidos de los clientes por QR (docs/20): sin sesión, solo con el código del lugar.
+    if (ruta.startsWith("/api/publico/")) return this.publico(req, url);
 
     // ── Con sesión ──────────────────────────────────────────────────
     const q = await this.quien(req, url);
@@ -936,6 +961,19 @@ export class Barra extends DurableObject<Env> {
       return json({ error: "Acción desconocida." }, 400);
     }
     if (ruta === "/api/admin/codigo" && req.method === "POST") return json(await this.acceso.crearCodigo(q.nombre));
+    if (ruta === "/api/admin/qr" && req.method === "GET") return json({ encendido: this.lugares.encendido(), lugares: this.lugares.listar() });
+    if (ruta === "/api/admin/qr" && req.method === "POST") {
+      // Lugares con código QR y el interruptor de los pedidos por QR (docs/20).
+      const b = await cuerpo<{ accion?: string; tipo?: string; numero?: number; cancha?: string; token?: string; activo?: boolean; encendido?: boolean }>();
+      if (b.accion === "encender") { this.lugares.encender(!!b.encendido); return json({ ok: true, encendido: this.lugares.encendido() }); }
+      if (b.accion === "crear") {
+        const r = this.lugares.crear(b.tipo === "cancha" ? "cancha" : "mesa", Math.floor(Number(b.numero)) || undefined, b.cancha === "1" || b.cancha === "2" || b.cancha === "pequena" ? b.cancha : undefined);
+        return "error" in r ? json(r, 400) : json({ lugar: r });
+      }
+      if (b.accion === "rotar" && b.token) { const r = this.lugares.rotar(b.token); return "error" in r ? json(r, 404) : json({ lugar: r }); }
+      if (b.accion === "activo" && b.token) { this.lugares.activar(b.token, !!b.activo); return json({ ok: true }); }
+      return json({ error: "Acción desconocida." }, 400);
+    }
     if (ruta === "/api/admin/dispositivos" && req.method === "GET") {
       // Conectados ahora: cada WebSocket abierto con su persona, versión y pendientes (E4).
       const conexiones = this.ctx.getWebSockets().map((ws) => {
@@ -999,6 +1037,88 @@ export class Barra extends DurableObject<Env> {
       return this.importar(Array.isArray(operaciones) ? operaciones : []);
     }
     return json({ error: "No existe" }, 404);
+  }
+
+  /**
+   * Ruta pública de los pedidos por QR (docs/20). Solo ve la carta (productos activos, sin
+   * nada interno) y el estado de las solicitudes de su propio código; nunca cuentas ni la
+   * foto. Con límites: interruptor general, código activo, pedidos por minuto y por hora,
+   * líneas, unidades y valor.
+   */
+  private async publico(req: Request, url: URL): Promise<Response> {
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST", "access-control-allow-headers": "content-type" };
+    const responder = (datos: unknown, status = 200) => json(datos, status, cors);
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    const ruta = url.pathname;
+    let token = url.searchParams.get("t") ?? "";
+    let cuerpo: { t?: unknown; lineas?: unknown; cliente?: unknown; nota?: unknown } = {};
+    if (req.method === "POST") {
+      const texto = await req.text();
+      if (texto.length > 10_000) return responder({ error: "Pedido demasiado grande." }, 413);
+      try { cuerpo = JSON.parse(texto); } catch { return responder({ error: "Pedido dañado." }, 400); }
+      token = typeof cuerpo.t === "string" ? cuerpo.t : "";
+    }
+    const lugar = this.lugares.porToken(token);
+    if (!lugar || !lugar.activo) return responder({ error: "Este código no sirve. Pídale ayuda al personal." }, 404);
+    const cerrado = !this.lugares.encendido();
+
+    if (ruta === "/api/publico/lugar" && req.method === "GET") {
+      const carta = catalogo(this.estado)
+        .filter((p) => p.activo && !p.libre && !p.conNombre && (enCuadricula(this.estado, p) || !!p.padre))
+        .map((p) => ({ id: p.id, nombre: p.nombre, corto: p.corto, categoria: p.categoria, precio: precioPara(p, lugar.tipo === "cancha" ? "cancha" : undefined), fondo: p.fondo, texto: p.texto, ...(p.padre ? { padre: p.padre } : {}) }))
+        .filter((p) => (p.precio ?? 0) > 0);
+      return responder({ lugar: { nombre: lugar.nombre }, cerrado, carta: cerrado ? [] : carta });
+    }
+
+    if (ruta === "/api/publico/pedido" && req.method === "GET") {
+      const s = this.estado.solicitudes?.[url.searchParams.get("id") ?? ""];
+      if (!s || s.lugar.token !== token) return responder({ error: "No encontramos ese pedido." }, 404);
+      return responder({ estado: s.estado, lineas: s.lineas, ...(s.resuelta?.aceptadas ? { aceptadas: s.resuelta.aceptadas } : {}), ...(s.resuelta?.motivo ? { motivo: s.resuelta.motivo } : {}) });
+    }
+
+    if (ruta === "/api/publico/pedido" && req.method === "POST") {
+      if (cerrado) return responder({ error: "Ahora no estamos recibiendo pedidos por aquí. Pídale al personal." }, 403);
+      const crudas = Array.isArray(cuerpo.lineas) ? cuerpo.lineas.slice(0, TOPE_LINEAS + 1) : [];
+      if (!crudas.length || crudas.length > TOPE_LINEAS) return responder({ error: `Escoja entre 1 y ${TOPE_LINEAS} productos.` }, 400);
+      const lineas: LineaSolicitud[] = [];
+      for (const x of crudas as { producto?: unknown; cantidad?: unknown; nota?: unknown }[]) {
+        const p = productoDe(this.estado, String(x?.producto ?? ""));
+        const cantidad = Math.floor(Number(x?.cantidad));
+        const precio = p ? precioPara(p, lugar.tipo === "cancha" ? "cancha" : undefined) : null;
+        if (!p || !p.activo || p.libre || p.conNombre || !precio || !(cantidad > 0) || cantidad > TOPE_UNIDADES) return responder({ error: "Hay un producto que ya no está disponible. Vuelva a abrir la carta." }, 400);
+        const nota = typeof x.nota === "string" ? x.nota.trim().slice(0, 60) : "";
+        lineas.push({ id: `${crypto.randomUUID()}`, producto: p.id, nombre: p.nombre, precio, cantidad, ...(nota ? { nota } : {}) });
+      }
+      if (valorSolicitud({ lineas }) > TOPE_VALOR) return responder({ error: "El pedido es muy grande para pedirlo por aquí. Pídale al personal." }, 400);
+      const turno = this.lugares.puedePedir(token);
+      if (!turno.ok) return responder({ error: `Espere un momento antes de pedir otra vez (${Math.ceil(turno.espera / 1000)} s).`, espera: turno.espera }, 429);
+      const id = crypto.randomUUID();
+      const op = {
+        id: `qr-${id}`, t: "solicitud" as const, persona: `Cliente · ${lugar.nombre}`, en: Date.now(),
+        solicitud: {
+          id, en: Date.now(), lugar: { token: lugar.token, tipo: lugar.tipo, nombre: lugar.nombre, ...(lugar.numero ? { numero: lugar.numero } : {}), ...(lugar.cancha ? { cancha: lugar.cancha } : {}) }, lineas,
+          ...(typeof cuerpo.cliente === "string" && cuerpo.cliente.trim() ? { cliente: cuerpo.cliente.trim().slice(0, 40) } : {}),
+          ...(typeof cuerpo.nota === "string" && cuerpo.nota.trim() ? { nota: cuerpo.nota.trim().slice(0, 120) } : {}),
+        },
+      } satisfies Operacion;
+      this.registrarDelServidor(op);
+      return responder({ id });
+    }
+    return responder({ error: "No existe" }, 404);
+  }
+
+  /** Una operación que escribe el servidor mismo (la solicitud de un cliente): se aplica, se guarda y se reparte. */
+  private registrarDelServidor(op: Operacion) {
+    aplicar(this.estado, op);
+    this.ctx.storage.transactionSync(() => {
+      const { seq } = this.ctx.storage.sql
+        .exec<{ seq: number }>("INSERT INTO operaciones (id, persona, datos, recibida_en) VALUES (?, ?, ?, ?) RETURNING seq", op.id, op.persona, JSON.stringify(op), Date.now())
+        .one();
+      op.seq = seq;
+      this.seq = seq;
+      this.guardarGeneral(["solicitudes"]);
+    });
+    this.avisarATodos({ tipo: "op", op, cambios: this.cambiosDe(op) });
   }
 
   /** Lo que ve un celular vinculado en la entrada (sin PIN). */

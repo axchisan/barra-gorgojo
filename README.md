@@ -111,6 +111,7 @@ archivo son solo la semilla de una base nueva.
 | [17 · Accesos de empleados](docs/17-accesos-de-empleados.md) | Permisos de vista (el día, otros días) y horario de acceso por persona |
 | [18 · Roadmap desde el 2026-11-15](docs/18-roadmap-2026-11.md) | **El plan por fases**: urgente, pruebas, portátil, robustez, push, QR/NFC con el sitio web, impresora térmica, gestión |
 | [19 · Plan de pruebas](docs/19-plan-de-pruebas.md) | Casillas para probar en el celular, la tablet y el portátil |
+| [20 · Pedidos por QR](docs/20-pedidos-por-qr.md) | El cliente pide desde la mesa; el personal acepta o rechaza con motivo |
 
 Los documentos 08 a 11 (datos del negocio, auditoría, migración y revisión en teléfono
 con capturas) tienen datos reales y viven en `negocio/docs/`.

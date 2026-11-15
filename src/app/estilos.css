@@ -1128,3 +1128,25 @@ html .inicio .panel-cuenta .pie-fijo {
   padding: 10px 0 6px; background: linear-gradient(to top, var(--crema) 75%, rgb(250 244 232 / 0));
 }
 .panel-vacio { margin-top: 30vh; text-align: center; }
+
+/* Pedidos de los clientes por QR (docs/20). */
+.aviso-qr { background: #1F4E8C; color: #fff; border-color: #163a69; }
+.solicitudes .solicitud { display: grid; gap: 8px; margin-bottom: 12px; }
+.solicitud header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.solicitud header strong { font-size: 1.15rem; }
+.chip.tachado { text-decoration: line-through; opacity: 0.55; }
+.solicitud input { min-height: 48px; }
+.solicitud .fila-botones .principal, .solicitud .fila-botones .peligro { min-height: 56px; flex: 1; }
+.codigos-qr .enlace-qr { color: var(--azul-comida); }
+.hoja-qr { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
+.tarjeta-qr { display: grid; justify-items: center; gap: 6px; padding: 16px; border: 3px solid var(--marron); border-radius: 18px; background: #fff; break-inside: avoid; }
+.tarjeta-qr .lugar-qr { font-size: 2rem; }
+.tarjeta-qr .llamado-qr { font-size: 1.2rem; font-weight: 800; }
+.tarjeta-qr .marca-qr { font-size: 0.9rem; color: #6b5744; }
+/* Al imprimir, solo la hoja de los QR. */
+@media print {
+  body * { visibility: hidden; }
+  .hoja-qr, .hoja-qr * { visibility: visible; }
+  .hoja-qr { position: absolute; inset: 0; grid-template-columns: repeat(2, 1fr); }
+  .franja-pruebas, .aviso, .aviso-despacho { display: none !important; }
+}

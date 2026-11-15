@@ -5,6 +5,7 @@
 import { areaDe, esArea, type Area } from "./areas";
 import { idDeudor, saldoDeudor, type Deudor } from "./deudas";
 import { CATALOGO, ESPECIALES, PRODUCTOS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "./catalogo";
+import { solicitudesVigentes, TOPE_LINEAS, TOPE_UNIDADES, type Solicitud } from "./solicitudes";
 
 export type TipoCuenta = "grupo" | "persona" | "mesa" | "cancha" | "rapida" | "domicilio";
 /** «deuda»: no entra plata; queda como deuda de alguien (docs/15). */
@@ -149,6 +150,8 @@ export interface Estado {
   jornadas?: Record<string, CierreJornada[]>;
   /** Quienes deben, con sus cargos y pagos (docs/15). */
   deudas?: Record<string, Deudor>;
+  /** Pedidos de los clientes por QR (docs/20): pendientes y resueltos de las últimas 36 h. */
+  solicitudes?: Record<string, Solicitud>;
 }
 
 /** Un cierre del día: el efectivo contado contra el esperado en ese momento. */
@@ -242,6 +245,9 @@ export type Operacion = Base &
   (
     | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha; direccion?: string }
     | { t: "apartado_entregado"; cuenta: string; ronda: string; valor: boolean }
+    | { t: "solicitud"; solicitud: Omit<Solicitud, "estado" | "resuelta"> }
+    | { t: "aceptar_solicitud"; solicitud: string; cuenta: string; aceptadas?: string[]; motivo?: string }
+    | { t: "rechazar_solicitud"; solicitud: string; motivo: string }
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean; precio?: ModoPrecio; precios?: Record<string, number> }
     | { t: "precio_ronda"; cuenta: string; ronda: string; precio: ModoPrecio; precios?: Record<string, number> }
@@ -682,6 +688,50 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       }
       return estado;
     }
+    case "solicitud": {
+      // Un pedido de un cliente por QR (lo escribe solo el servidor): queda pendiente.
+      const s = op.solicitud;
+      if (!s || typeof s.id !== "string" || !s.lugar || typeof s.lugar.token !== "string" || !Array.isArray(s.lineas)) return estado;
+      if (estado.solicitudes?.[s.id]) return estado; // reintento
+      const lineas = s.lineas.slice(0, TOPE_LINEAS).flatMap((l) => {
+        const cantidad = Math.floor(Number(l?.cantidad));
+        const precio = Math.floor(Number(l?.precio));
+        if (typeof l?.id !== "string" || typeof l.producto !== "string" || !(cantidad > 0) || cantidad > TOPE_UNIDADES || !(precio >= 0)) return [];
+        const nota = typeof l.nota === "string" ? l.nota.trim().slice(0, 60) : "";
+        return [{ id: l.id, producto: l.producto, nombre: String(l.nombre ?? "").slice(0, 40), precio, cantidad, ...(nota ? { nota } : {}) }];
+      });
+      if (!lineas.length) return estado;
+      const cliente = typeof s.cliente === "string" ? s.cliente.trim().slice(0, 40) : "";
+      const nota = typeof s.nota === "string" ? s.nota.trim().slice(0, 120) : "";
+      estado.solicitudes ??= {};
+      estado.solicitudes[s.id] = {
+        id: s.id, en: op.en, lugar: { ...s.lugar, nombre: String(s.lugar.nombre ?? "").slice(0, 40) }, lineas, estado: "pendiente",
+        ...(cliente ? { cliente } : {}), ...(nota ? { nota } : {}),
+      };
+      return estado;
+    }
+    case "aceptar_solicitud": {
+      // Aceptada (todo, o lo de `aceptadas`; lo demás no se pudo, con el motivo). La pedida
+      // en la cuenta la anota el celular aparte, con las reglas de siempre.
+      const s = estado.solicitudes?.[op.solicitud];
+      if (!s || s.estado !== "pendiente" || typeof op.cuenta !== "string") return estado;
+      const ids = new Set(s.lineas.map((l) => l.id));
+      const aceptadas = Array.isArray(op.aceptadas) ? [...new Set(op.aceptadas.filter((x) => ids.has(x)))] : [];
+      const parcial = aceptadas.length > 0 && aceptadas.length < s.lineas.length;
+      const motivo = parcial && typeof op.motivo === "string" ? op.motivo.trim().slice(0, 80) : "";
+      s.estado = "aceptada";
+      s.resuelta = { por: op.persona, en: op.en, cuenta: op.cuenta, ...(parcial ? { aceptadas } : {}), ...(motivo ? { motivo } : {}) };
+      return estado;
+    }
+    case "rechazar_solicitud": {
+      // «No se puede», con el motivo: el cliente lo ve en la página de su pedido.
+      const s = estado.solicitudes?.[op.solicitud];
+      const motivo = typeof op.motivo === "string" ? op.motivo.trim().slice(0, 80) : "";
+      if (!s || s.estado !== "pendiente" || !motivo) return estado;
+      s.estado = "rechazada";
+      s.resuelta = { por: op.persona, en: op.en, motivo };
+      return estado;
+    }
     case "apartado_entregado": {
       // Un apartado entregado (o deshacer «Entregado»).
       const r = c?.rondas.find((x) => x.id === op.ronda);
@@ -887,7 +937,8 @@ export function esVigente(c: Cuenta, ahora: number): boolean {
 export function recortar(estado: Estado, ahora: number): Estado {
   const cuentas: Record<string, Cuenta> = {};
   for (const c of Object.values(estado.cuentas)) if (esVigente(c, ahora)) cuentas[c.id] = c;
-  return { cuentas, productos: estado.productos ?? {}, orden: estado.orden, ...(estado.jornadas ? { jornadas: estado.jornadas } : {}), ...(estado.deudas ? { deudas: estado.deudas } : {}) };
+  const solicitudes = solicitudesVigentes(estado.solicitudes, ahora);
+  return { cuentas, productos: estado.productos ?? {}, orden: estado.orden, ...(estado.jornadas ? { jornadas: estado.jornadas } : {}), ...(estado.deudas ? { deudas: estado.deudas } : {}), ...(solicitudes ? { solicitudes } : {}) };
 }
 
 /** Validación ligera de forma, para lo que llega por la red. */
@@ -901,6 +952,8 @@ export function esOperacion(x: unknown): x is Operacion {
       : o.t === "orden" ? Array.isArray(o.ids)
       : o.t === "cerrar_jornada" ? typeof o.fecha === "string" && typeof o.contado === "number"
       : o.t === "deuda_cargo" || o.t === "deuda_pago" || o.t === "deuda_anular" ? typeof o.deudor === "string" && o.deudor.length <= 64
+      : o.t === "solicitud" ? typeof o.solicitud === "object" && o.solicitud !== null
+      : o.t === "rechazar_solicitud" ? typeof o.solicitud === "string"
       : typeof o.cuenta === "string" && o.cuenta.length <= 64)
   );
 }

@@ -14,7 +14,7 @@ function versionarSw(): Plugin {
     configResolved(c) { salida = c.build.outDir; },
     closeBundle() {
       const html = readFileSync(join(salida, "index.html"), "utf8");
-      const hash = /assets\/index-([\w-]+)\.js/.exec(html)?.[1];
+      const hash = /assets\/(?:index|app)-([\w-]+)\.js/.exec(html)?.[1];
       if (!hash) throw new Error("versionar-sw: no encontré el paquete en index.html");
       const sw = join(salida, "sw.js");
       const antes = readFileSync(sw, "utf8");
@@ -65,7 +65,8 @@ export default defineConfig({
   define: { __ENTORNO__: JSON.stringify(PRUEBAS ? "pruebas" : "produccion"), __VERSION__: JSON.stringify(new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 16).replace("T", " ")) },
   // NEGOCIO=ejemplo compila con el catálogo de ejemplo (pruebas de extremo a extremo).
   resolve: { alias: process.env.NEGOCIO === "ejemplo" ? { "#negocio": ejemplo } : {} },
-  build: { outDir: "dist", emptyOutDir: true },
+  // Dos páginas: la app del personal y la del cliente que pide con el QR (docs/20).
+  build: { outDir: "dist", emptyOutDir: true, rollupOptions: { input: { app: "index.html", cliente: "cliente.html" } } },
   test: {
     // Las pruebas corren siempre con el catálogo de ejemplo, nunca con el del negocio.
     alias: { "#negocio": ejemplo },

@@ -15,7 +15,7 @@
     "not_found_handling": "single-page-application",
     // La raíz pasa por el Worker para llevar a la dirección propia (DIRECCION) a quien abra
     // la app por workers.dev; lo demás de la app lo sirve Cloudflare directo.
-    "run_worker_first": ["/api/*", "/"]
+    "run_worker_first": ["/api/*", "/", "/m/*"]
   },
   "durable_objects": {
     "bindings": [{ "name": "BARRA", "class_name": "Barra" }]

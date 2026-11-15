@@ -46,7 +46,8 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
+  // La página del cliente del QR (/m/…, docs/20) no es de la app del personal: va a la red.
+  if (e.request.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/m/") || url.pathname.startsWith("/cliente")) return;
 
   // Páginas: primero la red (para recibir versiones nuevas), pero si no responde en
   // ESPERA_RED, la copia. La red sigue en segundo plano y deja lista la versión nueva.

@@ -59,6 +59,9 @@ guarda.
 |---|---|---|
 | `abrir` | `cuenta, nombre, tipo, mesa?, cancha?, direccion?` | Abre una cuenta (grupo, persona, mesa, cancha, rápida o domicilio). La mesa puede ir sin número; el domicilio guarda la dirección (opcional) |
 | `apartado_entregado` | `cuenta, ronda, valor` | Un apartado entregado (o deshacer «Entregado») |
+| `solicitud` | `solicitud` | Un pedido de un cliente por QR (lo escribe solo el servidor, persona «Cliente · Mesa 4»). Ver docs/20 |
+| `aceptar_solicitud` | `solicitud, cuenta, aceptadas?, motivo?` | El personal acepta el pedido (todo, o `aceptadas` con el motivo de lo demás); la pedida se anota aparte con `anotar` |
+| `rechazar_solicitud` | `solicitud, motivo` | «No se puede», con el motivo que ve el cliente |
 | `renombrar` | `cuenta, nombre` | Cambia el nombre |
 | `marcar_ronda` | `cuenta, ronda, adicional, precio?, precios?` | En las canchas: la pedida es un chico o un adicional. Desde el 2026-11-15 lleva `precio` (adicional: normal; chico: cancha) y el servidor escribe `precios` (`{ línea: valor }`); sin ellos (operación vieja), solo cambia el nombre |
 | `precio_ronda` | `cuenta, ronda, precio, precios?` | En las canchas: la pedida a precio normal o de cancha (docs/04 «Precio de los adicionales»). El servidor escribe `precios`. No en cuentas cobradas |

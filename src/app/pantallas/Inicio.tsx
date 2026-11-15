@@ -115,6 +115,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
               <button onClick={() => { setCambiar(false); nav.ir({ v: "productos" }); }}>Productos y precios</button>
               <button onClick={() => { setCambiar(false); nav.ir({ v: "personas" }); }}>Personas y celulares</button>
               <button onClick={() => { setCambiar(false); nav.ir({ v: "auditoria" }); }}>Auditoría</button>
+              <button onClick={() => { setCambiar(false); nav.ir({ v: "qr" }); }}>📱 Códigos QR</button>
             </>
           )}
           <button onClick={() => { setCambiar(false); nav.ir({ v: "deudas" }); }}>📒 Deudas</button>

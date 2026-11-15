@@ -18,6 +18,8 @@ import { Auditoria } from "./pantallas/Auditoria";
 import { MiPin, Personas } from "./pantallas/Personas";
 import { DeudorDetalle, Deudas } from "./pantallas/Deudas";
 import { Platos } from "./pantallas/Platos";
+import { AvisoSolicitudes, Solicitudes } from "./pantallas/Solicitudes";
+import { CodigosQR } from "./pantallas/CodigosQR";
 import { Productos } from "./pantallas/Productos";
 import { sinc } from "./sincronizacion";
 
@@ -51,6 +53,7 @@ export function App() {
       <FranjaPruebas />
       <AvisoDespacho nav={nav} />
       <AvisoRechazo />
+      <AvisoSolicitudes nav={nav} />
       {vista.v === "inicio" && <Inicio nav={nav} pestana={vista.pestana} />}
       {vista.v === "anotar" && <Anotar key={vista.despacho ? "despacho" : vista.cuenta ?? "nueva"} nav={nav} cuentaId={vista.cuenta} repetir={vista.repetir} despacho={vista.despacho} />}
       {vista.v === "cuenta" && <Detalle nav={nav} id={vista.id} />}
@@ -64,6 +67,8 @@ export function App() {
       {vista.v === "mipin" && <MiPin nav={nav} />}
       {vista.v === "dias" && <Dias nav={nav} />}
       {vista.v === "auditoria" && <Auditoria nav={nav} />}
+      {vista.v === "solicitudes" && <Solicitudes nav={nav} />}
+      {vista.v === "qr" && <CodigosQR nav={nav} />}
       <Avisos />
       <AvisoVersion />
       {atajos && <HojaAtajos cerrar={() => setAtajos(false)} />}

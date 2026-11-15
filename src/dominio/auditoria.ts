@@ -38,7 +38,7 @@ function cambioDePrecio(precios: Record<string, number> | undefined, cuenta?: Cu
 }
 
 /** La operación en una frase. `cuenta` es la cuenta como está ahora; `estado`, para cierres y productos. */
-export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas">): { texto: string; atencion: boolean } {
+export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas" | "solicitudes">): { texto: string; atencion: boolean } {
   const linea = (id: string) => cuenta?.lineas.find((l) => l.id === id);
   switch (op.t) {
     case "abrir":
@@ -103,6 +103,16 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
     case "despachar": {
       const ls = cuenta?.lineas.filter((l) => l.despachada && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];
       return { texto: `Despachó ${ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : "las bebidas"} pedidas desde comida`, atencion: false };
+    }
+    case "solicitud":
+      return { texto: `Pedido por QR de ${op.solicitud?.lugar?.nombre ?? "una mesa"}${op.solicitud?.cliente ? ` («${op.solicitud.cliente}»)` : ""}: ${(op.solicitud?.lineas ?? []).map((l) => `${l.cantidad} ${l.nombre}`).join(", ")}`, atencion: false };
+    case "aceptar_solicitud": {
+      const s = estado?.solicitudes?.[op.solicitud];
+      return { texto: `Aceptó el pedido por QR${s ? ` de ${s.lugar.nombre}` : ""}${op.aceptadas?.length && s && op.aceptadas.length < s.lineas.length ? ` en parte · lo demás: «${op.motivo ?? ""}»` : ""}`, atencion: false };
+    }
+    case "rechazar_solicitud": {
+      const s = estado?.solicitudes?.[op.solicitud];
+      return { texto: `No aceptó el pedido por QR${s ? ` de ${s.lugar.nombre}` : ""} · «${op.motivo}»`, atencion: true };
     }
     case "apartado_entregado": {
       const r = cuenta?.rondas.find((x) => x.id === op.ronda);
@@ -178,7 +188,7 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
 }
 
 /** La frase con la nota de quién la envió, si fue otra persona (lo anotado sin señal salió con otra sesión). */
-export function describirConEnvio(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas">) {
+export function describirConEnvio(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, "jornadas" | "productos" | "deudas" | "solicitudes">) {
   const d = describir(op, cuenta, estado);
   return op.enviadaPor ? { texto: `${d.texto} · la envió ${op.enviadaPor}`, atencion: true } : d;
 }

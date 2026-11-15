@@ -14,7 +14,9 @@ export type Vista =
   | { v: "personas" }
   | { v: "mipin" }
   | { v: "dias" }
-  | { v: "auditoria" };
+  | { v: "auditoria" }
+  | { v: "solicitudes" }
+  | { v: "qr" };
 
 export const INICIO: Vista = { v: "inicio", pestana: "cuentas" };
 

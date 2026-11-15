@@ -482,3 +482,28 @@ seguridad, porque la foto traía todas las deudas y los cierres de caja.
 **Costo aceptado.** Quien ve menos baja la foto completa al reconectar (pocos KB). La
 foto ya no es una sola para todos: se arma por vista (con caché por combinación de
 permisos al repartir).
+
+### ADR-18 · Una puerta pública para los pedidos por QR (2026-11-15)
+
+Hasta ahora toda la API exigía celular vinculado y sesión. Los pedidos de los clientes
+por QR (docs/20) necesitan que alguien sin cuenta pida desde su celular.
+
+**Decisión.**
+
+- Rutas `/api/publico/*` **sin sesión**, que solo aceptan el **código del lugar** (16 bytes
+  al azar, rotable) y solo ven la carta y el estado de las solicitudes de ese código.
+  Nunca cuentas, la foto ni datos internos. Con CORS abierto (para el sitio web).
+- El pedido **no toca ninguna cuenta**: el servidor escribe una operación `solicitud` en el
+  registro (persona «Cliente · Mesa 4»); el personal la acepta o la rechaza con operaciones
+  propias, y al aceptar el celular anota la pedida con las reglas de siempre. Así la regla
+  5 (una sola función de reglas) y los permisos no cambian.
+- Lugares, ritmo de pedidos y el interruptor van en tablas del Durable Object (como las
+  personas), no en el registro. El interruptor arranca **apagado**.
+- Límites en el servidor: ritmo por código, topes de líneas, unidades y valor, sin valor
+  libre, cuerpo pequeño.
+- La página del cliente es una entrada aparte de Vite (`cliente.html`, 5 KB propios; React
+  queda en un archivo compartido que la app del personal también guarda sin señal), servida
+  por el Worker en `/m/<código>`. El Service Worker del personal no la toca.
+
+**Costo aceptado.** Una superficie pública nueva: por eso el interruptor, los límites y
+que nada entre a una cuenta sin una persona del negocio.

@@ -31,6 +31,7 @@
   "packageManager": "pnpm@11.25.0",
   "dependencies": {
     "dexie": "^4.4.7",
+    "qrcode-generator": "1.4.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.7"
