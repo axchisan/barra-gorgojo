@@ -918,3 +918,46 @@ describe("permiso de administrar deudas", () => {
     expect(lista.personas.find((p) => p.id === "ana")?.permisos).toEqual(["deudas"]);
   });
 });
+
+describe("editar una pedida en el servidor", () => {
+  let s: Servidor;
+  let ana: string;
+  let admin: string;
+  beforeAll(async () => {
+    s = await arrancar();
+    ana = await s.token("Ana");
+    admin = await s.token("Administrador");
+  });
+  afterAll(() => s?.apagar());
+  type R = { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any };
+
+  it("agregar y cambiar producto fijan el precio, se rechazan con motivo y quedan en la auditoría como edición", async () => {
+    const cuenta = `edita-${Date.now()}`;
+    await s.ops(ana, [op({ t: "abrir", cuenta, nombre: "Edición", tipo: "grupo" }), op({ t: "anotar", cuenta, ronda: `${cuenta}-r`, lineas: [{ id: `${cuenta}-a`, producto: "rubia", cantidad: 2 }] })]);
+    const agregar = op({ t: "agregar", cuenta, ronda: `${cuenta}-r`, lineas: [{ id: `${cuenta}-b`, producto: "rubia", cantidad: 1, precioFijado: 1 }] });
+    const cambiar = op({ t: "cambiar_producto", cuenta, linea: `${cuenta}-a`, nueva: { id: `${cuenta}-c`, producto: "light", cantidad: 2 } });
+    const r = (await s.ops(ana, [agregar, cambiar])) as R;
+    expect(r.rechazadas ?? []).toEqual([]);
+    const c = r.estado.cuentas[cuenta];
+    // El precio que mandó el celular no cuenta: lo fija el servidor.
+    expect(c.lineas.find((l: any) => l.id === `${cuenta}-b`).precio).toBe(RUBIA);
+    expect(c.lineas.find((l: any) => l.id === `${cuenta}-c`).producto).toBe("light");
+
+    const malas = (await s.ops(ana, [
+      op({ t: "agregar", cuenta, ronda: "no-existe", lineas: [{ id: `${cuenta}-x`, producto: "rubia", cantidad: 1 }] }),
+      op({ t: "cambiar_producto", cuenta, linea: `${cuenta}-a`, nueva: { id: `${cuenta}-y`, producto: "light", cantidad: 1 } }),
+      op({ t: "cambiar_producto", cuenta, linea: `${cuenta}-b`, nueva: { id: `${cuenta}-z`, producto: "mecato", cantidad: 1 } }),
+    ])) as R;
+    expect(malas.rechazadas?.map((x) => x.motivo)).toEqual([
+      "Esa pedida ya no existe.",
+      "Ese producto ya no está en la pedida.",
+      "Para «Otro» o el mecato, anule el producto y anótelo de nuevo.",
+    ]);
+
+    const hoy = new Date(Date.now() - 10 * 3600_000).toISOString().slice(0, 10);
+    const aud = (await (await s.pedir(admin, `/api/admin/auditoria?fecha=${hoy}`)).json()) as { eventos: { texto: string; atencion: boolean; cuenta?: string }[] };
+    const textos = aud.eventos.filter((x) => x.cuenta === cuenta).map((x) => x.texto);
+    expect(textos.some((t) => /^Editó la pedida 1: agregó 1 Rubia/.test(t))).toBe(true);
+    expect(textos.some((t) => /^Editó la pedida 1: cambió 2 Rubia por Light/.test(t))).toBe(true);
+  });
+});

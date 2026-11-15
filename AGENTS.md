@@ -25,8 +25,8 @@ Antes de tocar producción, leer las «Reglas para trabajar en producción» de 
 Hechas: fases A a G (la G el 2026-11-04: producción en la base `reten-del-gorgojo-v3`,
 solo con las ventas reales), la revisión técnica de `docs/13-revision-tecnica.md`, el
 dominio propio, y del 2026-11-08 al 14: abonos y dividir entre varios, comida y áreas
-(`docs/14`), despacho con aviso sonoro, juntar cuentas, chicos y adicionales, y deudas
-(`docs/15`). **Producción tiene solo datos reales: no probar ahí**; para probar, el
+(`docs/14`), despacho con aviso sonoro, juntar cuentas, chicos y adicionales, deudas
+(`docs/15`) y, el 15, editar pedidas (agregar y cambiar producto, `docs/04`). **Producción tiene solo datos reales: no probar ahí**; para probar, el
 entorno de pruebas. **Lo siguiente está en `docs/16-siguiente-etapa.md`** (robustez,
 notificaciones push, rendimiento, pedidos por QR y NFC), con la deuda técnica conocida.
 

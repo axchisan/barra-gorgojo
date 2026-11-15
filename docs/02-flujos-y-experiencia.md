@@ -317,7 +317,10 @@ Toda pedida de cancha es un **chico** por defecto. Al agregar a una cancha, junt
 sale **Chico | Adicional** (en el teléfono, en el lugar de «Limpiar»): «Adicional» es algo
 suelto después del chivo, que no cuenta como chico. En el detalle cada pedida tiene «Es
 adicional» / «Es chico» para cambiarlo después. Se numeran aparte: Chico 1, Chico 2,
-Adicional 1. No suma toques al caso común. «Repetir» trae el último **chico**; un
+Adicional 1. No suma toques al caso común. En el detalle (2026-11-15) se distinguen de
+lejos: etiqueta de color **🎯 CHICO 5** (verde) o **＋ ADICIONAL 3** (ámbar) y el borde
+de la tarjeta del mismo color; el botón dice lo que hace: «Pasar a adicional» / «Pasar a
+chico» (antes «Es chico», que se leía como el estado y confundía). «Repetir» trae el último **chico**; un
 adicional solo si la cancha no tiene ningún chico.
 
 Una pedida con todo anulado (por «Deshacer» o a mano) no se cuenta ni se numera, y en el
@@ -344,6 +347,15 @@ pantalla no se apaga sola (Wake Lock), para que el aviso no se pierda.
 Un pedido a la barra que aún no se despacha se puede **cancelar** desde «Despachar» o
 desde la pedida en el detalle de la cuenta: anula esas bebidas, con confirmación porque
 no se deshace.
+
+### Editar una pedida (2026-11-15)
+
+En el detalle, vista Pedidas o Chicos: **«＋ Agregar»** en la cabecera de la pedida abre
+los productos (toques suman, «−» quita) y «Agregar N · $ X» los pone en esa pedida.
+Tocar un producto abre su hoja con **«⇄ Cambiar por otro producto»**: un toque en el
+nuevo y queda. Lo agregado se marca «＋», el reemplazo «⇄» y lo cambiado sale tachado
+con «→ nuevo». No toca el flujo de anotar. De paso se arregló que, al cerrarse dos hojas
+a la vez, el siguiente «←» no salía de la pantalla.
 
 ### Totales a la vista (2026-11-08)
 

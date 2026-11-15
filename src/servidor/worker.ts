@@ -4,7 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { PERSONAS } from "../dominio/catalogo";
-import { aplicar, esOperacion, esVigente, estadoVacio, jornada, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
+import { aplicar, esOperacion, esVigente, estadoVacio, jornada, pagadoPorLinea, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
 import { saldoDeudor } from "../dominio/deudas";
@@ -438,7 +438,7 @@ export class Barra extends DurableObject<Env> {
    * esconder un botón no es seguridad (docs/03 «Acceso y seguridad»).
    */
   private permiso(op: Operacion, quien: Quien, ahora: number): string | null {
-    const juntas = this.juntas(op) ?? this.deudas(op, quien);
+    const juntas = this.juntas(op) ?? this.deudas(op, quien) ?? this.ediciones(op);
     if (juntas) return juntas;
     if (quien.rol === ADMIN) {
       if (op.t === "anular_cuenta") {
@@ -450,7 +450,13 @@ export class Barra extends DurableObject<Env> {
     if (op.t === "producto" || op.t === "orden") return "Solo el administrador cambia productos y precios.";
     // Áreas (docs/14): despachar es de la barra; anotar platos, de la comida.
     if (op.t === "despachar" && !quien.areas.includes("barra")) return "Solo la barra despacha las bebidas.";
-    if (op.t === "anotar" && !quien.areas.includes("comida") && op.lineas.some((l) => productoDe(this.estado, l.producto)?.categoria === "comida")) return "Solo el área de comida anota platos.";
+    if ((op.t === "anotar" || op.t === "agregar") && !quien.areas.includes("comida") && op.lineas.some((l) => productoDe(this.estado, l.producto)?.categoria === "comida")) return "Solo el área de comida anota platos.";
+    if (op.t === "cambiar_producto") {
+      const c = this.estado.cuentas[op.cuenta];
+      const l = c?.lineas.find((x) => x.id === op.linea);
+      if (l && !puedeEditarLinea(quien.areas, l)) return "Desde comida solo se cambian los platos y las bebidas pedidas desde comida que no se han despachado.";
+      if (!quien.areas.includes("comida") && productoDe(this.estado, op.nueva?.producto)?.categoria === "comida") return "Solo el área de comida anota platos.";
+    }
     if (op.t === "anular" || op.t === "cantidad" || op.t === "comida_linea") {
       const l = this.estado.cuentas[op.cuenta]?.lineas.find((x) => x.id === op.linea);
       if (l && !puedeEditarLinea(quien.areas, l)) return "Desde comida solo se cambian los platos y las bebidas pedidas desde comida que no se han despachado.";
@@ -484,6 +490,22 @@ export class Barra extends DurableObject<Env> {
    * Juntar y separar cuentas (docs/04 «Juntar cuentas»), para todos: lo que no se puede
    * hacer se rechaza con el porqué en vez de no hacer nada en silencio (regla 8).
    */
+  /** Editar una pedida (agregar o cambiar producto): lo que no se puede, con su porqué (regla 8). */
+  private ediciones(op: Operacion): string | null {
+    if (op.t !== "agregar" && op.t !== "cambiar_producto") return null;
+    const c = this.estado.cuentas[op.cuenta];
+    if (!c || c.anulada) return "Esa cuenta ya no está abierta.";
+    if (op.t === "agregar") return c.rondas.some((r) => r.id === op.ronda) ? null : "Esa pedida ya no existe.";
+    const l = c.lineas.find((x) => x.id === op.linea);
+    if (!l || l.anulada) return "Ese producto ya no está en la pedida.";
+    if ((pagadoPorLinea(c).get(l.id) ?? 0) > 0) return `${l.nombre} ya se pagó con un abono: deshaga el abono para cambiarlo.`;
+    const p = productoDe(this.estado, op.nueva?.producto ?? "");
+    if (!p) return "Ese producto no existe.";
+    if (p.libre) return "Para «Otro» o el mecato, anule el producto y anótelo de nuevo.";
+    if (p.id === l.producto) return "Escoja un producto distinto.";
+    return null;
+  }
+
   private deudas(op: Operacion, quien: Quien): string | null {
     if (op.t === "cobrar" && op.medio === "deuda" && !(typeof op.deudor === "string" && op.deudor.trim())) return "Escriba a nombre de quién queda la deuda.";
     if ((op.t === "deuda_cargo" || op.t === "deuda_anular") && !quien.deudas) return "Anotar deudas a mano o anular movimientos de deudas necesita el permiso de administrar deudas.";
@@ -576,7 +598,7 @@ export class Barra extends DurableObject<Env> {
       const op = { ...limpia, persona: autor, ...(autor !== quien.nombre ? { enviadaPor: quien.nombre } : {}), en: Math.min(ahora, Math.max(ahora - DIA, v.op.en)) } as Operacion;
       delete op.seq;
       // El área de lo anotado o cobrado: la que diga, si la tiene hoy; si no dice, su principal.
-      if (op.t === "anotar" || op.t === "cobrar" || op.t === "cerrar_jornada") {
+      if (op.t === "anotar" || op.t === "agregar" || op.t === "cobrar" || op.t === "cerrar_jornada") {
         const pedida = (op as { area?: unknown }).area;
         if (esArea(pedida) && !quien.areas.includes(pedida)) { rechazar(op.id, op.t, crudo, `Hoy no tiene acceso a ${nombreArea(pedida).toLowerCase()}.`); continue; }
         if (op.t !== "cerrar_jornada" || esArea(pedida)) (op as { area?: Area }).area = esArea(pedida) ? pedida : quien.areas[0];
@@ -585,7 +607,8 @@ export class Barra extends DurableObject<Env> {
       const motivo = this.permiso(op, quien, ahora) ?? this.yaCobrada(op);
       if (motivo) { rechazar(op.id, op.t, crudo, motivo); continue; }
       // El precio fijado solo lo pone el servidor: lo que mande el celular se descarta.
-      if (op.t === "anotar") op.lineas = op.lineas.map(({ precioFijado: _, ...l }) => l);
+      if (op.t === "anotar" || op.t === "agregar") op.lineas = op.lineas.map(({ precioFijado: _, ...l }) => l);
+      if (op.t === "cambiar_producto" && op.nueva) { const { precioFijado: _, ...n } = op.nueva; op.nueva = n; }
       try {
         aplicar(this.estado, op);
       } catch (e) {
@@ -597,9 +620,13 @@ export class Barra extends DurableObject<Env> {
       }
       // Queda escrito el precio con que se cobró cada línea, para que recalcular el
       // registro nunca cambie lo ya anotado aunque después cambie el catálogo.
-      if (op.t === "anotar") {
+      if (op.t === "anotar" || op.t === "agregar") {
         const cobradas = new Map((this.estado.cuentas[op.cuenta]?.lineas ?? []).filter((l) => l.ronda === op.ronda).map((l) => [l.id, l.precio]));
         op.lineas = op.lineas.map((l) => (cobradas.has(l.id) ? { ...l, precioFijado: cobradas.get(l.id) } : l));
+      }
+      if (op.t === "cambiar_producto" && op.nueva) {
+        const nueva = this.estado.cuentas[op.cuenta]?.lineas.find((l) => l.id === op.nueva.id);
+        if (nueva) op.nueva = { ...op.nueva, precioFijado: nueva.precio };
       }
       // La operación y la proyección, juntas: o quedan las dos o ninguna.
       this.ctx.storage.transactionSync(() => {

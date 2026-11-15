@@ -970,3 +970,14 @@ html.apaisada-baja .segmentos.pestanas-anotar button { padding: 0 8px; }
 .barra-superior > .quien { flex-shrink: 1; min-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barra-superior > .conexion { flex-shrink: 1; min-width: 28px; overflow: hidden; white-space: nowrap; }
 .segmentos.timbres button { min-height: 52px; }
+/* Edición de una pedida (2026-11-15): agregar y cambiar producto. */
+.ronda-tarjeta .agregar-pedida { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }
+.secundario.cambiar-producto { width: 100%; min-height: 48px; }
+.elegir-productos .seccion { margin-top: 6px; }
+.elegir-productos > .principal { position: sticky; bottom: 0; }
+/* Canchas: chico o adicional, a la vista (2026-11-15). */
+.ronda-tarjeta.chico { border-left: 8px solid var(--verde); }
+.ronda-tarjeta.adicional { border-left: 8px solid var(--ambar); background: #fff8ec; }
+.tipo-ronda-etiqueta { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 1rem; letter-spacing: 0.02em; }
+.tipo-ronda-etiqueta.chico { background: var(--verde); color: #fff; }
+.tipo-ronda-etiqueta.adicional { background: var(--ambar); color: #fff; }

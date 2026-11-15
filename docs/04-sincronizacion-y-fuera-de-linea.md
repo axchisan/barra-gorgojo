@@ -268,6 +268,29 @@ Cada pago guarda su `area` (la caja); lo registrado antes cuenta como de la barr
   platos y las bebidas que pidió comida mientras no se despachen (`puedeEditarLinea`);
   lo de la barra lo ve sin tocarlo. La barra cambia todo.
 
+## Editar una pedida (2026-11-15)
+
+En el detalle (vista Pedidas o Chicos), cada pedida tiene «＋ Agregar» y cada producto,
+además de cambiar la cantidad o anularlo, «⇄ Cambiar por otro producto». Son
+operaciones nuevas, nada se borra (regla 4):
+
+- `agregar`: los productos entran en **esa** pedida (no en una nueva), marcados como
+  agregados con quién y cuándo. Precio fijado por el servidor, área, despacho y permisos
+  como en `anotar`. A una cuenta cobrada la reabre, como anotar.
+- `cambiar_producto`: el producto anterior queda anulado como «cambiado por …» y el nuevo
+  entra justo después, en la misma pedida y con la misma cantidad (y conserva el «por
+  despachar» si lo tenía).
+- La auditoría las muestra como **edición de la pedida**, resaltadas: «Editó la pedida 2:
+  cambió 2 Águila por Poker (+$ 0)», «Editó la pedida 1: agregó 1 Gaseosa».
+
+| Conflicto | Regla |
+|---|---|
+| Agregar a una pedida que ya no existe | Se rechaza: «Esa pedida ya no existe» |
+| Cambiar un producto ya anulado (otro celular) | Se rechaza: «Ese producto ya no está en la pedida» |
+| Cambiar un producto ya pagado con un abono por productos | Se rechaza: hay que deshacer el abono primero |
+| Cambiar a mecato u «Otro» (valor libre) | Se rechaza: se anula y se anota de nuevo |
+| Desde comida, cambiar algo de la barra | Se rechaza, como anular (solo lo suyo) |
+
 ## Juntar cuentas (2026-11-08)
 
 Para cobrar dos cuentas como una («Juntar con otra cuenta» en el menú ⋮ del detalle).

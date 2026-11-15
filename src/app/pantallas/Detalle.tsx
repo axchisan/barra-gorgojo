@@ -11,6 +11,7 @@ import { NoExiste } from "../componentes/NoExiste";
 import { TarjetasProducto } from "../componentes/TarjetasProducto";
 import { VistaCliente } from "../componentes/VistaCliente";
 import { CancelarPedido } from "../componentes/Despacho";
+import { ElegirProductos } from "../componentes/ElegirProductos";
 import { colorDe, iconoTipo, resumen } from "../cuentas";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { contarPaquetes, nombrePaquete, porPaquete, textoPaquetes } from "../paquetes";
@@ -27,6 +28,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   const [cliente, setCliente] = useState(false);
   const [juntar, setJuntar] = useState(false);
   const [verAnuladas, setVerAnuladas] = useState(false);
+  /** La pedida a la que se están agregando productos (edición). */
+  const [agregarA, setAgregarA] = useState<string | null>(null);
   /** El abono al que se le está poniendo quién pagó, y lo escrito. */
   const [nombrando, setNombrando] = useState<{ pago: string; texto: string } | null>(null);
   useAtrasCierra(cliente, () => setCliente(false));
@@ -102,6 +105,20 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
       )}
 
       {juntar && <HojaJuntar c={c} nav={nav} cerrar={() => setJuntar(false)} />}
+      {agregarA && (() => {
+        const r = c.rondas.find((x) => x.id === agregarA);
+        return r ? (
+          <ElegirProductos titulo={`Agregar a la ${nombreRonda(c, r).toLowerCase()}`} varios tipo={c.tipo} cerrar={() => setAgregarA(null)}
+            listo={(elegidos) => {
+              const lineas = elegidos.map((e) => ({ id: crypto.randomUUID(), producto: e.producto, cantidad: e.cantidad }));
+              sinc.emitir({ t: "agregar", cuenta: c.id, ronda: r.id, lineas, area: sinc.panel });
+              ponerAviso({
+                texto: `Agregado a la ${nombreRonda(c, r).toLowerCase()}: ${elegidos.reduce((t, e) => t + e.cantidad, 0)} producto${elegidos.length === 1 && elegidos[0].cantidad === 1 ? "" : "s"}`,
+                deshacer: () => { for (const l of lineas) sinc.emitir({ t: "anular", cuenta: c.id, linea: l.id }); },
+              });
+            }} />
+        ) : null;
+      })()}
 
       <section className="cabeza-total">
         {tipo && <span className="tipo">{tipo}</span>}
@@ -176,19 +193,25 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
         </>
       ) : (
         <>
-          {s === "abierta" && <p className="nota centrada">{sinc.tieneArea("barra") ? "Toque un producto para cambiar la cantidad o anularlo." : "Toque un plato (o una bebida que pidió comida) para cambiar la cantidad o anularlo. Lo de la barra solo se ve."}</p>}
+          {s === "abierta" && <p className="nota centrada">{sinc.tieneArea("barra") ? "Toque un producto para cambiar la cantidad, cambiarlo por otro o anularlo; «＋ Agregar» suma productos a esa pedida." : "Toque un plato (o una bebida que pidió comida) para cambiar la cantidad, cambiarlo por otro o anularlo. Lo de la barra solo se ve."}</p>}
           {/* Las pedidas anuladas del todo van plegadas al final: no estorban (siguen en la auditoría). */}
           {[...c.rondas].reverse().filter((r) => verAnuladas || rondaViva(c, r.id)).sort((a, b) => Number(rondaViva(c, b.id)) - Number(rondaViva(c, a.id))).map((r) => {
             const lineas = c.lineas.filter((l) => l.ronda === r.id);
             const sub = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.cantidad * l.precio), 0);
             const elegida = lineas.find((l) => l.id === anulando);
             return (
-              <section key={r.id} className={rondaViva(c, r.id) ? "ronda-tarjeta" : "ronda-tarjeta anulada"}>
+              <section key={r.id} className={`ronda-tarjeta${rondaViva(c, r.id) ? "" : " anulada"}${c.tipo === "cancha" ? (r.adicional ? " adicional" : " chico") : ""}`}>
                 <header>
-                  <strong>{rondaViva(c, r.id) ? nombreRonda(c, r) : "Anulada"}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
+                  {/* En las canchas, chico o adicional se ve de lejos: etiqueta de color (2026-11-15). */}
+                  {c.tipo === "cancha" && rondaViva(c, r.id)
+                    ? <strong className={`tipo-ronda-etiqueta ${r.adicional ? "adicional" : "chico"}`}>{r.adicional ? "＋" : "🎯"} {nombreRonda(c, r).toUpperCase()}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
+                    : <strong>{rondaViva(c, r.id) ? nombreRonda(c, r) : "Anulada"}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>}
+                  {s === "abierta" && rondaViva(c, r.id) && (
+                    <button className="chip agregar-pedida" aria-label={`Agregar a la ${nombreRonda(c, r).toLowerCase()}`} onClick={() => setAgregarA(r.id)}>＋ Agregar</button>
+                  )}
                   {c.tipo === "cancha" && s === "abierta" && rondaViva(c, r.id) && (
                     <button className="chip marcar-ronda" onClick={() => sinc.emitir({ t: "marcar_ronda", cuenta: c.id, ronda: r.id, adicional: !r.adicional })}>
-                      {r.adicional ? "Es chico" : "Es adicional"}
+                      {r.adicional ? "Pasar a chico" : "Pasar a adicional"}
                     </button>
                   )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
@@ -211,7 +234,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                       disabled={!!l.anulada || !puedeEditarLinea(sinc.areas, l) || (s !== "abierta" && !productoDe(sinc.visible, l.producto)?.conNombre)}
                       onClick={() => setAnulando(anulando === l.id ? null : l.id)}
                     >
-                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
+                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{l.agregada && !l.anulada ? " ＋" : ""}{l.reemplaza && !l.anulada ? " ⇄" : ""}{l.cambiada ? ` → ${c.lineas.find((x) => x.id === l.cambiada!.a)?.nombre ?? "otro"}` : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
                       {!l.anulada && l.porDespachar && <span className="marca despacho">🔔 por despachar</span>}
                     </button>
                   );

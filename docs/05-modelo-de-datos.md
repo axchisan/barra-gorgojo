@@ -63,6 +63,8 @@ guarda.
 | `separar` | `cuenta, desde` | Deshace `juntar`, si después no se cobró nada en `cuenta` |
 | `despachar` | `cuenta, lineas?` | La barra entregó bebidas pedidas desde comida (las dichas, o todas las de la cuenta) |
 | `anular` | `cuenta, linea` | Anula un producto anotado (queda tachado) |
+| `agregar` | `cuenta, ronda, lineas[], area?` | Edición de una pedida: suma productos a una pedida ya anotada (líneas con `agregada`). El servidor fija el precio como en `anotar` |
+| `cambiar_producto` | `cuenta, linea, nueva` | Edición de una pedida: un producto por otro con la misma cantidad; el anterior queda anulado con `cambiada`, el nuevo con `reemplaza`. No si ya se pagó con un abono por productos ni para valor libre |
 | `cantidad` | `cuenta, linea, cantidad` | Cambia la cantidad; guarda la anterior y quién |
 | `comida_linea` | `cuenta, linea, valor` | Marca o desmarca un producto como comida |
 | `cobrar` | `cuenta, pago, medio, recibido?, monto?, lineas?, pagador?, area?, entre?, deudor?` | Cobra el saldo (efectivo, Nequi, Breve o «comida»), o un abono: `lineas` (`{ linea, cantidad }`, qué productos paga) o `monto` (un valor). Ver 04 «Abonos» |

@@ -23,6 +23,12 @@ export interface Linea {
   comida?: boolean;
   /** Si se le cambió la cantidad después de anotarla: quién, cuándo y cuánto era. */
   editada?: { por: string; en: number; antes: number };
+  /** Agregada a una pedida ya anotada (edición): quién y cuándo. */
+  agregada?: { por: string; en: number };
+  /** Cambiada por otro producto (edición): quién, cuándo y la línea que la reemplaza. */
+  cambiada?: { por: string; en: number; a: string };
+  /** Reemplaza a otra línea de la misma pedida (la que se cambió). */
+  reemplaza?: string;
   /** Si vino en un petaco o medio petaco (puro o mixto). Todas las líneas del mismo paquete comparten `id`. */
   paquete?: Paquete;
   /** Nota del producto al anotarlo («solo carne», «más yuca»). */
@@ -191,7 +197,9 @@ export type Operacion = Base &
     | { t: "abrir"; cuenta: string; nombre: string; tipo: TipoCuenta; mesa?: number; cancha?: Cancha }
     | { t: "renombrar"; cuenta: string; nombre: string }
     | { t: "marcar_ronda"; cuenta: string; ronda: string; adicional: boolean }
-    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; detalle?: string; lineas: { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string }[] }
+    | { t: "agregar"; cuenta: string; ronda: string; area?: Area; lineas: LineaAnotada[] }
+    | { t: "cambiar_producto"; cuenta: string; linea: string; nueva: LineaAnotada }
+    | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; detalle?: string; lineas: LineaAnotada[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
@@ -211,6 +219,9 @@ export type Operacion = Base &
     | { t: "comida_linea"; cuenta: string; linea: string; valor: boolean }
     | { t: "cerrar_jornada"; fecha: string; contado: number; notas?: string; area?: Area }
   );
+
+/** Una línea como la manda el celular al anotar, agregar o cambiar producto. */
+export type LineaAnotada = { id: string; producto: string; cantidad: number; precio?: number; nombre?: string; paquete?: Paquete; comida?: boolean; precioFijado?: number; nota?: string };
 
 export const estadoVacio = (): Estado => ({ cuentas: {}, productos: {} });
 
@@ -299,6 +310,37 @@ export function efectivoDeJornada(cuentas: Iterable<Cuenta>, fecha: string, area
  */
 export function puedeEditarLinea(areas: readonly Area[], l: Linea): boolean {
   return areas.includes("barra") || !!l.comida || !!l.porDespachar;
+}
+
+/**
+ * Una línea nueva tal como queda en la cuenta, desde lo que mandó el celular. La usan
+ * anotar, agregar y cambiar producto, para que las tres fijen precio, comida, nota y
+ * despacho igual. `null` si no sirve (producto que no existe, cantidad o precio inválidos).
+ */
+function construirLinea(estado: Estado, c: Cuenta, l: LineaAnotada, ronda: string, area: Area | undefined, en: number): Linea | null {
+  const p = producto(estado, l.producto);
+  const cantidad = Math.floor(l.cantidad);
+  if (!p || !(cantidad > 0) || cantidad > 3000) return null;
+  // Precio del catálogo; solo los de valor libre traen el suyo.
+  // `precioFijado` lo escribe el servidor al recibir la operación: es el precio con que
+  // se cobró, y no cambia aunque después cambie el catálogo.
+  const precio = p.libre
+    ? Math.floor(l.precio ?? 0)
+    : typeof l.precioFijado === "number"
+      ? l.precioFijado
+      : precioPara(p, en >= PRECIO_CANCHA_DESDE ? c.tipo : undefined);
+  if (precio == null || !(precio > 0) || precio > TOPE_VALOR_LIBRE) return null;
+  const nombre = p.conNombre ? (l.nombre ?? "").trim().slice(0, 40) || p.nombre : p.nombre;
+  const pq = l.paquete;
+  const paquete = pq && typeof pq.id === "string" && (pq.tipo === "petaco" || pq.tipo === "medio")
+    ? { id: pq.id.slice(0, 64), tipo: pq.tipo, mixto: !!pq.mixto }
+    : undefined;
+  // Comida: lo escrito a mano («Otro») marcado así, o un producto de la categoría comida.
+  const comida = (p.conNombre && l.comida === true) || p.categoria === "comida";
+  const nota = typeof l.nota === "string" ? l.nota.trim().slice(0, 60) : "";
+  // Una bebida (no comida) anotada desde comida queda por despachar en la barra.
+  const despachar = area === "comida" && !comida;
+  return { id: l.id, ronda, producto: p.id, nombre, precio, cantidad, ...(paquete ? { paquete } : {}), ...(comida ? { comida } : {}), ...(nota ? { nota } : {}), ...(despachar ? { porDespachar: true as const } : {}) };
 }
 
 /** La persona que debe, por su nombre; si no existe, se crea. */
@@ -398,29 +440,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       if (!c || c.rondas.some((r) => r.id === op.ronda)) return estado;
       const nuevas: Linea[] = [];
       for (const l of op.lineas) {
-        const p = producto(estado, l.producto);
-        const cantidad = Math.floor(l.cantidad);
-        if (!p || !(cantidad > 0) || cantidad > 3000) continue;
-        // Precio del catálogo; solo los de valor libre traen el suyo.
-        // `precioFijado` lo escribe el servidor al recibir la operación: es el precio con que
-        // se cobró, y no cambia aunque después cambie el catálogo.
-        const precio = p.libre
-          ? Math.floor(l.precio ?? 0)
-          : typeof l.precioFijado === "number"
-            ? l.precioFijado
-            : precioPara(p, op.en >= PRECIO_CANCHA_DESDE ? c.tipo : undefined);
-        if (precio == null || !(precio > 0) || precio > TOPE_VALOR_LIBRE) continue;
-        const nombre = p.conNombre ? (l.nombre ?? "").trim().slice(0, 40) || p.nombre : p.nombre;
-        const pq = l.paquete;
-        const paquete = pq && typeof pq.id === "string" && (pq.tipo === "petaco" || pq.tipo === "medio")
-          ? { id: pq.id.slice(0, 64), tipo: pq.tipo, mixto: !!pq.mixto }
-          : undefined;
-        // Comida: lo escrito a mano («Otro») marcado así, o un producto de la categoría comida.
-        const comida = (p.conNombre && l.comida === true) || p.categoria === "comida";
-        const nota = typeof l.nota === "string" ? l.nota.trim().slice(0, 60) : "";
-        // Una bebida (no comida) anotada desde comida queda por despachar en la barra.
-        const despachar = op.area === "comida" && !comida;
-        nuevas.push({ id: l.id, ronda: op.ronda, producto: p.id, nombre, precio, cantidad, ...(paquete ? { paquete } : {}), ...(comida ? { comida } : {}), ...(nota ? { nota } : {}), ...(despachar ? { porDespachar: true as const } : {}) });
+        const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en);
+        if (linea) nuevas.push(linea);
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
@@ -433,6 +454,41 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         c.reabierta = true;
         c.comidaCobrada = false;
       }
+      return estado;
+    }
+    case "agregar": {
+      // Edición de una pedida (2026-11-15): productos que se suman a una pedida ya anotada.
+      // Quedan marcados como agregados (quién y cuándo); la auditoría lo muestra como edición.
+      if (!c || c.anulada || !c.rondas.some((r) => r.id === op.ronda)) return estado;
+      const nuevas: Linea[] = [];
+      for (const l of op.lineas) {
+        if (c.lineas.some((x) => x.id === l.id)) continue; // reintento
+        const linea = construirLinea(estado, c, l, op.ronda, op.area, op.en);
+        if (linea) nuevas.push({ ...linea, agregada: { por: op.persona, en: op.en } });
+      }
+      if (!nuevas.length) return estado;
+      const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida";
+      c.lineas.push(...nuevas);
+      c.ultima = op.en;
+      if (estabaCerrada) { c.reabierta = true; c.comidaCobrada = false; }
+      return estado;
+    }
+    case "cambiar_producto": {
+      // Edición de una pedida: un producto por otro, con la misma cantidad. El anterior queda
+      // anulado como «cambiado por …» y el nuevo entra en la misma pedida, justo después.
+      const vieja = c?.lineas.find((x) => x.id === op.linea);
+      if (!c || !vieja || vieja.anulada || !op.nueva || c.lineas.some((x) => x.id === op.nueva.id)) return estado;
+      if ((pagadoPorLinea(c).get(vieja.id) ?? 0) > 0) return estado; // ya pagada con un abono por productos
+      const nueva = construirLinea(estado, c, { ...op.nueva, cantidad: vieja.cantidad }, vieja.ronda, vieja.porDespachar ? "comida" : undefined, op.en);
+      if (!nueva || nueva.producto === vieja.producto) return estado;
+      const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida";
+      vieja.anulada = { por: op.persona, en: op.en };
+      vieja.cambiada = { por: op.persona, en: op.en, a: nueva.id };
+      const reemplazo: Linea = { ...nueva, ...(vieja.paquete ? { paquete: vieja.paquete } : {}), reemplaza: vieja.id };
+      if (!vieja.porDespachar) delete reemplazo.porDespachar;
+      c.lineas.splice(c.lineas.indexOf(vieja) + 1, 0, reemplazo);
+      c.ultima = op.en;
+      if (estabaCerrada && saldo(c) > 0) { c.reabierta = true; c.comidaCobrada = false; }
       return estado;
     }
     case "anular": {

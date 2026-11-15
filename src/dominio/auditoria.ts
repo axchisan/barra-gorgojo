@@ -4,7 +4,7 @@
 // valores que la operación sola no trae.
 
 import type { Cuenta, Estado, Operacion } from "./estado";
-import { nombreCancha, pesos } from "./formato";
+import { nombreCancha, nombreRonda, pesos } from "./formato";
 
 export interface Evento {
   seq: number;
@@ -41,6 +41,26 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const valor = ls.reduce((s, l) => s + l.precio * (op.lineas.find((x) => x.id === l.id)?.cantidad ?? l.cantidad), 0);
       const detalle = cuenta?.rondas.find((r) => r.id === op.ronda)?.detalle;
       return { texto: `Anotó ${partes.join(", ")} · ${pesos(valor)}${op.area === "comida" ? " · desde comida" : ""}${detalle ? ` · «${detalle}»` : ""}`, atencion: false };
+    }
+    case "agregar": {
+      // Edición de una pedida: productos sumados después.
+      const r = cuenta?.rondas.find((x) => x.id === op.ronda);
+      const ls = cuenta?.lineas.filter((l) => op.lineas.some((x) => x.id === l.id)) ?? [];
+      const que = ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : `${op.lineas.length} producto${op.lineas.length === 1 ? "" : "s"}`;
+      const valor = ls.reduce((t, l) => t + l.precio * l.cantidad, 0);
+      return { texto: `Editó ${r && cuenta ? `la ${nombreRonda(cuenta, r).toLowerCase()}` : "una pedida"}: agregó ${que}${valor ? ` · ${pesos(valor)}` : ""}`, atencion: true };
+    }
+    case "cambiar_producto": {
+      // Edición de una pedida: un producto por otro.
+      const vieja = linea(op.linea);
+      const nueva = linea(op.nueva?.id ?? "");
+      const r = vieja && cuenta?.rondas.find((x) => x.id === vieja.ronda);
+      const donde = r && cuenta ? `la ${nombreRonda(cuenta, r).toLowerCase()}` : "una pedida";
+      const diferencia = vieja && nueva ? (nueva.precio - vieja.precio) * vieja.cantidad : 0;
+      return {
+        texto: `Editó ${donde}: cambió ${vieja ? `${vieja.cantidad} ${vieja.nombre}` : "un producto"} por ${nueva ? nueva.nombre : "otro"}${diferencia ? ` (${diferencia > 0 ? "+" : "−"}${pesos(Math.abs(diferencia))})` : ""}`,
+        atencion: true,
+      };
     }
     case "anular": {
       const l = linea(op.linea);

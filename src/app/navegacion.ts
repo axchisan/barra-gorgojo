@@ -28,6 +28,24 @@ export function useNavegacion() {
   }, []);
   const profundidad = (): number => history.state?.d ?? 0;
   const ir = (v: Vista, reemplazar = false) => {
+    if (reemplazar && history.state?.capa && abiertas.length) {
+      // Reemplazar la pantalla desde una hoja abierta: primero se quitan las entradas de las
+      // hojas (si no, «atrás» volvería a la pantalla que se quiso reemplazar).
+      const k = abiertas.length;
+      abiertas.length = 0;
+      porQuitar.clear();
+      ignorarAtras++;
+      const alLlegar = () => {
+        window.removeEventListener("popstate", alLlegar);
+        history.replaceState({ vista: v, d: profundidad() }, "");
+        setVista(v);
+      };
+      window.addEventListener("popstate", alLlegar);
+      history.go(-k);
+      setVista(v);
+      window.scrollTo(0, 0);
+      return;
+    }
     if (reemplazar) history.replaceState({ vista: v, d: profundidad() }, "");
     // Desde una hoja o un menú abierto (ver useAtrasCierra), la pantalla nueva ocupa su lugar.
     else if (history.state?.capa) history.replaceState({ vista: v, d: profundidad() + 1 }, "");
@@ -64,22 +82,55 @@ if (typeof window !== "undefined") {
   });
 }
 
+// Capas abiertas, en el orden de sus entradas del historial. Si varias se cierran a la vez
+// desde la pantalla (una hoja dentro de otra), sus entradas se quitan juntas, con un solo
+// «atrás»: antes quedaba una de sobra y el siguiente «←» no salía de la pantalla.
+const abiertas: number[] = [];
+const porQuitar = new Set<number>();
+let quitandoProgramado = false;
+function quitarCerradas() {
+  quitandoProgramado = false;
+  let k = 0;
+  while (abiertas.length && porQuitar.has(abiertas[abiertas.length - 1])) {
+    porQuitar.delete(abiertas.pop()!);
+    k++;
+  }
+  if (k) { ignorarAtras++; history.go(-k); }
+}
+
 export function useAtrasCierra(abierta: boolean, cerrar: () => void) {
   const cerrarRef = useRef(cerrar);
   cerrarRef.current = cerrar;
   useEffect(() => {
     if (!abierta) return;
     const capa = ++ultimaCapa;
-    history.pushState({ ...history.state, capa }, "");
+    const arriba = abiertas[abiertas.length - 1];
+    if (arriba !== undefined && porQuitar.has(arriba) && history.state?.capa === arriba) {
+      // Se abre justo cuando otra se cierra (el menú da paso a una hoja): usa su entrada.
+      porQuitar.delete(arriba);
+      abiertas[abiertas.length - 1] = capa;
+      history.replaceState({ ...history.state, capa }, "");
+    } else {
+      history.pushState({ ...history.state, capa }, "");
+      abiertas.push(capa);
+    }
     const alVolver = () => {
       if (ignorandoAhora) return;
-      if (history.state?.capa !== capa) cerrarRef.current();
+      if ((history.state?.capa ?? 0) < capa) cerrarRef.current();
     };
     window.addEventListener("popstate", alVolver);
     return () => {
       window.removeEventListener("popstate", alVolver);
-      // Cerrada desde la pantalla: se quita su entrada del historial, si sigue arriba.
-      if (history.state?.capa === capa) { ignorarAtras++; history.back(); }
+      if ((history.state?.capa ?? 0) >= capa) {
+        // Cerrada desde la pantalla: su entrada sigue en el historial y se quita (junto con
+        // las que se cierren en el mismo momento).
+        porQuitar.add(capa);
+        if (!quitandoProgramado) { quitandoProgramado = true; queueMicrotask(quitarCerradas); }
+      } else {
+        // Cerrada con «atrás»: su entrada ya no está.
+        const i = abiertas.indexOf(capa);
+        if (i >= 0) abiertas.splice(i, 1);
+      }
     };
   }, [abierta]);
 }

@@ -6,6 +6,7 @@ import { useAtrasCierra } from "../navegacion";
 import { nombrePaquete } from "../paquetes";
 import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
+import { ElegirProductos } from "./ElegirProductos";
 
 /**
  * Cambiar la cantidad de un producto ya anotado, o anularlo. Es una hoja, como «Otro»:
@@ -13,6 +14,7 @@ import { vibrar } from "../vibrar";
  */
 export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Linea; cerrar: () => void; soloEtiqueta?: boolean }) {
   const [n, setN] = useState(l.cantidad);
+  const [cambiar, setCambiar] = useState(false);
   useAtrasCierra(true, cerrar);
   return (
     <div className="hoja" onClick={cerrar}>
@@ -41,6 +43,20 @@ export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Line
         </span>
         <button aria-label="Uno más" onClick={() => { vibrar(); setN((x) => x + 1); }}>+</button>
       </div>
+      {/* Edición de la pedida: cambiar este producto por otro, con la misma cantidad. */}
+      {!productoDe(sinc.visible, l.producto)?.libre && (
+        <button className="secundario cambiar-producto" onClick={() => setCambiar(true)}>⇄ Cambiar por otro producto</button>
+      )}
+      {cambiar && (
+        <ElegirProductos titulo={`Cambiar ${l.cantidad} ${l.nombre} por…`} varios={false} tipo={c.tipo} sinProducto={l.producto}
+          cerrar={() => setCambiar(false)}
+          listo={([e]) => {
+            const nombre = productoDe(sinc.visible, e.producto)?.nombre ?? "otro";
+            sinc.emitir({ t: "cambiar_producto", cuenta: c.id, linea: l.id, nueva: { id: crypto.randomUUID(), producto: e.producto, cantidad: l.cantidad } });
+            ponerAviso({ texto: `Cambiado: ${l.cantidad} ${l.nombre} → ${nombre}` });
+            cerrar();
+          }} />
+      )}
       <div className="fila-botones">
         <button className="secundario" onClick={cerrar}>Cancelar</button>
         <button className="peligro" onClick={() => { sinc.emitir({ t: "anular", cuenta: c.id, linea: l.id }); cerrar(); }}>Anular</button>

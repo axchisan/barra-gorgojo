@@ -1,4 +1,4 @@
-# 16 · Estado al 2026-11-14 y siguiente etapa
+# 16 · Estado al 2026-11-15 y siguiente etapa
 
 Punto de partida para la próxima sesión de trabajo. Resume qué hay en producción, qué
 deuda técnica quedó, y plantea la siguiente etapa: **pedidos de los clientes por QR y
@@ -19,6 +19,7 @@ Todo esto corre en producción, probado (Vitest y Playwright) y documentado:
 | Despacho | Bebidas pedidas desde comida y **pedido rápido a la barra** con detalles; aviso con timbre configurable (insistente hasta despachar), pantalla despierta, cancelar pedido | 02, 14 |
 | Juntar cuentas | Sumar una cuenta a otra (con sus abonos), separar; a una cancha llega como adicional | 04 «Juntar cuentas» |
 | Canchas | Chico o adicional al anotar y después; repetir trae el último chico | 02 |
+| Editar pedidas | Agregar productos a una pedida ya anotada y cambiar un producto por otro, como edición en la auditoría (2026-11-15) | 04 «Editar una pedida» |
 | Deudas | Pasar a deuda (todo, pedidas o valor); deudas a mano; pagos aparte de la caja; detalle completo de lo fiado; permiso «Administra deudas» | 15, ADR-16 |
 | Pantalla | Ocultar lo del otro panel; pestañas Comida/Bebidas; totales a la vista; pedidas anuladas plegadas; todo a la vista en celular, celular girado y tablet | 02 |
 
