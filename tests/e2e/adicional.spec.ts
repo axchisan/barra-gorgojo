@@ -17,7 +17,7 @@ test("en la cancha se anota un adicional sin que cuente como chico", async ({ br
   const anotar = p.locator(".pie-fijo .principal");
   await expect(anotar).toContainText("Anotar adicional");
   for (const b of [p.getByRole("button", { name: "Chico", exact: true }), p.getByRole("button", { name: "Adicional", exact: true }), anotar]) await expect(b).toBeInViewport({ ratio: 1 });
-  await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/adicional.png" });
+  await p.screenshot({ path: "test-results/capturas/adicional.png" });
   await anotar.click(); // vuelve al detalle de la cuenta
   await expect(p.locator(".cabeza-total .meta")).toContainText("1 chico · 1 adicional");
   await p.getByRole("button", { name: "Chicos" }).click();
@@ -25,7 +25,7 @@ test("en la cancha se anota un adicional sin que cuente como chico", async ({ br
   // Se distinguen de lejos: etiqueta de color y borde.
   await expect(p.locator(".ronda-tarjeta.adicional .tipo-ronda-etiqueta.adicional")).toContainText("ADICIONAL 1");
   await expect(p.locator(".ronda-tarjeta.chico .tipo-ronda-etiqueta.chico")).toContainText("CHICO 1");
-  await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/chico-adicional.png" });
+  await p.screenshot({ path: "test-results/capturas/chico-adicional.png" });
   // «Repetir» trae el chico, no el adicional.
   await p.getByRole("button", { name: "＋ Chico" }).click();
   await expect(p.locator(".repetir")).toContainText("Repetir chico: 2 Rubia");

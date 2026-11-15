@@ -2,6 +2,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Avisos } from "./avisos";
 import { AvisoDespacho } from "./componentes/Despacho";
+import { AvisoVersion } from "./componentes/AvisoVersion";
 import { useNavegacion } from "./navegacion";
 import { Anotar } from "./pantallas/Anotar";
 import { Cobrar } from "./pantallas/Cobrar";
@@ -47,6 +48,7 @@ export function App() {
       {vista.v === "dias" && <Dias nav={nav} />}
       {vista.v === "auditoria" && <Auditoria nav={nav} />}
       <Avisos />
+      <AvisoVersion />
     </>
   );
 }

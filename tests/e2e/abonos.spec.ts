@@ -145,7 +145,7 @@ test("dividir entre 7 cuando ya abonaron 2: cada uno paga lo mismo y la divisió
   expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const parte = Math.ceil(falta / 5 / 100) * 100;
   await expect(boton).toHaveText(new RegExp(`Abonar .*${parte.toLocaleString("es-CO")}`));
-  await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/dividir.png" });
+  await p.screenshot({ path: "test-results/capturas/dividir.png" });
   await boton.click();
   await expect(p.locator(".aviso")).toContainText("abono");
   // Que el abono ya esté en el servidor antes de recargar (así lo trae de vuelta).

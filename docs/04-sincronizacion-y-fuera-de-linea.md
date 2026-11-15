@@ -83,13 +83,24 @@ sigue con `localStorage`. Pruebas: `tests/e2e/memoria.spec.ts`.
 ### Escribir
 
 1. El toque produce la operación.
-2. Se guarda en «pendientes» **en una transacción de IndexedDB**, y a la vez la pantalla
+2. Se escribe **al instante y de forma síncrona** en un respaldo en `localStorage`
+   (`barra.respaldo-pendientes`, desde el 2026-11-15).
+3. Se guarda en «pendientes» **en una transacción de IndexedDB**, y a la vez la pantalla
    se actualiza (no se espera a IndexedDB: tarda milisegundos, pero la interfaz no
-   espera nada).
-3. Cuando quedó guardada, si hay conexión, se envía.
+   espera nada). Cuando IndexedDB la tiene, sale del respaldo.
+4. Cuando quedó guardada, si hay conexión, se envía.
 
-Si la app se cierra entre 2 y 4, la operación ya está guardada y sale en la próxima
-apertura.
+Si la app muere entre 2 y 3 (el sistema la cierra, IndexedDB falla o está bloqueada), al
+abrir se recupera del respaldo lo que no esté en «pendientes» (deuda 1 de docs/16, regla
+3). Reenviar algo ya confirmado no duplica nada: el servidor es idempotente por `id`. Lo
+confirmado o rechazado también sale del respaldo, y al cambiar de base se vacía (lo
+pendiente se aparta, no se revive en la otra base). Prueba: `tests/e2e/recarga.spec.ts`.
+
+**Versión nueva.** El Service Worker nuevo se activa solo, pero la pestaña sigue con el
+código viejo hasta recargar. La app revisa cada 30 minutos y al volver a ella; si hay
+versión nueva muestra «🔄 Versión nueva lista · Actualizar» y se actualiza con un toque,
+nunca a la fuerza (`src/app/version.ts`). Sin prueba automática: el Service Worker no se
+registra en `localhost`, donde corren las e2e; se revisa en los aparatos.
 
 ### Varias pestañas
 

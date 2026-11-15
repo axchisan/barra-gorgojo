@@ -165,7 +165,7 @@ for (const [nombre, width, height] of [["tablet girada", 1097, 654], ["celular",
     await boton.click();
     await expect(p.locator(".tarjetas .tarjeta", { hasText: soloPlato })).toHaveCount(0);
     await expect(p.locator(".tarjetas .tarjeta", { hasText: conBebida })).toBeVisible();
-    await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/ocultar-" + nombre.replace(" ", "-") + ".png" });
+    await p.screenshot({ path: "test-results/capturas/ocultar-" + nombre.replace(" ", "-") + ".png" });
     // Se recuerda al volver a abrir la app.
     await p.reload();
     await expect(p.locator(".tarjetas .tarjeta", { hasText: soloPlato })).toHaveCount(0);

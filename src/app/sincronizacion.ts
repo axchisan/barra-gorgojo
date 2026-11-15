@@ -35,6 +35,19 @@ interface Cambios {
 }
 
 const CANDADO = "barra-gorgojo-conexion";
+/**
+ * Respaldo síncrono de lo recién anotado (deuda 1 de docs/16, regla 3): cada operación se
+ * escribe aquí al instante, antes de la escritura (asíncrona) en IndexedDB, y se quita
+ * cuando IndexedDB la tiene. Si la app muere en ese rato, al abrir se recupera. No empieza
+ * por «bg.» para no confundirse con las llaves de la versión 0.1.
+ */
+const RESPALDO = "barra.respaldo-pendientes";
+function leerRespaldo(): Operacion[] {
+  try { const v = JSON.parse(localStorage.getItem(RESPALDO) ?? "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function escribirRespaldo(ops: Operacion[]) {
+  try { if (ops.length) localStorage.setItem(RESPALDO, JSON.stringify(ops)); else localStorage.removeItem(RESPALDO); } catch { /* sin almacenamiento */ }
+}
 /** Versión de esta compilación; en pruebas unitarias (sin Vite) no existe. */
 const VERSION = typeof __VERSION__ === "string" ? __VERSION__ : "desarrollo";
 const CANAL = "barra-gorgojo";
@@ -103,6 +116,7 @@ class Sincronizador {
     this.memoria = await abrirMemoria();
     this.memoriaTipo = this.memoria.tipo;
     this.tomar(await this.memoria.cargar(), true);
+    this.recuperarRespaldo();
     this.listo = true;
     this.recalcular();
     if (typeof BroadcastChannel !== "undefined") {
@@ -116,6 +130,23 @@ class Sincronizador {
     });
     setInterval(() => this.vigilar(), 5000);
     this.pedirCandado();
+  }
+
+  /**
+   * Lo que quedó en el respaldo síncrono y no está en la cola (la app murió antes de que
+   * IndexedDB lo escribiera) vuelve a la cola. Lo que ya estaba, solo sale del respaldo.
+   * Reenviar algo ya confirmado no duplica nada: el servidor es idempotente por id.
+   */
+  private recuperarRespaldo() {
+    const respaldo = leerRespaldo();
+    if (!respaldo.length) return;
+    const ids = new Set(this.pendientes.map((op) => op.id));
+    const faltan = respaldo.filter((op) => !ids.has(op.id));
+    escribirRespaldo(faltan);
+    if (!faltan.length) return;
+    console.warn(`Recuperadas ${faltan.length} anotaciones del respaldo síncrono.`);
+    this.pendientes.push(...faltan);
+    void this.guardar({ agregar: faltan });
   }
 
   /** Solo una pestaña por celular mantiene la conexión; si se cierra, la toma otra. */
@@ -165,8 +196,10 @@ class Sincronizador {
     const hecho = this.cola.then(async () => {
       try {
         await this.memoria?.escribir(c);
+        // Ya está en IndexedDB: sale del respaldo síncrono.
+        if (agregados.length) escribirRespaldo(leerRespaldo().filter((op) => !agregados.includes(op.id)));
         this.avisarPestanas({ tipo: "cambio" });
-      } catch { /* memoria llena o bloqueada: seguimos en memoria de la pestaña */ }
+      } catch { /* memoria llena o bloqueada: seguimos en memoria de la pestaña (y en el respaldo) */ }
       for (const id of agregados) this.porGuardar.delete(id);
       for (const id of quitados) this.porQuitar.delete(id);
       for (const k of claves) this.ajustesPorGuardar.set(k, (this.ajustesPorGuardar.get(k) ?? 1) - 1);
@@ -403,6 +436,8 @@ class Sincronizador {
     if ((nueva.t === "anotar" || nueva.t === "cobrar") && !nueva.area) nueva = { ...nueva, area: this.panel };
     const op = { ...nueva, id: crypto.randomUUID(), persona: this.sesion?.persona ?? "?", en: Date.now(), ...(this.sesion ? { firma: this.sesion.token } : {}) } as Operacion;
     this.pendientes.push(op);
+    // Primero el respaldo síncrono: si la app muere antes de que IndexedDB escriba, no se pierde.
+    escribirRespaldo([...leerRespaldo().filter((x) => x.id !== op.id), op]);
     this.recalcular(); // se ve al instante
     // Se guarda ya; se envía cuando quedó guardada (o lo envía la pestaña con la conexión).
     void this.guardar({ agregar: [op] }).then(() => this.enviar());
@@ -423,6 +458,9 @@ class Sincronizador {
   private quitarPendientes(ids: Iterable<string>) {
     const fuera = new Set(ids);
     const quitados = this.pendientes.filter((p) => fuera.has(p.id)).map((p) => p.id);
+    // Confirmadas o rechazadas: tampoco van en el respaldo síncrono.
+    const respaldo = leerRespaldo();
+    if (respaldo.some((op) => fuera.has(op.id))) escribirRespaldo(respaldo.filter((op) => !fuera.has(op.id)));
     if (!quitados.length) return false;
     this.pendientes = this.pendientes.filter((p) => !fuera.has(p.id));
     void this.guardar({ quitar: quitados });
@@ -437,6 +475,8 @@ class Sincronizador {
   private cambiarDeBase(base: string) {
     if (base === this.base) return;
     const ajustes: Partial<Ajustes> = { confirmado: { estado: estadoVacio(), seq: 0 }, base };
+    // Lo pendiente se aparta: el respaldo síncrono no debe revivirlo en la otra base.
+    escribirRespaldo([]);
     if (this.pendientes.length) {
       this.apartados = [...this.apartados, ...this.pendientes.map((op) => ({ ...op, base: this.base }))];
       ajustes.apartados = this.apartados;

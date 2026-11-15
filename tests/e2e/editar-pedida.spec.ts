@@ -32,7 +32,7 @@ test("en el detalle se agrega a una pedida y se cambia un producto por otro; la 
   await expect(p.locator(".aviso")).toContainText("Cambiado: 2 Rubia → Light");
   await expect(pedida.locator(".ficha.anulada", { hasText: "Rubia" })).toContainText("→ Light");
   await expect(pedida.locator(".ficha:not(.anulada)", { hasText: "Light" })).toContainText("2");
-  await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/editar-pedida.png" });
+  await p.screenshot({ path: "test-results/capturas/editar-pedida.png" });
 
   // Auditoría: dos ediciones de la pedida 1.
   await p.getByRole("button", { name: "Volver" }).click();

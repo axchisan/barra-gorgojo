@@ -33,7 +33,8 @@ Pruebas al 2026-11-15: **174 de Vitest** (dominio y Worker real) y **66 de Playw
 
 Lo que conviene saber antes de tocar el código. En orden de importancia.
 
-1. **Una operación recién emitida puede perderse si la app se recarga en el mismo
+1. ✅ *Resuelto el 2026-11-15 con un respaldo síncrono (docs/04 «Escribir»).*
+   **Una operación recién emitida puede perderse si la app se recarga en el mismo
    instante.** `sinc.emitir` la muestra y la guarda en IndexedDB de forma asíncrona; si la
    página se recarga antes de que termine la escritura (milisegundos), no queda. En el
    uso normal no pasa (nadie recarga tan rápido), pero choca con la regla 3. Arreglo

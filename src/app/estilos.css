@@ -1049,3 +1049,10 @@ html.apaisada .anotar .precio-ronda-anotar { position: static; width: 100%; }
 body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 .producto { touch-action: manipulation; }
+
+/* Versión nueva lista (docs/18 fase 3): pastilla bajo la cabecera; no tapa los botones del pie. */
+.aviso-version {
+  position: fixed; left: 50%; top: calc(66px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 30;
+  min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 2px solid var(--marron);
+  background: var(--amarillo); color: var(--marron); font-weight: 800; box-shadow: 0 3px 10px rgb(0 0 0 / 0.25); white-space: nowrap;
+}

@@ -21,7 +21,7 @@ test("una cuenta pasa a deuda, queda en el panel de deudas y se recibe un pago a
   await expect(boton).toBeDisabled(); // falta el nombre
   await p.getByLabel("A nombre de quién queda la deuda").fill("Pedro Prueba");
   await p.keyboard.press("Enter");
-  await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/a-deuda.png" });
+  await p.screenshot({ path: "test-results/capturas/a-deuda.png" });
   await boton.click();
   await expect(p.locator(".aviso")).toContainText(`${nombre}: pasada a deuda de Pedro Prueba`);
   await expect(p.locator(".tarjetas .tarjeta", { hasText: nombre })).toHaveCount(0);
@@ -45,7 +45,7 @@ test("una cuenta pasa a deuda, queda en el panel de deudas y se recibe un pago a
   await p.locator(".hoja .principal").click();
   await expect(p.locator(".aviso")).toContainText(new RegExp(`debe \\$\\s${(total - mitad).toLocaleString("es-CO").replace(".", "\\.")}`));
   await expect(p.locator(".cabeza-total .total")).toHaveText(new RegExp((total - mitad).toLocaleString("es-CO")));
-  await p.screenshot({ path: "/private/tmp/claude-501/-Users-mac-Documents-Dev-Apps-BarraGorgojo/90703138-0f5a-4f3a-93cd-6ca24f4f1d93/scratchpad/deudor.png" });
+  await p.screenshot({ path: "test-results/capturas/deudor.png" });
 
   // El día: lo fiado cuenta como venta de hoy; el pago va aparte de la caja.
   await p.goBack(); await p.goBack();

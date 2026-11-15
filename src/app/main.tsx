@@ -4,6 +4,7 @@ import { App } from "./App";
 import "./estilos.css";
 import { vigilarNombres } from "./ajustarNombres";
 import { vigilarForma, vigilarTeclado } from "./teclado";
+import { vigilarVersion } from "./version";
 
 vigilarTeclado();
 vigilarForma();
@@ -15,9 +16,7 @@ createRoot(document.getElementById("raiz")!).render(
   </StrictMode>,
 );
 
-if ("serviceWorker" in navigator && location.hostname !== "localhost") {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
-}
+vigilarVersion();
 // Pide al navegador que no borre los datos del celular por falta de espacio.
 navigator.storage?.persist?.().catch(() => {});
 

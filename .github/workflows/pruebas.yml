@@ -1,0 +1,38 @@
+# Integración continua (docs/18 fase 3, deuda de docs/16 §3.4): en cada push y pull request,
+# con el catálogo de ejemplo (negocio/ es privado y no está en el repositorio).
+# Lo mismo que «Antes de dar algo por terminado» de AGENTS.md: build, verificar y e2e.
+name: Pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      # postinstall corre `pnpm preparar`: sin negocio/, copia el catálogo de ejemplo.
+      - run: pnpm install --frozen-lockfile
+      # Las pruebas del Worker necesitan dist/ (wrangler exige assets.directory): deuda 4 de docs/16.
+      - run: pnpm build
+      - run: pnpm verificar
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright
+          path: test-results/
+          retention-days: 7
