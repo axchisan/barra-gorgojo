@@ -392,7 +392,8 @@ function construirLinea(estado: Estado, c: Cuenta, l: LineaAnotada, ronda: strin
     : undefined;
   // Comida: lo escrito a mano («Otro») marcado así, o un producto de la categoría comida.
   const comida = (p.conNombre && l.comida === true) || p.categoria === "comida";
-  const nota = typeof l.nota === "string" ? l.nota.trim().slice(0, 60) : "";
+  // Hasta 120 letras desde el 2026-11-15 (antes 60: lo viejo ya venía recortado, da lo mismo).
+  const nota = typeof l.nota === "string" ? l.nota.trim().slice(0, 120) : "";
   // Una bebida (no comida) anotada desde comida queda por despachar en la barra.
   const despachar = area === "comida" && !comida;
   return { id: l.id, ronda, producto: p.id, nombre, precio, cantidad, ...(paquete ? { paquete } : {}), ...(comida ? { comida } : {}), ...(nota ? { nota } : {}), ...(despachar ? { porDespachar: true as const } : {}) };
@@ -557,7 +558,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       }
       if (nuevas.length === 0) return estado;
       const estabaCerrada = situacion(c) === "cobrada" || situacion(c) === "comida" || situacion(c) === "juntada";
-      const detalle = typeof op.detalle === "string" ? op.detalle.trim().slice(0, 80) : "";
+      // La nota de la pedida («📝 Nota larga» de comida, detalles del pedido a la barra): hasta 300 letras.
+      const detalle = typeof op.detalle === "string" ? op.detalle.trim().slice(0, 300) : "";
       // Apartado para más tarde: con hora si la dijeron (dentro de los dos días siguientes).
       const para = Number(op.apartado?.para);
       const apartado = op.apartado && typeof op.apartado === "object"

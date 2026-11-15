@@ -1150,3 +1150,9 @@ html .inicio .panel-cuenta .pie-fijo {
   .hoja-qr { position: absolute; inset: 0; grid-template-columns: repeat(2, 1fr); }
   .franja-pruebas, .aviso, .aviso-despacho { display: none !important; }
 }
+
+/* Notas de comida (2026-11-15): nota larga de la pedida. */
+.producto.nota-larga { border-style: dashed; border-color: var(--azul-comida); color: var(--azul-comida); }
+.producto.nota-larga.con { background: #e6f1f4; border-style: solid; }
+.nota-larga-vista { display: block; width: 100%; text-align: left; margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--azul-comida); background: #e6f1f4; font: inherit; font-weight: 600; white-space: pre-wrap; }
+.hoja-nota-larga textarea { width: 100%; min-height: 120px; font: inherit; font-size: 1.05rem; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--neutro-200); resize: vertical; }

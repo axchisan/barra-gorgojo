@@ -24,7 +24,7 @@ const linea = z.object({
   cantidad: numero,
   precio: opcional(numero),
   nombre: opcional(texto(200)),
-  nota: opcional(texto(120)),
+  nota: opcional(texto(200)),
   paquete: opcional(z.object({ id, tipo: z.enum(["petaco", "medio"]), mixto: z.boolean().optional() })),
   comida: opcional(z.boolean()),
   precioFijado: z.unknown().optional(), // lo escribe solo el servidor: se descarta después
@@ -58,7 +58,7 @@ const operacion = z.discriminatedUnion("t", [
   z.object({ ...comun, t: z.literal("aceptar_solicitud"), solicitud: id, cuenta: id, aceptadas: opcional(z.array(id).max(30)), motivo: opcional(texto(200)) }),
   z.object({ ...comun, t: z.literal("rechazar_solicitud"), solicitud: id, motivo: texto(200) }),
   z.object({ ...comun, t: z.literal("renombrar"), cuenta: id, nombre: texto(200) }),
-  z.object({ ...comun, t: z.literal("anotar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), adicional: opcional(z.boolean()), precio: opcional(modo), apartado: opcional(z.object({ para: opcional(numero) })), sinDespacho: opcional(z.boolean()), detalle: opcional(z.string().max(200)), lineas: z.array(linea).min(1).max(300) }),
+  z.object({ ...comun, t: z.literal("anotar"), cuenta: id, ronda: id, area: opcional(z.enum(["barra", "comida"])), adicional: opcional(z.boolean()), precio: opcional(modo), apartado: opcional(z.object({ para: opcional(numero) })), sinDespacho: opcional(z.boolean()), detalle: opcional(z.string().max(400)), lineas: z.array(linea).min(1).max(300) }),
   z.object({ ...comun, t: z.literal("despachar"), cuenta: id, lineas: opcional(z.array(id).max(300)) }),
   z.object({ ...comun, t: z.literal("rechazar_despacho"), cuenta: id, lineas: opcional(z.array(id).max(300)), motivo: texto(200) }),
   z.object({ ...comun, t: z.literal("juntar"), cuenta: id, desde: id }),

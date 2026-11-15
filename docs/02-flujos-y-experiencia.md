@@ -382,6 +382,22 @@ una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso
 sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
 como cualquier otra.
 
+### Notas de comida (2026-11-15)
+
+Visto en producción: casi todas las notas de picadas dicen qué carnes lleva («Res, cerdo y
+chorizo», «Carne de res y gallina», «Con sola res») y se escribían a mano.
+
+- **«✎ nota»** en cada plato: chips que se combinan con toques (las notas rápidas del
+  producto, que pone el administrador: en las picadas, las carnes) más **las notas que se
+  escribieron hace poco para ese tipo de plato** (todas las «Picada…» comparten; las más
+  usadas primero, hasta 8). Lo que alguien escribió una vez queda a un toque para el
+  siguiente. Hasta 120 letras.
+- **«📝 Nota»** (larga) en la cuadrícula de comida: la nota de toda la pedida, hasta 300
+  letras («la de 50 sin yuca y la de 30 para llevar…»). Se ve arriba de los botones antes
+  de anotar, y después en la pedida, la cuenta y la auditoría.
+
+Prueba: `tests/e2e/notas.spec.ts` (teléfono 360 × 740).
+
 ### Mesa sin número, domicilios y apartados (2026-11-15)
 
 Pedido por comida (se usa en los teléfonos):

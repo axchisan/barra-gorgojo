@@ -9,7 +9,7 @@ import { horaDeHoy } from "../cuentas";
 import { ponerAviso } from "../avisos";
 import { HojaLibre, type Libre } from "../componentes/HojaLibre";
 import { HojaMixto } from "../componentes/HojaMixto";
-import { HojaNota, HojaPlato } from "../componentes/HojaNota";
+import { HojaNota, HojaNotaLarga, HojaPlato } from "../componentes/HojaNota";
 import { NoExiste } from "../componentes/NoExiste";
 import { BotonPresionable } from "../componentes/BotonPresionable";
 import { HojaOpciones } from "../componentes/HojaOpciones";
@@ -56,6 +56,9 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const secciones = !conComida ? SECCIONES : vista === "comida" ? SECCIONES_COMIDA.filter((x) => x.categorias.includes("comida")) : SECCIONES;
   const [conNota, setConNota] = useState<Producto | null>(null);
   const [platoLibre, setPlatoLibre] = useState(false);
+  // La nota de toda la pedida (comida, 2026-11-15): larga o compleja.
+  const [notaLarga, setNotaLarga] = useState("");
+  const [escribiendoNota, setEscribiendoNota] = useState(false);
   const [cant, setCant] = useState<Record<string, number>>({});
   // Productos de valor libre: el mecato (solo valor) y «Otro» (nombre y valor).
   const [libres, setLibres] = useState<Libre[]>([]);
@@ -262,7 +265,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       area: despacho ? "comida" : sinc.panel,
       ...(esAdicional ? { adicional: true } : {}),
       ...((cuenta?.tipo ?? tipo) === "cancha" ? { precio: cuenta ? modo : ("cancha" as const) } : {}),
-      ...(despacho && detalle.trim() ? { detalle: detalle.trim() } : {}),
+      ...(despacho && detalle.trim() ? { detalle: detalle.trim() } : !despacho && notaLarga.trim() ? { detalle: notaLarga.trim() } : {}),
       ...(enComida && !despacho && !avisarBarra ? { sinDespacho: true } : {}),
       ...(apartar && !despacho ? { apartado: (() => { const para = horaDeHoy(horaApartado); return para ? { para } : {}; })() } : {}),
     });
@@ -352,6 +355,9 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       {/* Solo en comida (2026-11-15): apartar para más tarde («una picada para las 2», hora
           opcional) y avisar o no a la barra, este solo si la pedida lleva bebidas. En la barra
           no ocupan espacio. */}
+      {enComida && !despacho && notaLarga && (
+        <button type="button" className="nota-larga-vista" onClick={() => setEscribiendoNota(true)}>📝 {notaLarga}</button>
+      )}
       {enComida && !despacho && (
         <div className="fila-apartar">
           {nBebidas > 0 && (
@@ -437,6 +443,14 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
                 </div>
               );
             })}
+            {s.categorias.includes("comida") && !despacho && (
+              <div className="producto-celda">
+                <button className={notaLarga ? "producto otro nota-larga con" : "producto otro nota-larga"} onClick={() => setEscribiendoNota(true)}>
+                  <span className="corto">📝 Nota</span>
+                  <span className="precio">{notaLarga ? "editar" : "larga"}</span>
+                </button>
+              </div>
+            )}
             {s.categorias.includes("comida") && (
               <div className="producto-celda">
                 <button className="producto otro plato-libre" onClick={() => setPlatoLibre(true)}>
@@ -478,7 +492,8 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
         </section>
       ))}
 
-      {conNota && <HojaNota producto={conNota} cerrar={() => setConNota(null)} agregar={(nota) => sumar(`${conNota.id}|${nota}`, 1)} />}
+      {conNota && <HojaNota producto={conNota} aprendidas={notasAprendidas(conNota)} cerrar={() => setConNota(null)} agregar={(nota) => sumar(`${conNota.id}|${nota}`, 1)} />}
+      {escribiendoNota && <HojaNotaLarga inicial={notaLarga} cerrar={() => setEscribiendoNota(false)} guardar={setNotaLarga} />}
       {platoLibre && <HojaPlato cerrar={() => setPlatoLibre(false)} agregar={(nombre, precio) => setLibres((l) => [...l, { producto: "otro", nombre, precio, comida: true }])} />}
       {mixto && <HojaMixto mixto={mixto} setMixto={setMixto} mezcla={mezcla} setMezcla={setMezcla} cervezas={cervezas} setPaquetes={setPaquetes} />}
 
@@ -544,4 +559,29 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       </div>
     </main>
   );
+}
+
+/**
+ * Las notas que se escribieron hace poco para este tipo de plato (2026-11-15): las de los
+ * platos que empiezan igual («Picada $ 30.000» y «Picada $ 50.000» comparten), de las
+ * cuentas del celular, de la más usada a la menos, sin repetir las del producto. Hasta 8.
+ */
+function notasAprendidas(p: Producto): string[] {
+  const familia = p.nombre.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  const propias = new Set((p.notas ?? []).map((n) => n.toLowerCase()));
+  const cuenta = new Map<string, { texto: string; veces: number; ultima: number }>();
+  for (const c of Object.values(sinc.visible.cuentas)) {
+    for (const l of c.lineas) {
+      if (!l.nota || l.anulada) continue;
+      const otro = productoDe(sinc.visible, l.producto);
+      if (!otro || otro.categoria !== "comida" || (otro.nombre.trim().split(/\s+/)[0]?.toLowerCase() ?? "") !== familia) continue;
+      const k = l.nota.trim().toLowerCase();
+      if (propias.has(k)) continue;
+      const x = cuenta.get(k) ?? { texto: l.nota.trim(), veces: 0, ultima: 0 };
+      x.veces += 1;
+      x.ultima = Math.max(x.ultima, c.ultima);
+      cuenta.set(k, x);
+    }
+  }
+  return [...cuenta.values()].sort((a, b) => b.veces - a.veces || b.ultima - a.ultima).slice(0, 8).map((x) => x.texto);
 }
