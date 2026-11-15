@@ -354,7 +354,11 @@ cuando no importa el sabor), pero a veces hay que anotar «dos Colombianas».
 - **Mantenerlo presionado** (medio segundo, sin mover el dedo) abre la hoja «¿cuál?» con
   sus opciones: cada toque suma uno, el contador quita, «Listo · N» cierra. En el
   computador, **clic derecho** (o la tecla de menú). Vibra al abrir.
-- El botón de un producto con opciones lleva **⋯** arriba a la derecha, y su contador suma
+  Probado en los aparatos del local (2026-11-14): al abrirse la hoja bajo el dedo, Chrome
+  en Android seleccionaba su título y sacaba «Copiar · Seleccionar todo» y la búsqueda de
+  Google. Desde entonces **en toda la app no se selecciona texto** con el dedo, salvo en los
+  campos donde se escribe (`tests/e2e/presionar.spec.ts` lo prueba con toques reales).
+- El botón de un producto con opciones lleva una pestañita **⋯** en el borde de abajo, y su contador suma
   el general y las opciones. El «−» quita primero del general y después de la última opción.
 - Sirve para cualquier producto que no sea «Otro»: gaseosas de cada tamaño, mecato
   (marcas con su precio), cervezas (también en petacos).

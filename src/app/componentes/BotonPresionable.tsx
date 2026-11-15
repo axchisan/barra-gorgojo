@@ -16,7 +16,13 @@ export function BotonPresionable({ alTocar, alMantener, ...resto }: Omit<ButtonH
   const fueLargo = useRef(false);
   const inicio = useRef<{ x: number; y: number } | null>(null);
   const cancelar = () => { window.clearTimeout(temporizador.current); temporizador.current = undefined; };
-  const mantener = () => { fueLargo.current = true; vibrar(); alMantener?.(); };
+  const mantener = () => {
+    fueLargo.current = true;
+    // Si el sistema alcanzó a seleccionar algo, se quita: no debe salir el menú de copiar.
+    try { window.getSelection()?.removeAllRanges(); } catch { /* sin selección */ }
+    vibrar();
+    alMantener?.();
+  };
   return (
     <button
       {...resto}

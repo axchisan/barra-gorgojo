@@ -1022,7 +1022,8 @@ html.apaisada .anotar .precio-ronda-anotar { position: static; width: 100%; }
 /* Opciones de un producto (docs/02, 2026-11-15): sabores y marcas al mantener presionado. */
 .producto { -webkit-touch-callout: none; }
 .producto.con-opciones { position: relative; }
-.marca-opciones { position: absolute; top: 2px; right: 6px; font-size: 1.1rem; font-weight: 900; line-height: 1; opacity: 0.85; }
+/* El «⋯» va como pestañita en el borde de abajo: no tapa el nombre ni el contador (arriba). */
+.marca-opciones { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 0 8px; border-radius: 999px; background: var(--marron); color: var(--crema); font-size: 0.8rem; font-weight: 900; line-height: 16px; letter-spacing: 1px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); }
 .hoja-opciones .productos { margin: 8px 0 12px; }
 .hoja-opciones .listo-opciones { width: 100%; }
 .cuantas-opciones { font-size: 0.75rem; font-weight: 700; opacity: 0.9; }
@@ -1040,3 +1041,11 @@ html.apaisada .anotar .precio-ronda-anotar { position: static; width: 100%; }
 }
 .hoja-opciones .producto .corto { overflow-wrap: normal; word-break: normal; hyphens: manual; }
 .campo select { min-height: 52px; font: inherit; font-weight: 500; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--neutro-200); background: #fff; color: inherit; }
+/* Mantener presionado no debe seleccionar texto ni abrir el menú de copiar o la búsqueda
+   del sistema (Chrome en Android: «Copiar · Seleccionar todo» y «Tocar para buscar»). En
+   toda la app: es una caja registradora; solo se selecciona lo que se escribe. Visto en los
+   aparatos del local el 2026-11-14: la hoja de opciones se abre bajo el dedo y Chrome
+   seleccionaba su título. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.producto { touch-action: manipulation; }

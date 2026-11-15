@@ -2,7 +2,8 @@
 // (docs/02 «Opciones de un producto»). Son nombres de marcas del mercado, no datos del
 // negocio: el administrador escoge cuáles tiene, y cada una se crea con el precio de su
 // producto general (regla 11: ningún precio inventado). El color es solo el del botón.
-// Fuentes (2026-11-14): portafolios de Postobón y de Coca-Cola FEMSA Colombia.
+// Fuentes (2026-11-14): portafolios de Postobón y de Coca-Cola FEMSA Colombia; Hipinto la
+// pidió el negocio.
 
 export interface Sugerencia { nombre: string; fondo: string; marca: string; comun?: boolean }
 
@@ -20,6 +21,9 @@ export const SABORES_GASEOSA: Sugerencia[] = [
   { nombre: "Bretaña", fondo: "#9CC9EC", marca: "Postobón", comun: true },
   { nombre: "Canada Dry", fondo: "#0B6E3F", marca: "Postobón" },
   { nombre: "Freskola", fondo: "#E4002B", marca: "Postobón" },
+  // Hipinto (Santander)
+  { nombre: "Hipinto Piña", fondo: "#F2C230", marca: "Hipinto" },
+  { nombre: "Hipinto Roja", fondo: "#C8312A", marca: "Hipinto" },
   // Coca-Cola FEMSA
   { nombre: "Coca-Cola", fondo: "#E4002B", marca: "Coca-Cola", comun: true },
   { nombre: "Coca-Cola Sin Azúcar", fondo: "#241206", marca: "Coca-Cola" },
