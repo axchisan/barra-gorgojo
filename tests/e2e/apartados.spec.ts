@@ -43,10 +43,12 @@ test("comida en el teléfono: mesa sin número, domicilio y una picada apartada 
   // Una bebida que comida misma lleva: «Sin avisar» y no queda por despachar.
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
   await p.getByLabel("Número de mesa (opcional)").fill("9");
-  await p.getByRole("button", { name: "🔔 Avisar a la barra" }).click();
-  await expect(p.getByRole("button", { name: "🔕 Sin avisar: la llevo yo" })).toHaveAttribute("aria-pressed", "false");
+  // El chip solo sale cuando la pedida lleva bebidas.
+  await expect(p.getByRole("button", { name: "🔔 Avisar a la barra" })).toHaveCount(0);
   await p.locator('button[aria-label="Bebidas"]').click();
   await p.locator("main > section .producto", { hasText: "RUBIA" }).first().click();
+  await p.getByRole("button", { name: "🔔 Avisar a la barra" }).click();
+  await expect(p.getByRole("button", { name: "🔕 Sin avisar: la llevo yo" })).toHaveAttribute("aria-pressed", "false");
   await p.locator(".pie-fijo .principal").click();
   await expect(p.locator(".tarjeta", { hasText: "Mesa 9" })).not.toContainText("Por despachar");
 

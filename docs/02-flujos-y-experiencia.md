@@ -397,7 +397,8 @@ Pedido por comida (se usa en los teléfonos):
   p. m.» y en el detalle la pedida tiene «⏰ Apartado · Entregado». No suma toques al caso
   común: el chip solo se toca cuando es un apartado.
 
-- **🔔 Avisar a la barra** (en comida, prendido de entrada): las bebidas que anota comida
+- **🔔 Avisar a la barra** (en comida, prendido de entrada; el chip sale solo cuando la
+  pedida lleva alguna bebida, para no ocupar espacio con platos): las bebidas que anota comida
   le suenan a la barra para despacharlas. Si comida misma la lleva, se apaga («🔕 Sin
   avisar: la llevo yo») y la bebida queda despachada por quien la anotó: no suena, no queda
   pendiente y la cuenta sigue en la lista de comida.

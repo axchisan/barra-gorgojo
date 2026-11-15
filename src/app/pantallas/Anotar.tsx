@@ -350,12 +350,15 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
         </section>
       )}
       {/* Solo en comida (2026-11-15): apartar para más tarde («una picada para las 2», hora
-          opcional) y avisar o no a la barra. En la barra no ocupan espacio. */}
+          opcional) y avisar o no a la barra, este solo si la pedida lleva bebidas. En la barra
+          no ocupan espacio. */}
       {enComida && !despacho && (
         <div className="fila-apartar">
-          <button type="button" className={avisarBarra ? "chip activo" : "chip"} aria-pressed={avisarBarra} onClick={() => setAvisarBarra(!avisarBarra)}>
-            {avisarBarra ? "🔔 Avisar a la barra" : "🔕 Sin avisar: la llevo yo"}
-          </button>
+          {nBebidas > 0 && (
+            <button type="button" className={avisarBarra ? "chip activo" : "chip"} aria-pressed={avisarBarra} onClick={() => setAvisarBarra(!avisarBarra)}>
+              {avisarBarra ? "🔔 Avisar a la barra" : "🔕 Sin avisar: la llevo yo"}
+            </button>
+          )}
           <button type="button" className={apartar ? "chip activo" : "chip"} aria-pressed={apartar} onClick={() => setApartar(!apartar)}>
             ⏰ {apartar ? "Apartado" : "Apartar para más tarde"}
           </button>
