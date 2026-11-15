@@ -101,6 +101,10 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const ls = cuenta?.lineas.filter((l) => l.despachada && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];
       return { texto: `Despachó ${ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : "las bebidas"} pedidas desde comida`, atencion: false };
     }
+    case "rechazar_despacho": {
+      const ls = cuenta?.lineas.filter((l) => l.rechazada && l.rechazada.en === op.en && (!op.lineas?.length || op.lineas.includes(l.id))) ?? [];
+      return { texto: `No pudo despachar ${ls.length ? ls.map((l) => `${l.cantidad} ${l.nombre}`).join(", ") : "el pedido"} · «${String(op.motivo ?? "").trim().slice(0, 80)}»`, atencion: true };
+    }
     case "marcar_ronda": {
       const r = cuenta?.rondas.find((x) => x.id === op.ronda);
       const cambio = cambioDePrecio(op.precios, cuenta);

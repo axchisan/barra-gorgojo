@@ -141,3 +141,31 @@ describe("opciones de un producto en el servidor", () => {
     expect(r.estado.productos["colombiana-x1"].padre).toBe("gaseosa");
   });
 });
+
+describe("rechazar un pedido a la barra en el servidor", () => {
+  let s: Servidor;
+  beforeAll(async () => { s = await arrancar(); });
+  afterAll(() => s?.apagar());
+
+  it("solo la barra rechaza, con motivo; lo que ya no está por despachar se rechaza con su porqué", async () => {
+    const admin = await s.token("Administrador");
+    // Una persona solo de comida pide una gaseosa.
+    await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "crear", nombre: "Cocina", rol: "operador" }) });
+    await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "horario", id: idDe("Cocina"), horario: null }) });
+    await s.pedir(admin, "/api/admin/personas", { method: "POST", body: JSON.stringify({ accion: "areas", id: idDe("Cocina"), areas: ["comida"] }) });
+    const cocina = await s.token("Cocina");
+    await s.ops(cocina, [
+      op({ t: "abrir", cuenta: "m4", nombre: "Mesa 4", tipo: "mesa", mesa: 4 }),
+      op({ t: "anotar", cuenta: "m4", ronda: "r", area: "comida", lineas: [{ id: "g1", producto: "gaseosa", cantidad: 2 }] }),
+    ]);
+    const deComida = (await s.ops(cocina, [op({ t: "rechazar_despacho", cuenta: "m4", motivo: "Se acabó" })])) as any;
+    expect(deComida.rechazadas[0].motivo).toBe("Solo la barra rechaza un pedido.");
+    const sinMotivo = (await s.ops(admin, [op({ t: "rechazar_despacho", cuenta: "m4", motivo: "" })])) as any;
+    expect(sinMotivo.rechazadas[0].motivo).toMatch(/por qué/);
+    const bien = (await s.ops(admin, [op({ t: "rechazar_despacho", cuenta: "m4", lineas: ["g1"], motivo: "Se acabó" })])) as any;
+    expect(bien.rechazadas).toEqual([]);
+    expect(bien.estado.cuentas.m4.lineas[0].rechazada.motivo).toBe("Se acabó");
+    const otraVez = (await s.ops(admin, [op({ t: "rechazar_despacho", cuenta: "m4", motivo: "Se acabó" })])) as any;
+    expect(otraVez.rechazadas[0].motivo).toMatch(/ya no está por despachar/);
+  });
+});

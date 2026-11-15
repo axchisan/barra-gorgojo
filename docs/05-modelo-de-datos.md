@@ -65,6 +65,7 @@ guarda.
 | `juntar` | `cuenta, desde` | Suma la cuenta `desde` a `cuenta`: sus pedidas, productos y abonos pasan allá (marcados `de`); `desde` queda «juntada» |
 | `separar` | `cuenta, desde` | Deshace `juntar`, si después no se cobró nada en `cuenta` |
 | `despachar` | `cuenta, lineas?` | La barra entregó bebidas pedidas desde comida (las dichas, o todas las de la cuenta) |
+| `rechazar_despacho` | `cuenta, lineas?, motivo` | La barra no puede despachar (se acabó…): esas bebidas quedan anuladas con `rechazada` (quién, cuándo, motivo) y comida recibe el aviso (docs/04) |
 | `anular` | `cuenta, linea` | Anula un producto anotado (queda tachado) |
 | `agregar` | `cuenta, ronda, lineas[], area?` | Edición de una pedida: suma productos a una pedida ya anotada (líneas con `agregada`). El servidor fija el precio como en `anotar` |
 | `cambiar_producto` | `cuenta, linea, nueva` | Edición de una pedida: un producto por otro con la misma cantidad; el anterior queda anulado con `cambiada`, el nuevo con `reemplaza`. No si ya se pagó con un abono por productos ni para valor libre |

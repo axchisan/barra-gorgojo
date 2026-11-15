@@ -541,6 +541,7 @@ export class Barra extends DurableObject<Env> {
     if (op.t === "cerrar_jornada" && !quien.vista.dia) return "El cierre de caja lo hace la administración.";
     // Áreas (docs/14): despachar es de la barra; anotar platos, de la comida.
     if (op.t === "despachar" && !quien.areas.includes("barra")) return "Solo la barra despacha las bebidas.";
+    if (op.t === "rechazar_despacho" && !quien.areas.includes("barra")) return "Solo la barra rechaza un pedido.";
     if (op.t === "precio_ronda" && !quien.areas.includes("barra")) return "Solo la barra cambia el precio de una pedida.";
     if ((op.t === "anotar" || op.t === "agregar") && !quien.areas.includes("comida") && op.lineas.some((l) => productoDe(this.estado, l.producto)?.categoria === "comida")) return "Solo el área de comida anota platos.";
     if (op.t === "cambiar_producto") {
@@ -584,6 +585,15 @@ export class Barra extends DurableObject<Env> {
    */
   /** Editar una pedida (agregar o cambiar producto): lo que no se puede, con su porqué (regla 8). */
   private ediciones(op: Operacion): string | null {
+    if (op.t === "rechazar_despacho") {
+      // Lo que no se puede, con su porqué (regla 8): para todos, también el administrador.
+      const c = this.estado.cuentas[op.cuenta];
+      if (!c) return "Esa cuenta ya no existe.";
+      if (!(typeof op.motivo === "string" && op.motivo.trim())) return "Escriba por qué no se puede despachar.";
+      const cuales = Array.isArray(op.lineas) && op.lineas.length ? new Set(op.lineas) : null;
+      if (!c.lineas.some((l) => l.porDespachar && !l.anulada && (!cuales || cuales.has(l.id)))) return "Ese pedido ya no está por despachar (otro aparato ya lo despachó o lo canceló).";
+      return null;
+    }
     if (op.t === "precio_ronda") {
       const c = this.estado.cuentas[op.cuenta];
       if (!c || c.anulada) return "Esa cuenta ya no está abierta.";

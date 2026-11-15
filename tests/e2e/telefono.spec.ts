@@ -14,11 +14,14 @@ test("teléfono vertical: cabecera con nombre corto, dividir con billetes a la v
   expect(await quien.evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
 
   // Una cuenta para cobrar.
+  // Con nombre propio: en la suite completa hay cuentas de otras pruebas (con abonos, más alto el cobro).
+  const nombre = `Teléfono ${Date.now() % 100000}`;
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
+  await p.getByPlaceholder("Nombre", { exact: true }).fill(nombre);
   const prod = p.locator("main > section .producto").first();
   for (let i = 0; i < 4; i++) await prod.click();
   await p.locator(".pie-fijo .principal").click();
-  await p.locator(".tarjeta").first().click();
+  await p.locator(".tarjeta", { hasText: nombre }).click();
   await p.getByRole("button", { name: "Cobrar" }).click();
 
   // H3: al dividir, «Exacto» queda a la vista, encima del botón fijo, sin bajar.

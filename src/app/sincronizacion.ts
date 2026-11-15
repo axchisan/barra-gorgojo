@@ -23,6 +23,8 @@ type Mensaje =
   | { tipo: "cambio" }
   | { tipo: "hola" }
   | { tipo: "conexion"; conexion: Conexion }
+  /** La pestaña con la conexión sigue viva (cada 5 s). */
+  | { tipo: "latido" }
   | { tipo: "rechazo"; motivo: string };
 
 /** Cómo quedó lo que tocaron unas operaciones, según el servidor (docs/13, punto 4). */
@@ -106,6 +108,11 @@ class Sincronizador {
   private ultimoMensaje = 0;
   private enVuelo = 0;
   private temporizadorReconexion: ReturnType<typeof setTimeout> | undefined;
+  /** Suelta el candado de la conexión (la promesa que lo retiene). */
+  private soltarCandado: (() => void) | null = null;
+  private esperandoCandado = false;
+  /** Cuándo llegó el último latido de la pestaña con la conexión. */
+  private ultimoLatido = Date.now();
 
   constructor() {
     if (typeof window === "undefined") { this.listo = true; return; }
@@ -130,6 +137,7 @@ class Sincronizador {
     });
     setInterval(() => this.vigilar(), 5000);
     this.pedirCandado();
+    this.vigilarCongelado();
   }
 
   /**
@@ -150,7 +158,14 @@ class Sincronizador {
   }
 
   /** Solo una pestaña por celular mantiene la conexión; si se cierra, la toma otra. */
-  private pedirCandado() {
+  /**
+   * Visto en la tablet del local (2026-11-15): la pestaña de Chrome escondida tenía la
+   * conexión, Chrome la congeló, y la app instalada (visible) se quedó sin recibir nada
+   * mostrando «Todo al día». Ahora: la pestaña que se congela suelta el candado (evento
+   * `freeze`) y lo vuelve a pedir al despertar; y si la que lo tiene deja de dar latidos,
+   * la pestaña visible se lo quita (`steal`).
+   */
+  private pedirCandado(robar = false) {
     const locks = (navigator as Navigator & { locks?: LockManager }).locks;
     const serLider = () => {
       this.lider = true;
@@ -158,10 +173,34 @@ class Sincronizador {
       if (this.sesion) this.conectar();
     };
     if (!locks?.request) return serLider(); // sin Web Locks: cada pestaña con su conexión, como antes
-    void locks.request(CANDADO, () => {
+    this.esperandoCandado = true;
+    locks.request(CANDADO, robar ? { steal: true } : {}, () => {
+      this.esperandoCandado = false;
       serLider();
-      return new Promise<void>(() => {}); // se suelta al cerrar la pestaña
+      return new Promise<void>((soltar) => { this.soltarCandado = soltar; }); // se suelta al cerrar o congelar la pestaña
+    }).catch(() => {
+      // Otra pestaña se lo quitó (esta estaba congelada o callada): deja la conexión y espera su turno.
+      this.dejarDeSerLider();
+      this.pedirCandado();
     });
+  }
+
+  private dejarDeSerLider() {
+    if (!this.lider) return;
+    this.lider = false;
+    this.soltarCandado = null;
+    this.cerrarSocket();
+  }
+
+  /** Al congelarse la pestaña, suelta la conexión para que la tome otra; al despertar, la pide. */
+  private vigilarCongelado() {
+    document.addEventListener("freeze", () => {
+      if (!this.lider) return;
+      const soltar = this.soltarCandado;
+      this.dejarDeSerLider();
+      soltar?.();
+    });
+    document.addEventListener("resume", () => { if (!this.lider && !this.esperandoCandado) this.pedirCandado(); });
   }
 
   // ── Memoria ─────────────────────────────────────────────────────────
@@ -214,7 +253,8 @@ class Sincronizador {
 
   /** Otra pestaña del celular cambió la memoria, la conexión o recibió un rechazo. */
   private deOtraPestana(m: Mensaje) {
-    if (m.tipo === "conexion") { if (!this.lider) this.ponerConexion(m.conexion); return; }
+    if (m.tipo === "latido") { this.ultimoLatido = Date.now(); return; }
+    if (m.tipo === "conexion") { this.ultimoLatido = Date.now(); if (!this.lider) this.ponerConexion(m.conexion); return; }
     if (m.tipo === "rechazo") { this.alRechazo?.(m.motivo); return; }
     if (m.tipo === "hola") { if (this.lider) this.avisarPestanas({ tipo: "conexion", conexion: this.conexion }); return; }
     this.cola = this.cola.then(async () => {
@@ -616,6 +656,13 @@ class Sincronizador {
     // Terminó la franja aunque no haya señal para que el servidor lo diga (docs/17): lo
     // anotado se queda en el celular y sale con la próxima sesión.
     if (this.sesion?.fin && Date.now() > this.sesion.fin) return this.salir("Terminó su horario de acceso.");
+    if (this.lider) this.avisarPestanas({ tipo: "latido" });
+    else if (document.visibilityState === "visible" && Date.now() - this.ultimoLatido > 15_000) {
+      // La pestaña con la conexión no da señales (congelada): esta, que se ve, se la quita.
+      this.ultimoLatido = Date.now();
+      this.ponerConexion("conectando");
+      this.pedirCandado(true);
+    }
     if (!this.lider || !this.sesion) return;
     const ws = this.ws;
     if (ws?.readyState === WebSocket.OPEN) {

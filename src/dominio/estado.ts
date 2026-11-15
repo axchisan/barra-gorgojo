@@ -37,6 +37,8 @@ export interface Linea {
   porDespachar?: true;
   /** Quién la despachó y cuándo. */
   despachada?: { por: string; en: number };
+  /** La barra no la pudo despachar (se acabó, no hay fría): quién, cuándo y por qué. Queda anulada. */
+  rechazada?: { por: string; en: number; motivo: string };
   /** Vino de otra cuenta que se juntó con esta (su id). */
   de?: string;
 }
@@ -237,6 +239,7 @@ export type Operacion = Base &
     | { t: "cambiar_producto"; cuenta: string; linea: string; nueva: LineaAnotada }
     | { t: "anotar"; cuenta: string; ronda: string; area?: Area; adicional?: boolean; precio?: ModoPrecio; detalle?: string; lineas: LineaAnotada[] }
     | { t: "despachar"; cuenta: string; lineas?: string[] }
+    | { t: "rechazar_despacho"; cuenta: string; lineas?: string[]; motivo: string }
     | { t: "juntar"; cuenta: string; desde: string }
     | { t: "separar"; cuenta: string; desde: string }
     | { t: "anular"; cuenta: string; linea: string }
@@ -644,6 +647,23 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         delete l.porDespachar;
         l.despachada = { por: op.persona, en: op.en };
       }
+      return estado;
+    }
+    case "rechazar_despacho": {
+      // La barra no puede despachar lo que pidió comida (docs/04 «Rechazar un pedido»): esas
+      // bebidas quedan anuladas como rechazadas, con el motivo, y comida recibe el aviso.
+      const motivo = typeof op.motivo === "string" ? op.motivo.trim().slice(0, 80) : "";
+      if (!c || !motivo) return estado;
+      const cuales = Array.isArray(op.lineas) && op.lineas.length ? new Set(op.lineas) : null;
+      let alguna = false;
+      for (const l of c.lineas) {
+        if (!l.porDespachar || l.anulada || (cuales && !cuales.has(l.id))) continue;
+        delete l.porDespachar;
+        l.anulada = { por: op.persona, en: op.en };
+        l.rechazada = { por: op.persona, en: op.en, motivo };
+        alguna = true;
+      }
+      if (alguna) c.ultima = op.en;
       return estado;
     }
     case "marcar_ronda": {

@@ -115,6 +115,15 @@ lo tiene. Al cerrarse la pestaña con el candado, otra lo toma y se conecta. Lo 
 lo escribe solo la pestaña con el candado. La app instalada y Chrome comparten la memoria
 y el candado.
 
+**Pestaña congelada (2026-11-15).** Visto en la tablet del local: la pestaña de Chrome
+escondida tenía el candado, Chrome la congeló, y la app instalada (la que se veía) no
+recibía nada mientras mostraba «Todo al día». Desde entonces la pestaña con el candado
+manda un **latido** cada 5 s; si una pestaña que se ve pasa 15 s sin latido, se pone en
+«conectando» y **le quita el candado** (`steal` de Web Locks). La que lo perdió deja la
+conexión y vuelve a esperar su turno. Además, al congelarse (evento `freeze`) la pestaña
+suelta el candado y lo pide al despertar (`resume`). Prueba: `tests/e2e/congelada.spec.ts`
+(una pestaña colgada con el candado; sin el arreglo, la otra nunca recibe lo nuevo).
+
 ## El protocolo
 
 ### Al conectar
@@ -347,6 +356,31 @@ cancha» en esa pedida (pasa a «Precio normal»: 4 × $ 3.000 = $ 12.000).
 | Anotar un adicional desde una versión anterior de la app | Precio normal (lo pone el servidor) |
 
 Pruebas: `tests/precio-ronda.test.ts` y `tests/servidor/empleados.test.ts`.
+
+## Rechazar un pedido a la barra (2026-11-15)
+
+Pedido por el negocio: si comida pide a la barra algo que se acabó (una gaseosa), la barra
+tiene que poder **devolver el pedido diciendo por qué**. En «Despachar», cada pedido tiene
+«🚫 No se puede»: se escogen los productos que no hay (de entrada, todos; los demás siguen
+por despachar) y el motivo («Se acabó», «No hay fría», «No hay en ese tamaño» u otro
+escrito). Es la operación `rechazar_despacho` (`cuenta, lineas?, motivo`): esas líneas
+quedan **anuladas como rechazadas** (`Linea.rechazada`: quién, cuándo, motivo) y salen de
+la cuenta; nada se borra (regla 4) y la auditoría lo muestra resaltado.
+
+A quien tiene comida le sale un **aviso rojo** «🚫 La barra no pudo despachar: 2 Colombiana
+· Mesa 4 — «Se acabó»» que se queda hasta «Entendido». Sale del estado (rechazos de las
+últimas 3 horas que ese aparato no ha visto), así que no se pierde con la app cerrada; no
+le sale a quien rechazó. En el detalle, el producto anulado dice «🚫 Se acabó».
+
+| Conflicto | Regla |
+|---|---|
+| Rechazar desde comida | Se rechaza: lo hace la barra (comida cancela lo suyo con «Cancelar pedido») |
+| Sin motivo | Se rechaza: «Escriba por qué no se puede despachar» |
+| Otro aparato ya lo despachó o lo canceló | Se rechaza: «Ese pedido ya no está por despachar» |
+| Una parte sí hay | Solo lo escogido se rechaza; lo demás sigue por despachar |
+
+Pruebas: `tests/rechazo.test.ts`, `tests/servidor/empleados.test.ts`, `tests/e2e/rechazo.spec.ts`.
+Para los pedidos de los clientes por QR, la misma idea: [18](18-roadmap-2026-11.md) fase 5.
 
 ## Lo que ve cada persona (2026-11-15)
 

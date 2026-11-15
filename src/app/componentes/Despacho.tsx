@@ -3,10 +3,10 @@
 // por eso no se pierde si la tablet estaba apagada o la app cerrada; aparece al abrirla y
 // se queda hasta que alguien de la barra toque «Despachado».
 import { useEffect, useRef, useState } from "react";
-import { porDespachar, type Cuenta } from "../../dominio/estado";
+import { porDespachar, type Cuenta, type Linea } from "../../dominio/estado";
 import { haceCuanto } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
-import type { Nav } from "../navegacion";
+import { useAtrasCierra, type Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
 
 /**
@@ -194,8 +194,10 @@ export function AvisoDespacho({ nav }: { nav: Nav }) {
 export function PorDespachar({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const pendientes = porDespachar(cuentas);
   const puede = sinc.tieneArea("barra");
+  const [rechazando, setRechazando] = useState<{ c: Cuenta; lineas: Linea[] } | null>(null);
   return (
     <section className="por-despachar">
+      {rechazando && <HojaRechazo c={rechazando.c} lineas={rechazando.lineas} cerrar={() => setRechazando(null)} />}
       <p className="nota">Bebidas que pidieron desde comida. Al entregarlas, toque «Despachado».</p>
       {pendientes.length === 0 && <p className="vacio">Nada por despachar.</p>}
       {pendientes.map(({ cuenta: c, lineas }) => {
@@ -212,7 +214,8 @@ export function PorDespachar({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) 
             <ul>{lineas.map((l) => <li key={l.id}><b>{l.cantidad}</b> {l.nombre}</li>)}</ul>
             {quienes && <p className="tenue">Lo pidió {quienes}</p>}
             <div className="fila-botones">
-              <CancelarPedido c={c} lineas={lineas} />
+              {/* La barra dice «no se puede» con el motivo; comida cancela lo que pidió. */}
+              {puede ? <button className="secundario" onClick={() => setRechazando({ c, lineas })}>🚫 No se puede</button> : <CancelarPedido c={c} lineas={lineas} />}
               {puede && (
                 <button className="principal" onClick={() => {
                   sinc.emitir({ t: "despachar", cuenta: c.id, lineas: lineas.map((l) => l.id) });
@@ -277,4 +280,107 @@ export function CancelarPedido({ c, lineas }: { c: Cuenta; lineas: { id: string;
       }}>Sí, cancelar</button>
     </>
   );
+}
+
+/** Motivos rápidos para no poder despachar; «Otro» se escribe. */
+const MOTIVOS = ["Se acabó", "No hay fría", "No hay en ese tamaño"];
+
+/**
+ * La barra no puede despachar (docs/04 «Rechazar un pedido»): escoge qué productos no hay
+ * (de entrada, todos) y por qué. Quedan anulados como rechazados y comida recibe el aviso.
+ */
+function HojaRechazo({ c, lineas, cerrar }: { c: Cuenta; lineas: Linea[]; cerrar: () => void }) {
+  useAtrasCierra(true, cerrar);
+  const [cuales, setCuales] = useState<Set<string>>(() => new Set(lineas.map((l) => l.id)));
+  const [motivo, setMotivo] = useState("");
+  const [otro, setOtro] = useState(false);
+  const elegidas = lineas.filter((l) => cuales.has(l.id));
+  const listo = elegidas.length > 0 && motivo.trim().length > 0;
+  const enviar = () => {
+    if (!listo) return;
+    sinc.emitir({ t: "rechazar_despacho", cuenta: c.id, lineas: elegidas.map((l) => l.id), motivo: motivo.trim() });
+    ponerAviso({ texto: `${c.nombre}: avisado a comida · ${textoLineas(elegidas)} — «${motivo.trim()}»` });
+    cerrar();
+  };
+  return (
+    <div className="hoja" onClick={cerrar}>
+      <div className="hoja-cuerpo hoja-rechazo" role="dialog" aria-label={`No se puede despachar en ${c.nombre}`} onClick={(e) => e.stopPropagation()}>
+        <header className="cabeza-hoja">
+          <h2>🚫 No se puede · {c.nombre}</h2>
+          <button className="cerrar-hoja" aria-label="Cerrar" onClick={cerrar}>✕</button>
+        </header>
+        <p className="etiqueta">¿Qué no se puede despachar?</p>
+        <div className="chips">
+          {lineas.map((l) => {
+            const on = cuales.has(l.id);
+            return (
+              <button key={l.id} className={on ? "chip activo" : "chip"} aria-pressed={on}
+                onClick={() => setCuales((s) => { const n = new Set(s); if (on) n.delete(l.id); else n.add(l.id); return n; })}>
+                {on ? "✓ " : ""}{l.cantidad} {l.nombre}
+              </button>
+            );
+          })}
+        </div>
+        <p className="etiqueta">¿Por qué?</p>
+        <div className="chips">
+          {MOTIVOS.map((m) => (
+            <button key={m} className={!otro && motivo === m ? "chip activo" : "chip"} aria-pressed={!otro && motivo === m}
+              onClick={() => { setOtro(false); setMotivo(m); }}>{m}</button>
+          ))}
+          <button className={otro ? "chip activo" : "chip"} aria-pressed={otro} onClick={() => { setOtro(true); setMotivo(""); }}>Otro…</button>
+        </div>
+        {otro && (
+          <input autoFocus maxLength={80} placeholder="Escriba por qué" aria-label="Por qué no se puede" value={motivo}
+            enterKeyHint="send" onChange={(e) => setMotivo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") enviar(); }} />
+        )}
+        <p className="nota">Se anulan de la cuenta y a comida le llega el aviso con el motivo.</p>
+        <button className="peligro grande" disabled={!listo} onClick={enviar}>
+          {elegidas.length ? `No se puede · avisar a comida` : "Escoja qué no se puede"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Lo que la barra no pudo despachar, para quien tiene comida (docs/04): un aviso rojo que
+ * se queda hasta «Entendido». Sale del estado (líneas rechazadas de las últimas 3 horas que
+ * este aparato no ha visto), así que no se pierde aunque la app estuviera cerrada.
+ */
+export function AvisoRechazo() {
+  const [vistos, setVistos] = useState<Set<string>>(leerVistos);
+  if (!sinc.tieneArea("comida")) return null;
+  const ahora = Date.now();
+  const yo = sinc.sesion?.persona;
+  const nuevos: { c: Cuenta; l: Linea }[] = [];
+  for (const c of Object.values(sinc.visible.cuentas)) {
+    for (const l of c.lineas) {
+      if (l.rechazada && ahora - l.rechazada.en < 3 * 3600_000 && !vistos.has(l.id) && l.rechazada.por !== yo) nuevos.push({ c, l });
+    }
+  }
+  if (!nuevos.length) return null;
+  const entendido = () => {
+    const n = new Set(vistos);
+    for (const { l } of nuevos) n.add(l.id);
+    guardarVistos(n);
+    setVistos(n);
+  };
+  return (
+    <div className="aviso-rechazo" role="alert">
+      <div>
+        <strong>🚫 La barra no pudo despachar</strong>
+        {nuevos.map(({ c, l }) => <span key={l.id}>{l.cantidad} {l.nombre} · {c.nombre} — «{l.rechazada!.motivo}»</span>)}
+      </div>
+      <button className="principal" onClick={entendido}>Entendido</button>
+    </div>
+  );
+}
+
+const LLAVE_VISTOS = "rechazos-vistos";
+function leerVistos(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(LLAVE_VISTOS) ?? "[]")); } catch { return new Set(); }
+}
+function guardarVistos(s: Set<string>) {
+  // Solo los últimos: los de hace más de 3 horas ya no salen.
+  try { localStorage.setItem(LLAVE_VISTOS, JSON.stringify([...s].slice(-200))); } catch { /* sin almacenamiento */ }
 }

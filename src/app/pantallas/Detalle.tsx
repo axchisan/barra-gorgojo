@@ -249,6 +249,7 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                     >
                       <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{l.agregada && !l.anulada ? " ＋" : ""}{l.reemplaza && !l.anulada ? " ⇄" : ""}{l.cambiada ? ` → ${c.lineas.find((x) => x.id === l.cambiada!.a)?.nombre ?? "otro"}` : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
                       {!l.anulada && l.porDespachar && <span className="marca despacho">🔔 por despachar</span>}
+                      {l.rechazada && <span className="marca rechazo">🚫 {l.rechazada.motivo}</span>}
                     </button>
                   );
                   const { sueltas, grupos } = porPaquete(lineas);

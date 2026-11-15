@@ -1063,3 +1063,16 @@ input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; u
   background: repeating-linear-gradient(135deg, #C62828 0 14px, #B71C1C 14px 28px); color: #fff;
   font-size: 0.8rem; font-weight: 800; text-align: center; letter-spacing: 0.04em;
 }
+
+/* Rechazar un pedido a la barra (docs/04, 2026-11-15). */
+.hoja-rechazo { display: grid; gap: 8px; }
+.hoja-rechazo input { min-height: 52px; }
+.hoja-rechazo .peligro.grande { min-height: 56px; width: 100%; }
+.aviso-rechazo {
+  position: sticky; top: 0; z-index: 35; display: flex; gap: 10px; align-items: center; justify-content: space-between;
+  margin: 0 0 8px; padding: 10px 12px; background: #C62828; color: #fff; border-radius: 0 0 var(--radio) var(--radio);
+}
+.aviso-rechazo > div { display: grid; gap: 2px; }
+.aviso-rechazo span { font-weight: 600; }
+.aviso-rechazo .principal { flex: 0 0 auto; background: #fff; color: #C62828; min-height: 48px; }
+.marca.rechazo { display: block; font-size: 0.8rem; font-weight: 700; color: #C62828; }

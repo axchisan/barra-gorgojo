@@ -382,6 +382,13 @@ una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso
 sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
 como cualquier otra.
 
+### No se puede despachar (2026-11-15)
+
+En «Despachar», la barra tiene «🚫 No se puede» junto a «Despachado»: una hoja con los
+productos del pedido (todos marcados; se desmarca lo que sí hay) y el motivo en un toque
+(«Se acabó», «No hay fría», «No hay en ese tamaño», «Otro…»). A comida le llega un aviso
+rojo con el motivo hasta «Entendido». Ver docs/04 «Rechazar un pedido a la barra».
+
 ### Sonido del aviso y cancelar el pedido (2026-11-14)
 
 El aviso de bebidas por despachar suena como una campana limpia (tonos puros con
