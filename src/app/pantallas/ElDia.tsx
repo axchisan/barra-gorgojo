@@ -3,7 +3,7 @@
 // una caja a la otra, el cuadre de cada caja y la lista de cuentas con filtros y detalle.
 import { useState } from "react";
 import { areaDe, type Area } from "../../dominio/areas";
-import { efectivoDeJornada, jornada, type Cuenta } from "../../dominio/estado";
+import { cambiosDeJornada, efectivoDeJornada, jornada, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
 import { pagosDeudasDe } from "../../dominio/deudas";
 import { cuentasDelDia, resumenJornada, type CuentaDelDia, type Medios, type Parte } from "../../dominio/jornada";
@@ -53,6 +53,8 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const filas = MEDIOS.filter((m) => m.id === "efectivo" || suma(d.porMedio[m.id]) > 0);
   const totalPagado: Parte = filas.reduce((t, m) => ({ barra: t.barra + d.porMedio[m.id].barra, comida: t.comida + d.porMedio[m.id].comida }), { barra: 0, comida: 0 });
   const porCobrarN = d.cuentas.filter((x) => x.falta > 0).length;
+  // Cambios de plata (2026-11-15): el cliente pagó por Nequi y se le dio efectivo. No es venta.
+  const cambiosHoy = (Object.entries(d.cambios) as [Medios, number][]).filter(([, v]) => v > 0);
 
   // Entre cajas: lo que cada caja cobró de la otra área, neto por medio.
   const cruces = (["efectivo", "nequi", "breve"] as const).map((m) => {
@@ -73,6 +75,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
         <span className="dia-hero-titulo">Vendido hoy</span>
         <strong className="dia-hero-total">{pesos(r.vendido)}</strong>
         <span className="dia-hero-sub">{d.cuentas.length} {d.cuentas.length === 1 ? "cuenta" : "cuentas"}{porCobrarN ? ` · ${porCobrarN} sin cobrar` : " · todas cobradas"}</span>
+        {r.cambios > 0 && <span className="dia-hero-sub">💱 Sin contar {pesos(r.cambios)} de cambios de plata</span>}
         <div className="dia-hero-areas">
           <div><span>🍺 Barra</span><strong>{pesos(vendidoBarra)}</strong></div>
           <div className="de-comida"><span>🍽 Comida</span><strong>{pesos(r.vendidoComida)}</strong></div>
@@ -100,6 +103,11 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
                 ))}
               </tbody>
               <tfoot>
+                {cambiosHoy.map(([m, v]) => (
+                  <tr key={`cambio-${m}`} className="fila-cambio">
+                    <th>💱 Cambio</th><td colSpan={3}>{pesos(v)} entró por {nombreMedio(m)} y se dio en efectivo · no es venta</td>
+                  </tr>
+                ))}
                 <tr><th>Cobrado</th><td>{pesos(totalPagado.barra)}</td><td className="de-comida">{pesos(totalPagado.comida)}</td><td><b>{pesos(suma(totalPagado))}</b></td></tr>
                 {suma(d.porCobrar) > 0 && (
                   <tr className="por-cobrar" onClick={() => ponerFiltro("porCobrar")}>
@@ -235,6 +243,7 @@ function FilaCuenta({ x, nav }: { x: CuentaDelDia; nav: Nav }) {
         {horaDe(x.desde)}{tipo && !c.nombre.includes(tipo) ? ` · ${tipo}` : ""}
         {x.barra > 0 && <span className="parte"> · 🍺 {pesos(x.barra)}</span>}
         {x.comida > 0 && <span className="parte de-comida"> · 🍽 {pesos(x.comida)}</span>}
+        {x.cambio > 0 && <span className="parte cambio"> · 💱 cambio {pesos(x.cambio)}</span>}
       </span>
       <span className="renglon-dia-pagos">
         {x.pagos.map((p) => (
@@ -257,6 +266,7 @@ function Cuadre({ cuentas, hoy, d }: { cuentas: Cuenta[]; hoy: string; d: Return
   const ultimoCierre = cierres[cierres.length - 1];
   const diferencia = contado ? Number(contado) - recibidoEfectivo : null;
   const deCaja = d.cajas[caja].porMedio;
+  const cambiosCaja = cuentas.reduce((t, c) => t + (c.anulada ? 0 : cambiosDeJornada(c, hoy, caja)), 0);
   const cerrar = () => {
     if (!contado) return;
     sinc.emitir({ t: "cerrar_jornada", fecha: hoy, contado: Number(contado), area: caja });
@@ -282,6 +292,7 @@ function Cuadre({ cuentas, hoy, d }: { cuentas: Cuenta[]; hoy: string; d: Return
         {deCaja.breve > 0 && <div><span>📲 Breve</span><b>{pesos(deCaja.breve)}</b></div>}
         {deCaja.deuda > 0 && <div><span>📒 Fiado</span><b>{pesos(deCaja.deuda)}</b></div>}
       </div>
+      {cambiosCaja > 0 && <p className="tenue cuadre-cambios">💱 Ya se restaron {pesos(cambiosCaja)} que se dieron en efectivo por cambios de plata (esa plata entró por Nequi o Breve).</p>}
       <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Efectivo contado" aria-label="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
       {diferencia != null && (
         <p className={diferencia === 0 ? "cambio" : "cambio falta"}>

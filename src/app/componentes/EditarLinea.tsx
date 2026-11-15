@@ -16,6 +16,17 @@ export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Line
   const [n, setN] = useState(l.cantidad);
   const [cambiar, setCambiar] = useState(false);
   useAtrasCierra(true, cerrar);
+  // Barra, comida o cambio de plata (2026-11-15): el cliente pagó por Nequi y se le dio efectivo.
+  const marcar = (a: "barra" | "comida" | "cambio") => {
+    if (a === "cambio") {
+      if (l.cambio) return;
+      sinc.emitir({ t: "cambio_linea", cuenta: c.id, linea: l.id, valor: true, caja: sinc.panel });
+      ponerAviso({ texto: `${l.nombre}: cambio de plata, no cuenta como venta` });
+      return;
+    }
+    if (l.cambio) sinc.emitir({ t: "cambio_linea", cuenta: c.id, linea: l.id, valor: false });
+    if (!!l.comida !== (a === "comida") || l.cambio) sinc.emitir({ t: "comida_linea", cuenta: c.id, linea: l.id, valor: a === "comida" });
+  };
   return (
     <div className="hoja" onClick={cerrar}>
     <div className="hoja-cuerpo editar-fila" onClick={(e) => e.stopPropagation()}>
@@ -26,9 +37,13 @@ export function EditarLinea({ c, l, cerrar, soloEtiqueta }: { c: Cuenta; l: Line
       {l.editada && <span className="tenue">Antes eran {l.editada.antes} · cambió {l.editada.por}</span>}
       {productoDe(sinc.visible, l.producto)?.conNombre && (
         <div className="opciones">
-          <button className={l.comida ? "chip" : "chip activo"} onClick={() => sinc.emitir({ t: "comida_linea", cuenta: c.id, linea: l.id, valor: false })}>🍺 Barra</button>
-          <button className={l.comida ? "chip activo comida-chip" : "chip"} onClick={() => sinc.emitir({ t: "comida_linea", cuenta: c.id, linea: l.id, valor: true })}>🍽 Es comida</button>
+          <button className={!l.comida && !l.cambio ? "chip activo" : "chip"} onClick={() => marcar("barra")}>🍺 Barra</button>
+          <button className={l.comida && !l.cambio ? "chip activo comida-chip" : "chip"} onClick={() => marcar("comida")}>🍽 Es comida</button>
+          <button className={l.cambio ? "chip activo cambio-chip" : "chip"} aria-pressed={!!l.cambio} onClick={() => marcar("cambio")}>💱 Cambio de plata</button>
         </div>
+      )}
+      {l.cambio && (
+        <p className="tenue nota-cambio">No es venta: se cobra en la cuenta, y en «El día» el efectivo de la {l.cambio.caja === "comida" ? "cocina" : "barra"} baja {pesos(l.precio * l.cantidad)} (se le dio al cliente).</p>
       )}
       {soloEtiqueta ? (
         <div className="fila-botones">

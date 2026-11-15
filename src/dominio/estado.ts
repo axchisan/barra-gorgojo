@@ -42,6 +42,12 @@ export interface Linea {
   rechazada?: { por: string; en: number; motivo: string };
   /** Vino de otra cuenta que se juntó con esta (su id). */
   de?: string;
+  /**
+   * Cambio de plata, no venta (2026-11-15): el cliente pagó con Nequi o Breve y se le dio
+   * efectivo de la caja `caja`. Se cobra en la cuenta como cualquier otra cosa, pero no
+   * suma a lo vendido y el efectivo que debe haber en esa caja baja en su valor.
+   */
+  cambio?: { caja: Area; por: string; en: number };
 }
 
 export interface Paquete {
@@ -286,6 +292,7 @@ export type Operacion = Base &
     | { t: "orden"; ids: string[] }
     | { t: "cantidad"; cuenta: string; linea: string; cantidad: number }
     | { t: "comida_linea"; cuenta: string; linea: string; valor: boolean }
+    | { t: "cambio_linea"; cuenta: string; linea: string; valor: boolean; caja?: Area }
     | { t: "cerrar_jornada"; fecha: string; contado: number; notas?: string; area?: Area }
   );
 
@@ -368,6 +375,22 @@ export function efectivoDeJornada(cuentas: Iterable<Cuenta>, fecha: string, area
       if (area && areaDe(p.area) !== area) continue;
       s += p.monto;
     }
+    // Lo que salió en efectivo por un cambio de plata (el cliente lo pagó por Nequi o Breve).
+    s -= cambiosDeJornada(c, fecha, area);
+  }
+  return s;
+}
+
+/** El efectivo que se dio en cambios de plata de una cuenta en esa jornada (de una caja o de las dos). */
+export function cambiosDeJornada(c: Cuenta, fecha: string, area?: Area): number {
+  let s = 0;
+  for (const l of c.lineas) {
+    if (!l.cambio || l.anulada) continue;
+    // Cuenta el día en que se anotó (cuando salió la plata), aunque se marque después.
+    const en = c.rondas.find((r) => r.id === l.ronda)?.en ?? l.cambio.en;
+    if (jornada(en) !== fecha) continue;
+    if (area && l.cambio.caja !== area) continue;
+    s += l.precio * l.cantidad;
   }
   return s;
 }
@@ -917,6 +940,16 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       if (!l || !producto(estado, l.producto)?.conNombre) return estado;
       if (op.valor) l.comida = true;
       else delete l.comida;
+      return estado;
+    }
+    case "cambio_linea": {
+      // Un «Otro» que fue cambio de plata (docs/04 «Cambio de plata»): no es venta.
+      const l = c?.lineas.find((x) => x.id === op.linea);
+      if (!l || l.anulada || !producto(estado, l.producto)?.conNombre) return estado;
+      if (op.valor) {
+        l.cambio = { caja: esArea(op.caja) ? op.caja : "barra", por: op.persona, en: op.en };
+        delete l.comida;
+      } else delete l.cambio;
       return estado;
     }
     case "cantidad": {

@@ -1274,3 +1274,10 @@ html .inicio .panel-cuenta .pie-fijo {
   .cuadre-recibio .cuadre-efectivo strong { font-size: 1.3rem; }
   .cuadre-recibio small { display: none; }
 }
+
+/* Cambio de plata (2026-11-15): un «Otro» que no es venta. */
+.opciones .chip.activo.cambio-chip { background: #5B4A1E; border-color: #5B4A1E; color: #fff; }
+.marca.cambio { display: block; font-size: 0.8rem; font-weight: 700; color: #6B5410; padding: 0; }
+.renglon-dia .parte.cambio { color: #6B5410; }
+.dia-tabla tr.fila-cambio td { font-size: .85em; text-align: left; color: #4A3A10; }
+.nota-cambio, .cuadre-cambios { margin: 4px 0; }

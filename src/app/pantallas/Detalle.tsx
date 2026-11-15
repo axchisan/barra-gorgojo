@@ -264,10 +264,11 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                       disabled={!!l.anulada || !puedeEditarLinea(sinc.areas, l) || (s !== "abierta" && !productoDe(sinc.visible, l.producto)?.conNombre)}
                       onClick={() => setAnulando(anulando === l.id ? null : l.id)}
                     >
-                      <b>{l.cantidad}</b> {l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{l.agregada && !l.anulada ? " ＋" : ""}{l.reemplaza && !l.anulada ? " ⇄" : ""}{l.cambiada ? ` → ${c.lineas.find((x) => x.id === l.cambiada!.a)?.nombre ?? "otro"}` : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
+                      <b>{l.cantidad}</b> {l.cambio ? "💱 " : l.comida ? "🍽 " : ""}{l.nombre}{l.nota ? ` · ${l.nota}` : ""}{l.editada && !l.anulada ? " ✎" : ""}{l.agregada && !l.anulada ? " ＋" : ""}{l.reemplaza && !l.anulada ? " ⇄" : ""}{l.cambiada ? ` → ${c.lineas.find((x) => x.id === l.cambiada!.a)?.nombre ?? "otro"}` : ""}{!l.anulada && pagadas.has(l.id) ? " ✓" : ""}
                       {!l.anulada && l.porDespachar && <span className="marca despacho">🔔 por despachar</span>}
                       {!l.anulada && l.despachada && <span className="marca despachada">✓ despachado · {l.despachada.por} · {horaDe(l.despachada.en)}</span>}
                       {l.rechazada && <span className="marca rechazo">🚫 {l.rechazada.motivo}</span>}
+                      {!l.anulada && l.cambio && <span className="marca cambio">cambio de plata · no es venta</span>}
                     </button>
                   );
                   const { sueltas, grupos } = porPaquete(lineas);

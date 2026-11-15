@@ -87,6 +87,11 @@ export function describir(op: Operacion, cuenta?: Cuenta, estado?: Pick<Estado, 
       const l = linea(op.linea);
       return { texto: `Marcó ${l ? `«${l.nombre}»` : "un producto"} como ${op.valor ? "comida" : "barra"}`, atencion: false };
     }
+    case "cambio_linea": {
+      const l = linea(op.linea);
+      const que = l ? `«${l.nombre}» (${pesos(l.precio * l.cantidad)})` : "un producto";
+      return { texto: op.valor ? `Marcó ${que} como cambio de plata: no es venta, salió efectivo de la ${op.caja === "comida" ? "cocina" : "barra"}` : `Quitó la marca de cambio de plata a ${que}`, atencion: true };
+    }
     case "cobrar": {
       const p = cuenta?.pagos.find((x) => x.id === op.pago);
       const valor = p ? ` ${pesos(p.monto)}` : "";

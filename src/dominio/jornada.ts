@@ -3,7 +3,7 @@
 // RF-50 a RF-53 de docs/01.
 
 import { areaDe, type Area } from "./areas";
-import { efectivoDeJornada, jornada, saldo, situacion, type Cuenta, type Medio } from "./estado";
+import { efectivoDeJornada, jornada, saldo, situacion, type Cuenta, type Linea, type Medio } from "./estado";
 import { horaDe } from "./formato";
 
 export interface RenglonDia { producto: string; nombre: string; cantidad: number; valor: number; comida?: boolean }
@@ -17,6 +17,8 @@ export interface ResumenJornada {
   efectivo: number;
   porProducto: RenglonDia[];
   cuentas: number;
+  /** Cambios de plata (no son venta): el efectivo que se dio a cambio de Nequi o Breve. */
+  cambios: number;
 }
 
 /** Lo que pertenece a una jornada: las pedidas anotadas y los cobros hechos ese día. */
@@ -26,6 +28,7 @@ export function resumenJornada(cuentas: Iterable<Cuenta>, fecha: string): Resume
   const porProducto = new Map<string, RenglonDia>();
   let vendido = 0;
   let vendidoComida = 0;
+  let cambios = 0;
   const conVenta = new Set<string>();
   for (const c of lista) {
     if (c.anulada) continue;
@@ -36,6 +39,7 @@ export function resumenJornada(cuentas: Iterable<Cuenta>, fecha: string): Resume
     const rondas = new Set(c.rondas.filter((r) => jornada(r.en) === fecha).map((r) => r.id));
     for (const l of c.lineas) {
       if (l.anulada || !rondas.has(l.ronda)) continue;
+      if (l.cambio) { cambios += l.precio * l.cantidad; continue; } // no es venta
       conVenta.add(c.id);
       vendido += l.precio * l.cantidad;
       if (l.comida) vendidoComida += l.precio * l.cantidad;
@@ -49,7 +53,7 @@ export function resumenJornada(cuentas: Iterable<Cuenta>, fecha: string): Resume
   return {
     fecha, vendido, vendidoComida, porMedio, efectivo: efectivoDeJornada(lista, fecha),
     porProducto: [...porProducto.values()].sort((a, b) => b.cantidad - a.cantidad),
-    cuentas: conVenta.size,
+    cuentas: conVenta.size, cambios,
   };
 }
 
@@ -83,7 +87,7 @@ export function csvJornada(cuentas: Iterable<Cuenta>, fecha: string): string {
       if (jornada(r.en) !== fecha) continue;
       for (const l of c.lineas) {
         if (l.ronda !== r.id || l.anulada) continue;
-        filas.push([fecha, horaDe(r.en), c.nombre, c.tipo, r.numero, r.persona, l.nombre, l.cantidad, l.precio, l.cantidad * l.precio, l.comida ? "sí" : "no", s, cobro]);
+        filas.push([fecha, horaDe(r.en), c.nombre, c.tipo, r.numero, r.persona, l.cambio ? `${l.nombre} (cambio de plata, no es venta)` : l.nombre, l.cantidad, l.precio, l.cantidad * l.precio, l.comida ? "sí" : "no", s, cobro]);
       }
     }
   }
@@ -105,6 +109,8 @@ export interface PagoRepartido {
   monto: number;
   barra: number;
   comida: number;
+  /** Lo del pago que cubrió un cambio de plata (no es venta). */
+  cambio: number;
   persona: string;
   en: number;
   deudor?: string;
@@ -115,6 +121,8 @@ export interface CuentaDelDia {
   cuenta: Cuenta;
   barra: number;
   comida: number;
+  /** Cambios de plata anotados en la cuenta (no son venta). */
+  cambio: number;
   /** Los pagos de esa jornada (los de otros días no suman aquí). */
   pagos: PagoRepartido[];
   /** Lo que falta por cobrar hoy (cuentas abiertas). */
@@ -134,41 +142,45 @@ export interface CuentasDelDia {
   porMedio: Record<Medios, Parte>;
   /** Lo que queda por cobrar, partido en barra y comida. */
   porCobrar: Parte;
+  /** Por qué medio entró la plata de los cambios (no es venta; salió en efectivo). */
+  cambios: Record<Medios, number>;
   /** Lo que cobró cada caja, por medio (y cuánto de eso era de la otra área). */
   cajas: Record<Area, { porMedio: Record<Medios, number>; deLaOtra: Record<Medios, number> }>;
 }
 
 const parteVacia = (): Parte => ({ barra: 0, comida: 0 });
+type Parte3 = "barra" | "comida" | "cambio";
+const PARTES: Parte3[] = ["barra", "comida", "cambio"];
 const mediosVacios = (): Record<Medios, number> => ({ efectivo: 0, nequi: 0, breve: 0, deuda: 0, comida: 0 });
 
 /** Reparte los pagos vivos de una cuenta entre barra y comida (todos, de cualquier día). */
 export function repartirPagos(c: Cuenta): PagoRepartido[] {
   const vivas = c.lineas.filter((l) => !l.anulada);
   const precio = new Map(vivas.map((l) => [l.id, l]));
-  const falta = { barra: 0, comida: 0 };
-  for (const l of vivas) falta[l.comida ? "comida" : "barra"] += l.precio * l.cantidad;
+  const parteDe = (l: Linea): Parte3 => (l.cambio ? "cambio" : l.comida ? "comida" : "barra");
+  const falta = { barra: 0, comida: 0, cambio: 0 };
+  for (const l of vivas) falta[parteDe(l)] += l.precio * l.cantidad;
   const r: PagoRepartido[] = [];
   for (const p of [...c.pagos].filter((x) => !x.deshecho).sort((a, b) => a.en - b.en)) {
-    let comida: number;
+    // Cuánto de cada parte: por productos, exacto (escalado si el monto no da lo mismo, p. ej.
+    // con tope); si no, según lo que le faltaba pagar a cada parte en ese momento.
+    const peso = { barra: 0, comida: 0, cambio: 0 };
     if (p.lineas?.length) {
-      // Por productos: exacto (escalado si el monto no da lo mismo, p. ej. con tope).
-      let pc = 0, pb = 0;
       for (const x of p.lineas) {
         const l = precio.get(x.linea);
-        if (!l) continue;
-        if (l.comida) pc += l.precio * x.cantidad; else pb += l.precio * x.cantidad;
+        if (l) peso[parteDe(l)] += l.precio * x.cantidad;
       }
-      comida = pc + pb > 0 ? Math.round((p.monto * pc) / (pc + pb)) : 0;
-    } else {
-      const fc = Math.max(0, falta.comida), fb = Math.max(0, falta.barra);
-      comida = fc + fb > 0 ? Math.round((p.monto * fc) / (fc + fb)) : 0;
-    }
-    comida = Math.max(0, Math.min(p.monto, comida));
-    const barra = p.monto - comida;
+    } else for (const k of PARTES) peso[k] = Math.max(0, falta[k]);
+    const totalPeso = peso.barra + peso.comida + peso.cambio;
+    const reparto = (k: Parte3) => (totalPeso > 0 ? Math.round((p.monto * peso[k]) / totalPeso) : 0);
+    const cambio = Math.max(0, Math.min(p.monto, reparto("cambio")));
+    const comida = Math.max(0, Math.min(p.monto - cambio, reparto("comida")));
+    const barra = p.monto - cambio - comida;
+    falta.cambio -= cambio;
     falta.comida -= comida;
     falta.barra -= barra;
     r.push({
-      id: p.id, medio: p.medio, caja: areaDe(p.area), monto: p.monto, barra, comida, persona: p.persona, en: p.en,
+      id: p.id, medio: p.medio, caja: areaDe(p.area), monto: p.monto, barra, comida, cambio, persona: p.persona, en: p.en,
       ...(p.deudor ? { deudor: p.deudor } : {}), ...(p.pagador ? { pagador: p.pagador } : {}),
     });
   }
@@ -181,6 +193,7 @@ export function cuentasDelDia(cuentas: Iterable<Cuenta>, fecha: string): Cuentas
   const anuladas: Cuenta[] = [];
   const porMedio = { efectivo: parteVacia(), nequi: parteVacia(), breve: parteVacia(), deuda: parteVacia(), comida: parteVacia() };
   const porCobrar = parteVacia();
+  const cambios = mediosVacios();
   const cajas = {
     barra: { porMedio: mediosVacios(), deLaOtra: mediosVacios() },
     comida: { porMedio: mediosVacios(), deLaOtra: mediosVacios() },
@@ -193,27 +206,33 @@ export function cuentasDelDia(cuentas: Iterable<Cuenta>, fecha: string): Cuentas
     if (c.juntadaA) continue; // lo suyo se cobra en la cuenta con que se juntó
     const repartidos = repartirPagos(c);
     const hoy = repartidos.filter((p) => jornada(p.en) === fecha);
-    let barra = 0, comida = 0;
-    for (const l of c.lineas) if (!l.anulada) { if (l.comida) comida += l.precio * l.cantidad; else barra += l.precio * l.cantidad; }
+    let barra = 0, comida = 0, cambio = 0;
+    for (const l of c.lineas) {
+      if (l.anulada) continue;
+      const v = l.precio * l.cantidad;
+      if (l.cambio) cambio += v; else if (l.comida) comida += v; else barra += v;
+    }
     for (const p of hoy) {
       const m = p.medio as Medios;
       porMedio[m].barra += p.barra;
       porMedio[m].comida += p.comida;
+      cambios[m] += p.cambio;
       cajas[p.caja].porMedio[m] += p.monto;
       cajas[p.caja].deLaOtra[m] += p.caja === "barra" ? p.comida : p.barra;
     }
     const falta = situacion(c) === "abierta" ? Math.max(0, saldo(c)) : 0;
     if (falta > 0) {
+      // Lo que falta de un cambio de plata cuenta con la barra (es plata que se le debe a la caja).
       const pagado = repartidos.reduce((t, p) => ({ barra: t.barra + p.barra, comida: t.comida + p.comida }), parteVacia());
       const fc = Math.max(0, comida - pagado.comida);
       const fb = Math.max(0, barra - pagado.barra);
-      const pc = fc + fb > 0 ? Math.round((falta * fc) / (fc + fb)) : 0;
+      const pc = fc + fb > 0 ? Math.min(falta, Math.round((falta * fc) / (fc + fb))) : 0;
       porCobrar.comida += pc;
       porCobrar.barra += falta - pc;
     }
     const desde = Math.min(...rondasHoy.map((r) => r.en), ...pagosHoy.map((p) => p.en));
-    lista.push({ cuenta: c, barra, comida, pagos: hoy, falta, desde });
+    lista.push({ cuenta: c, barra, comida, cambio, pagos: hoy, falta, desde });
   }
   lista.sort((a, b) => b.desde - a.desde);
-  return { cuentas: lista, anuladas, porMedio, porCobrar, cajas };
+  return { cuentas: lista, anuladas, porMedio, porCobrar, cambios, cajas };
 }

@@ -81,3 +81,38 @@ test("el día en el portátil: dos columnas", async ({ browser }) => {
   expect(columnas).toBe(2);
   await p.screenshot({ path: "test-results/capturas/el-dia-portatil.png", fullPage: true });
 });
+
+test("un cambio de plata cobrado por Nequi se marca en la cuenta y no cuenta como venta", async ({ browser }) => {
+  const p = await celular(browser, "Administrador", { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true });
+  const { token, base } = await sesionApi(p.context().request);
+  const en = Date.now();
+  const k = `e2e-cambio-${en}`;
+  expect((await p.context().request.post("/api/ops", { headers: { authorization: `Bearer ${token}` }, data: { base, ops: [
+    { id: `${k}-a`, t: "abrir", en, cuenta: k, nombre: "Cambio del día", tipo: "grupo" },
+    { id: `${k}-b`, t: "anotar", en, cuenta: k, ronda: `${k}-r1`, area: "barra", lineas: [{ id: `${k}-l1`, producto: "rubia", cantidad: 2 }] },
+    { id: `${k}-c`, t: "anotar", en, cuenta: k, ronda: `${k}-r2`, area: "barra", lineas: [{ id: `${k}-l2`, producto: "otro", cantidad: 1, precio: 50000, nombre: "Cambio por efectivo" }] },
+    { id: `${k}-d`, t: "cobrar", en, cuenta: k, pago: `${k}-pg`, medio: "nequi", area: "barra" },
+  ] } })).ok()).toBe(true);
+  await p.reload();
+  await p.locator(".pestanas button", { hasText: "El día" }).click();
+  const antes = await p.locator(".dia .cuadre-efectivo strong").innerText();
+
+  // En la cuenta (ya cobrada), el «Otro» se marca como cambio de plata.
+  await p.locator(".renglon-dia", { hasText: "Cambio del día" }).click();
+  await p.getByRole("button", { name: "Pedidas" }).click();
+  await p.locator(".ficha", { hasText: "Cambio por efectivo" }).click();
+  await p.getByRole("button", { name: "💱 Cambio de plata" }).click();
+  await expect(p.getByRole("button", { name: "💱 Cambio de plata" })).toHaveAttribute("aria-pressed", "true");
+  await p.getByRole("button", { name: "Listo" }).click();
+  await expect(p.locator(".ficha", { hasText: "Cambio por efectivo" })).toContainText("no es venta");
+
+  // En el día: la cuenta vale lo consumido, el cambio aparte, y el efectivo bajó 50.000.
+  await p.goBack();
+  const fila = p.locator(".renglon-dia", { hasText: "Cambio del día" });
+  await expect(fila.locator(".renglon-dia-total")).toHaveText("$ 8.000");
+  await expect(fila).toContainText("cambio $ 50.000");
+  await expect(p.locator(".dia-tabla tr.fila-cambio")).toContainText("entró por Nequi");
+  await expect(p.locator(".cuadre-cambios")).toBeVisible();
+  const num = (t: string) => Number(t.replace(/[^\d-]/g, ""));
+  expect(num(await p.locator(".dia .cuadre-efectivo strong").innerText())).toBe(num(antes) - 50000);
+});

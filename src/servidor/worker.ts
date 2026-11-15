@@ -573,7 +573,7 @@ export class Barra extends DurableObject<Env> {
       if (l && !puedeEditarLinea(quien.areas, l)) return "Desde comida solo se cambian los platos y las bebidas pedidas desde comida que no se han despachado.";
       if (!quien.areas.includes("comida") && productoDe(this.estado, op.nueva?.producto)?.categoria === "comida") return "Solo el área de comida anota platos.";
     }
-    if (op.t === "anular" || op.t === "cantidad" || op.t === "comida_linea") {
+    if (op.t === "anular" || op.t === "cantidad" || op.t === "comida_linea" || op.t === "cambio_linea") {
       const l = this.estado.cuentas[op.cuenta]?.lineas.find((x) => x.id === op.linea);
       if (l && !puedeEditarLinea(quien.areas, l)) return "Desde comida solo se cambian los platos y las bebidas pedidas desde comida que no se han despachado.";
     }

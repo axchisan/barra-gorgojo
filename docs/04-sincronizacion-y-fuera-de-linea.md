@@ -389,6 +389,25 @@ Pruebas: `tests/rechazo.test.ts`, `tests/servidor/empleados.test.ts`, `tests/e2e
 `tests/e2e/pedidos-barra.spec.ts`.
 Para los pedidos de los clientes por QR, la misma idea: [18](18-roadmap-2026-11.md) fase 5.
 
+## Cambio de plata (2026-11-15)
+
+Un cliente pide que le cambien plata: la pasa por Nequi (o Breve) y se le da un billete de
+la caja. En el negocio se anota como un «Otro» en su cuenta y se cobra junto con lo que
+consumió. Sin más, ese valor contaba como venta y el efectivo esperado de la caja quedaba
+alto, porque el billete salió sin que la app lo supiera.
+
+- `cambio_linea { cuenta, linea, valor, caja? }` marca (o desmarca) un «Otro» como cambio
+  de plata; la línea guarda `cambio: { caja, por, en }`. Solo para productos con nombre
+  libre («Otro»), con los mismos permisos que `comida_linea`. Se puede marcar con la
+  cuenta ya cobrada (desde «Editar», como barra o comida).
+- La cuenta no cambia: su total y su saldo siguen igual (el cliente sí debía esa plata).
+- No suma a lo vendido ni a «Por producto»; en «El día» sale aparte («💱 Cambio»).
+- Cada pago se reparte en barra, comida **y cambio** (`repartirPagos`): lo que entró por
+  Nequi sigue completo en la caja, pero la parte del cambio no es venta.
+- `efectivoDeJornada` resta el valor del cambio en la caja marcada, en la jornada de la
+  pedida en que se anotó (cuando salió el billete). Sin cambios marcados en el registro,
+  el resultado es el mismo de antes: no cambia la proyección (regla 0).
+
 ## Lo que ve cada persona (2026-11-15)
 
 Desde los accesos de empleados ([17](17-accesos-de-empleados.md), ADR-17) el servidor ya
