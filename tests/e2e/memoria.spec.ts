@@ -49,7 +49,7 @@ test("lo de la versión 0.1 en localStorage pasa a IndexedDB y llega al servidor
   await expect(tarjeta(p, "Anotada en la 0.1")).toBeVisible();
   await expect(p.locator(".conexion")).toHaveText(/Todo al día/);
   expect(await llavesViejas(p)).toEqual(["bg.base"]); // la base se queda, por si una pestaña vieja sigue abierta
-  expect(await colaGuardada(p)).toEqual([]);
+  await expect.poll(() => colaGuardada(p)).toEqual([]); // la escritura en IndexedDB es asíncrona: se espera
 
   // En el servidor, una vez; al recargar, nada se repite.
   await p.reload();
