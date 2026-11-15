@@ -497,8 +497,13 @@ campo (salvo `Esc` y `Ctrl/⌘ + Enter`). `?` muestra la lista en la app.
 | Cobrar | números | Con cuánto paga, en efectivo (calcula el cambio) |
 | Cobrar | `Ctrl/⌘ + Enter` | Cobrar. Ninguna tecla sola cobra, para no cobrar sin querer |
 
-Anotar una ronda en el portátil: `A`, «4agu», `Enter`, `Ctrl+Enter`. Prueba:
-`tests/e2e/teclado-fisico.spec.ts`. Pendiente de la fase 2: dos columnas en pantalla ancha.
+Anotar una ronda en el portátil: `A`, «4agu», `Enter`, `Ctrl+Enter`.
+
+**Dos columnas en el portátil.** Con pantalla de 1300 px o más y sin pantalla táctil, el
+inicio va en dos columnas: la lista de cuentas y, a la derecha, la cuenta abierta (tocarla o
+su número del 1 al 9). Anotar y cobrar siguen a pantalla completa; al volver, la cuenta
+sigue en el panel. `Esc` (o ←) lo cierra. La tablet de la barra y los teléfonos (táctiles)
+quedan igual. Prueba: `tests/e2e/teclado-fisico.spec.ts`.
 
 ## Entrada por persona (fase D, 2026-11-02)
 

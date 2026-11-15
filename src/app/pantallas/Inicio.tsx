@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { nombreArea } from "../../dominio/areas";
 import { jornada, porDespachar, situacion, total, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
@@ -13,6 +13,30 @@ import { useAtajos } from "../atajos";
 import { sinc } from "../sincronizacion";
 import { Cocina } from "./Cocina";
 import { ElDia } from "./ElDia";
+import { Detalle } from "./Detalle";
+
+/**
+ * Portátil (docs/18 fase 2): pantalla de 1300 px o más y que no sea táctil. Ahí el inicio va en dos
+ * columnas: la lista y, al lado, la cuenta abierta. La tablet de la barra y los teléfonos
+ * (táctiles o más angostos) siguen igual.
+ */
+const ANCHO = "(min-width: 1300px)";
+/** Táctil como puntero principal (tablet, teléfono): esos se quedan con una columna. */
+const TACTIL = "(pointer: coarse)";
+/** La cuenta que estaba en el panel, para volver a mostrarla al regresar al inicio. */
+let cuentaEnPanel: string | null = null;
+const esPortatil = () => typeof matchMedia === "function" && matchMedia(ANCHO).matches && !matchMedia(TACTIL).matches;
+function usePortatil() {
+  const [es, setEs] = useState(esPortatil);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const ms = [matchMedia(ANCHO), matchMedia(TACTIL)];
+    const cambio = () => setEs(esPortatil());
+    for (const m of ms) m.addEventListener("change", cambio);
+    return () => { for (const m of ms) m.removeEventListener("change", cambio); };
+  }, []);
+  return es;
+}
 
 export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" | "cocina" | "despacho" | "dia" }) {
   // «Cocina» ya no es pestaña (las pasadas a comida salen arriba de las cuentas): un
@@ -36,10 +60,22 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   const verBotonOcultar = pestana === "cuentas" && (ocultables > 0 || ocultar);
   const queOculta = panel === "barra" ? "comida" : "barra";
   useAtrasCierra(cambiar, () => setCambiar(false));
+  // Dos columnas en el portátil: la cuenta abierta en el panel de la derecha.
+  const portatil = usePortatil();
+  // Se recuerda mientras la app está abierta: al volver de anotar o cobrar, sigue en el panel.
+  const [abierta, setAbiertaCruda] = useState<string | null>(() => cuentaEnPanel);
+  const setAbierta = (id: string | null) => { cuentaEnPanel = id; setAbiertaCruda(id); };
+  const dosColumnas = portatil && pestana === "cuentas";
+  /** En la lista: abrir una cuenta la muestra en el panel. */
+  const navLista: Nav = dosColumnas ? { ...nav, ir: (v, r) => (v.v === "cuenta" ? setAbierta(v.id) : nav.ir(v, r)) } : nav;
+  /** En el panel: «volver» lo cierra; otra cuenta (juntada) se abre ahí mismo; lo demás, como siempre. */
+  const navPanel: Nav = { ...nav, volver: () => setAbierta(null), aInicio: () => setAbierta(null), ir: (v, r) => (v.v === "cuenta" ? setAbierta(v.id) : nav.ir(v, r)) };
   // Teclado físico (docs/02): «/» busca, «N» abre una cuenta nueva, 1…9 abren la cuenta de la lista.
   const atajos: Record<string, () => boolean | void> = {
     "/": () => { const b = document.querySelector<HTMLInputElement>(".inicio input.buscar"); if (!b) return false; b.focus(); },
     n: () => nav.ir({ v: "anotar" }),
+    // Esc cierra el panel de la cuenta, salvo que haya una hoja abierta (esa se cierra primero).
+    escape: () => { if (!abierta || history.state?.capa) return false; setAbierta(null); },
   };
   for (let i = 1; i <= 9; i++) atajos[String(i)] = () => { const t = document.querySelectorAll<HTMLElement>(".inicio .tarjetas .tarjeta")[i - 1]; if (!t) return false; t.click(); };
   useAtajos(atajos, pestana === "cuentas" && !cambiar);
@@ -91,15 +127,32 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
 
       {sonido && <HojaSonido cerrar={() => setSonido(false)} />}
       <Apartados />
-      {pestana === "cuentas" && enCocina.length > 0 && (
-        <details className="pasadas-a-comida">
-          <summary>🍽 {enCocina.length === 1 ? "1 mesa pasada" : `${enCocina.length} mesas pasadas`} a comida sin cobrar</summary>
-          <Cocina nav={nav} cuentas={enCocina} />
-        </details>
-      )}
-      {/* Los apartados se manejan en comida (en la barra, la tarjeta dice «⏰ Apartado»). */}
-      {pestana === "cuentas" && panel === "comida" && <ListaApartados nav={nav} cuentas={cuentas} />}
-      {pestana === "cuentas" && <ListaCuentas nav={nav} cuentas={cuentas} ocultar={ocultar} mostrar={() => setOcultar(false)} />}
+      {pestana === "cuentas" && (() => {
+        const lista = (
+          <>
+            {enCocina.length > 0 && (
+              <details className="pasadas-a-comida">
+                <summary>🍽 {enCocina.length === 1 ? "1 mesa pasada" : `${enCocina.length} mesas pasadas`} a comida sin cobrar</summary>
+                <Cocina nav={navLista} cuentas={enCocina} />
+              </details>
+            )}
+            {/* Los apartados se manejan en comida (en la barra, la tarjeta dice «⏰ Apartado»). */}
+            {panel === "comida" && <ListaApartados nav={navLista} cuentas={cuentas} />}
+            <ListaCuentas nav={navLista} cuentas={cuentas} ocultar={ocultar} mostrar={() => setOcultar(false)} />
+          </>
+        );
+        if (!dosColumnas) return lista;
+        return (
+          <div className="dos-columnas">
+            <div className="col-lista">{lista}</div>
+            <aside className="panel-cuenta" aria-label="Cuenta abierta">
+              {abierta && sinc.visible.cuentas[abierta]
+                ? <Detalle key={abierta} nav={navPanel} id={abierta} />
+                : <p className="vacio panel-vacio">Escoja una cuenta de la lista (o un número del 1 al 9).</p>}
+            </aside>
+          </div>
+        );
+      })()}
       {pestana === "despacho" && <PorDespachar nav={nav} cuentas={cuentas} />}
       {pestana === "dia" && <ElDia nav={nav} cuentas={cuentas} />}
 

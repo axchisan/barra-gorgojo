@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { celular } from "./ayuda";
 
-const PORTATIL = { viewport: { width: 1366, height: 768 } };
+const PORTATIL = { viewport: { width: 1366, height: 768 }, hasTouch: false, isMobile: false }; // sin lo táctil del perfil «Pixel 5» de las pruebas
 
 test("en el portátil se anota y se cobra con el teclado", async ({ browser }) => {
   const p = await celular(browser, "Administrador", PORTATIL);
@@ -35,7 +35,9 @@ test("en el portátil se anota y se cobra con el teclado", async ({ browser }) =
   await p.keyboard.type(nombre);
   await p.keyboard.press("Escape"); // sale del buscador
   await p.keyboard.press("1");
-  await expect(p.locator(".detalle")).toContainText(nombre);
+  // En el portátil, la cuenta se abre en el panel de la derecha, sin dejar la lista.
+  await expect(p.locator(".dos-columnas .panel-cuenta .detalle")).toContainText(nombre);
+  await expect(p.locator(".dos-columnas .col-lista .tarjeta", { hasText: nombre })).toBeVisible();
   await p.keyboard.press("c");
   await expect(p.locator(".cobrar")).toBeVisible();
   await p.keyboard.press("Escape");
@@ -52,6 +54,10 @@ test("en el portátil se anota y se cobra con el teclado", async ({ browser }) =
   await p.keyboard.press("Control+Enter");
   await expect(p.locator(".cobrar")).toHaveCount(0);
   await expect(p.locator(".aviso")).toContainText("cobrada");
+  // Esc cierra el panel.
+  await expect(p.locator(".panel-cuenta .detalle")).toBeVisible();
+  await p.keyboard.press("Escape");
+  await expect(p.locator(".panel-cuenta .detalle")).toHaveCount(0);
 });
 
 test("en el celular nada cambia: escribir no abre nada sin teclado físico en uso", async ({ browser }) => {
