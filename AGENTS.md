@@ -17,7 +17,7 @@ Lee `docs/00-vision-y-problema.md` antes de cualquier decisión de producto y
 ## Estado
 
 **En producción** desde el 2026-10-04, usada de verdad desde el 2026-11-01. **El
-trabajo actual parte de `docs/16-siguiente-etapa.md`** (estado al 2026-11-14, deuda
+trabajo actual parte de `docs/16-siguiente-etapa.md`** (estado al 2026-11-15, deuda
 técnica y siguiente etapa); el plan que lo precedió, ya cumplido, es
 `docs/12-plan-de-trabajo.md`, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.

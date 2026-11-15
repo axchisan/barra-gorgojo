@@ -239,7 +239,7 @@ Contexto útil (de las sesiones de este plan):
   `node scripts/admin.mjs .dev.vars.produccion foto migracion/<nombre>.json` y comparar con
   `pnpm resumen` (regla 2 de producción).
 - Pruebas: `pnpm build && pnpm desplegar:pruebas`. URLs en `negocio/README.md`.
-- Último estado comprobado (2026-11-14): 167 pruebas de Vitest y 65 e2e pasando. En un
+- Último estado comprobado (2026-11-15): 174 pruebas de Vitest y 66 e2e pasando. En un
   clon nuevo, `pnpm build` antes de `pnpm verificar` (las pruebas del Worker necesitan `dist`).
 
 ---

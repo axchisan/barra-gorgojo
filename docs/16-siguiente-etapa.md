@@ -23,7 +23,7 @@ Todo esto corre en producción, probado (Vitest y Playwright) y documentado:
 | Deudas | Pasar a deuda (todo, pedidas o valor); deudas a mano; pagos aparte de la caja; detalle completo de lo fiado; permiso «Administra deudas» | 15, ADR-16 |
 | Pantalla | Ocultar lo del otro panel; pestañas Comida/Bebidas; totales a la vista; pedidas anuladas plegadas; todo a la vista en celular, celular girado y tablet | 02 |
 
-Pruebas al 2026-11-14: **167 de Vitest** (dominio y Worker real) y **65 de Playwright**.
+Pruebas al 2026-11-15: **174 de Vitest** (dominio y Worker real) y **66 de Playwright**.
 
 ## 2 · Deuda técnica y cosas por saber
 

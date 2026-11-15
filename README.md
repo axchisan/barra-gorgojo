@@ -8,9 +8,9 @@ celulares ven lo mismo.
 
 ## Estado
 
-**En uso** desde el 2026-10-04; en el local desde el 2026-11-01. Al **2026-11-14**:
+**En uso** desde el 2026-10-04; en el local desde el 2026-11-01. Al **2026-11-15**:
 fases A a G del [plan de trabajo](docs/12-plan-de-trabajo.md) hechas, más comida y
-áreas, despacho, abonos, juntar cuentas y deudas. **Para trabajar en el código, empezar
+áreas, despacho, abonos, juntar cuentas, deudas y editar pedidas. **Para trabajar en el código, empezar
 por [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md).**
 
 - **Barra:** cuentas de grupo, persona, mesa y cancha; pedidas y chicos (y adicionales)
@@ -21,6 +21,8 @@ por [16 · Estado y siguiente etapa](docs/16-siguiente-etapa.md).**
 - **Cobro:** efectivo con sugerencias de billetes y cambio, Nequi o Breve, mostrar al
   cliente; abonos por productos, pedida o valor; dividir entre varios; juntar cuentas;
   pasar a deuda.
+- **Corregir:** cambiar la cantidad, anular, agregar a una pedida ya anotada o cambiar un
+  producto por otro; todo queda en la auditoría, nada se borra.
 - **Deudas:** quién debe y cuánto, el detalle de lo fiado, pagos aparte de la caja.
 - **Administración:** el día con cierre por caja, días anteriores y CSV; auditoría;
   personas con PIN, áreas y permisos; productos y platos desde la app.
