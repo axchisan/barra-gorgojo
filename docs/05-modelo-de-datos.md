@@ -79,7 +79,7 @@ guarda.
 | `reabrir` | `cuenta` | Deshace el último cobro o la anulación |
 | `comida_cobrada` | `cuenta, valor` | La cocina marca cobrada (o no) una cuenta pasada a comida |
 | `anular_cuenta` | `cuenta, motivo?` | Anula la cuenta; con productos, solo el administrador y con motivo |
-| `producto` | `producto` | Crea o cambia un producto (administrador) |
+| `producto` | `producto` | Crea o cambia un producto (administrador). Con `padre`, es una opción de ese producto (sabor, marca: docs/02 «Opciones de un producto») |
 | `orden` | `ids[]` | Orden de los botones (administrador) |
 | `cerrar_jornada` | `fecha, contado, notas?, area?` | Cierre del día con el efectivo contado (E1); con `area`, el de esa caja (barra o cocina) |
 

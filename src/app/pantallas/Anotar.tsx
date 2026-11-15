@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MEDIO_PETACO, PETACO, SECCIONES, SECCIONES_COMIDA, type Producto } from "../../dominio/catalogo";
 import {
-  catalogo, jornada, precioPara, producto as productoDe, saldo, situacion,
+  catalogo, enCuadricula, jornada, opcionesDe, precioPara, producto as productoDe, saldo, situacion,
   type Cancha, type ModoPrecio, type TipoCuenta,
 } from "../../dominio/estado";
 import { nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
@@ -10,6 +10,8 @@ import { HojaLibre, type Libre } from "../componentes/HojaLibre";
 import { HojaMixto } from "../componentes/HojaMixto";
 import { HojaNota, HojaPlato } from "../componentes/HojaNota";
 import { NoExiste } from "../componentes/NoExiste";
+import { BotonPresionable } from "../componentes/BotonPresionable";
+import { HojaOpciones } from "../componentes/HojaOpciones";
 import type { Nav } from "../navegacion";
 import { describir, nombrePaquete, type PaqueteEnArmado } from "../paquetes";
 import { sinc } from "../sincronizacion";
@@ -74,6 +76,8 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const [paquetes, setPaquetes] = useState<PaqueteEnArmado[]>([]);
   // Canchas: por defecto la pedida es un chico; «Adicional» si es algo suelto después del chivo.
   const [adicional, setAdicionalCrudo] = useState(false);
+  // Opciones de un producto (sabores, marcas) al mantenerlo presionado (docs/02).
+  const [conOpciones, setConOpciones] = useState<Producto | null>(null);
   // Precio de la pedida en las canchas (docs/04): el chico a precio de cancha, el adicional
   // a precio normal; se puede escoger el otro. Cambiar chico/adicional vuelve al de siempre.
   const [aPrecioCancha, setAPrecioCancha] = useState<boolean | null>(null);
@@ -105,6 +109,9 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   }, []);
 
   if (cuentaId && !cuenta) return <NoExiste nav={nav} />;
+
+  /** Un toque en un producto: suma uno (o un petaco); los de valor libre abren su hoja. */
+  const tocarProducto = (p: Producto) => (p.libre ? setHoja(p.conNombre ? "otro" : "mecato") : pasoDe(p) > 1 ? agregarPaquete(p.id) : sumar(p.id, 1));
 
   const sumar = (id: string, d: number) => {
     vibrar();
@@ -319,20 +326,25 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
           )}
           {/* En modo petaco un toque suma 15 o 30: la cuadrícula de cervezas se marca (C4). */}
           <div className={s.categorias.includes("comida") ? "productos platos" : s.categorias.includes("cerveza") && paso > 1 ? "productos modo-paquete" : "productos"}>
-            {productos.filter((p) => p.activo && s.categorias.includes(p.categoria)).map((p) => {
-              const k = p.libre ? libres.filter((x) => x.producto === p.id && !(enComida && x.comida)).length : cantDe(p.id) + enPaquetes(p.id);
+            {productos.filter((p) => p.activo && enCuadricula(sinc.visible, p) && s.categorias.includes(p.categoria)).map((p) => {
+              const ops = p.conNombre ? [] : opcionesDe(sinc.visible, p.id);
+              const propios = p.libre ? libres.filter((x) => x.producto === p.id && !(enComida && x.comida)).length : cantDe(p.id) + enPaquetes(p.id);
+              const k = propios + ops.reduce((t, o) => t + cantDe(o.id) + enPaquetes(o.id), 0);
               return (
                 <div key={p.id} className="producto-celda">
-                  <button
-                    className={p.conNombre ? "producto otro" : "producto"}
+                  <BotonPresionable
+                    className={`${p.conNombre ? "producto otro" : "producto"}${ops.length ? " con-opciones" : ""}`}
                     style={{ background: p.fondo, color: p.texto }}
-                    onClick={() => (p.libre ? setHoja(p.conNombre ? "otro" : "mecato") : pasoDe(p) > 1 ? agregarPaquete(p.id) : sumar(p.id, 1))}
+                    aria-description={ops.length ? "Mantenga presionado para escoger cuál" : undefined}
+                    alTocar={() => tocarProducto(p)}
+                    alMantener={ops.length ? () => setConOpciones(p) : undefined}
                   >
                     <span className="corto">{p.corto}</span>
                     <span className="precio">
                       {p.conNombre ? "nombre y valor" : p.libre ? "valor" : pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : pesos(precioVisto(p)!)}
                     </span>
-                  </button>
+                    {ops.length > 0 && <span className="marca-opciones" aria-hidden="true">⋯</span>}
+                  </BotonPresionable>
                   {p.categoria === "comida" && (
                     <button className="con-nota" aria-label={`${p.nombre} con nota`} onClick={() => setConNota(p)}>✎ nota</button>
                   )}
@@ -341,6 +353,8 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
                       className="contador"
                       aria-label={`Quitar una ${p.nombre}`}
                       onClick={() => {
+                        // Sin unidades del general, quita de la última opción escogida.
+                        if (propios === 0) { const o = [...ops].reverse().find((x) => cantDe(x.id) + enPaquetes(x.id) > 0); if (o) return quitar(o); }
                         if (!p.libre) return quitar(p);
                         // En comida, los platos de otro valor tienen su propio contador.
                         const i = libres.map((x) => x.producto === p.id && !(enComida && x.comida)).lastIndexOf(true);
@@ -407,6 +421,12 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       )}
 
 
+      {conOpciones && (
+        <HojaOpciones padre={conOpciones} opciones={opcionesDe(sinc.visible, conOpciones.id)}
+          cantidad={(p) => cantDe(p.id) + enPaquetes(p.id)} tocar={tocarProducto} quitar={quitar}
+          precio={(p) => pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : pesos(precioVisto(p) ?? 0)}
+          cerrar={() => setConOpciones(null)} />
+      )}
       {error && <p className="error flotante">{error}</p>}
       <div className={cuenta?.tipo === "cancha" ? "pie-fijo con-tipo-ronda" : "pie-fijo"}>
         {/* Solo se ve en horizontal, donde el pie pasa a ser un panel a la derecha. */}

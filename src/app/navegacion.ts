@@ -7,7 +7,7 @@ export type Vista =
   | { v: "cuenta"; id: string }
   | { v: "cobrar"; id: string }
   | { v: "productos" }
-  | { v: "producto"; id?: string }
+  | { v: "producto"; id?: string; padre?: string }
   | { v: "platos" }
   | { v: "deudas" }
   | { v: "deudor"; id: string }

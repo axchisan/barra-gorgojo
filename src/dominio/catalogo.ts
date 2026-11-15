@@ -25,6 +25,12 @@ export interface Producto {
   activo: boolean;
   /** Notas rápidas para este producto al anotarlo («solo carne», «más yuca»). */
   notas?: string[];
+  /**
+   * Opción de otro producto (docs/02 «Opciones de un producto», 2026-11-15): un sabor de
+   * la gaseosa, una marca de mecato. No sale en la cuadrícula: sale al mantener presionado
+   * su producto general. Es un producto completo (precio, cancha, color, visible, orden).
+   */
+  padre?: string;
   fondo: string;
   texto: string;
 }

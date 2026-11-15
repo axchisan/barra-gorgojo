@@ -38,7 +38,7 @@ export function App() {
       {vista.v === "cuenta" && <Detalle nav={nav} id={vista.id} />}
       {vista.v === "cobrar" && <Cobrar nav={nav} id={vista.id} />}
       {vista.v === "productos" && <Productos nav={nav} />}
-      {vista.v === "producto" && <EditarProducto nav={nav} id={vista.id} />}
+      {vista.v === "producto" && <EditarProducto key={vista.id ?? `nuevo-${vista.padre ?? ""}`} nav={nav} id={vista.id} padre={vista.padre} />}
       {vista.v === "platos" && <Platos nav={nav} />}
       {vista.v === "deudas" && <Deudas nav={nav} />}
       {vista.v === "deudor" && <DeudorDetalle nav={nav} id={vista.id} />}

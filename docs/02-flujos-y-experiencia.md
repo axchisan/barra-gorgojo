@@ -345,6 +345,31 @@ precio de siempre, para no recargar la pantalla. **No agrega toques al caso com�
 un adicional normal sigue igual); solo el caso raro (adicional a precio de cancha) lleva
 un toque más.
 
+### Opciones de un producto: sabores y marcas (2026-11-15)
+
+Pedido por el negocio: la gaseosa general se sigue anotando con **un toque** (lo eficiente
+cuando no importa el sabor), pero a veces hay que anotar «dos Colombianas».
+
+- **Un toque** en un producto anota el general, como siempre (no cambia el caso común).
+- **Mantenerlo presionado** (medio segundo, sin mover el dedo) abre la hoja «¿cuál?» con
+  sus opciones: cada toque suma uno, el contador quita, «Listo · N» cierra. En el
+  computador, **clic derecho** (o la tecla de menú). Vibra al abrir.
+- El botón de un producto con opciones lleva **⋯** arriba a la derecha, y su contador suma
+  el general y las opciones. El «−» quita primero del general y después de la última opción.
+- Sirve para cualquier producto que no sea «Otro»: gaseosas de cada tamaño, mecato
+  (marcas con su precio), cervezas (también en petacos).
+- Al anotar, la línea guarda el nombre de la opción («Colombiana (pequeña)») y su precio.
+
+**Administración** («Productos y precios» → el producto general): sección «Opciones al
+mantener presionado» con cada opción (tocarla la edita: nombre, botón, precio, precio de
+cancha, color, visible, sección), ▲▼ para ordenarlas, «＋ Nueva opción» (empieza con el
+precio y el color del general) y «＋ Varias de una vez»: en las gaseosas trae marcadas las
+más comunes de Colombia (Postobón y Coca-Cola, `src/app/sugerencias.ts`), con el precio
+del general para todas; también se escriben otras separadas por comas. En cualquier
+producto, «Es opción de» lo vuelve opción de otro (o lo saca, «tiene su propio botón»).
+Las opciones no salen en la lista de productos: se ven dentro de su general («⋯ 11
+opciones»). Un solo nivel: una opción no tiene opciones.
+
 ### Pedido rápido a la barra (2026-11-08)
 
 En el panel de comida, «🔔 Pedir a la barra» abre el panel de bebidas con **Detalles**

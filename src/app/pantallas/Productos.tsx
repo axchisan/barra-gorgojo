@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { SECCIONES_COMIDA as SECCIONES, type Producto } from "../../dominio/catalogo";
 // Con la sección de comida: todas las secciones del catálogo (docs/14).
-import { catalogo } from "../../dominio/estado";
+import { catalogo, enCuadricula, opcionesDe } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
 
 export function Productos({ nav }: { nav: Nav }) {
-  const lista = catalogo(sinc.visible);
+  // Las opciones (sabores, marcas) se editan dentro de su producto general (docs/02).
+  const lista = catalogo(sinc.visible).filter((p) => enCuadricula(sinc.visible, p));
   const [ordenando, setOrdenando] = useState(false);
   /** Mueve un producto un puesto dentro de su sección y guarda el orden completo. */
   const mover = (p: Producto, d: -1 | 1) => {
@@ -49,6 +50,7 @@ export function Productos({ nav }: { nav: Nav }) {
                   <span className="corto">{p.corto}</span>
                   <span className="precio">{!p.activo ? "oculto" : p.libre ? "valor libre" : pesos(p.precio!)}</span>
                   {p.activo && !p.libre && p.precioCancha ? <span className="precio-cancha">🎯 {pesos(p.precioCancha)}</span> : null}
+                  {(() => { const n = opcionesDe(sinc.visible, p.id, true).length; return n ? <span className="cuantas-opciones">⋯ {n} {n === 1 ? "opción" : "opciones"}</span> : null; })()}
                 </button>
                 {ordenando && (
                   <div className="flechas">

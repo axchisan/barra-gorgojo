@@ -45,6 +45,7 @@ const producto = z.object({
   conNombre: opcional(z.boolean()),
   activo: z.boolean(),
   notas: opcional(z.array(texto(60)).max(20)),
+  padre: opcional(z.string().regex(/^[a-z0-9-]{1,40}$/)),
   fondo: texto(16),
   texto: texto(16),
 });

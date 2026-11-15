@@ -173,6 +173,21 @@ export function catalogo(estado: Estado): Producto[] {
 }
 
 /**
+ * Opciones de un producto (sabores, marcas), en el orden del catálogo. Solo las de un
+ * general que existe; una opción de una opción no cuenta (un solo nivel).
+ */
+export function opcionesDe(estado: Estado, id: string, todas = false): Producto[] {
+  return catalogo(estado).filter((p) => p.padre === id && (todas || p.activo));
+}
+
+/** Si el producto va en la cuadrícula: los generales, y las opciones cuyo general ya no existe. */
+export function enCuadricula(estado: Estado, p: Producto): boolean {
+  if (!p.padre) return true;
+  const padre = producto(estado, p.padre);
+  return !padre || !!padre.padre;
+}
+
+/**
  * Desde cuándo rige el precio de cancha. Lo anotado antes se cobró al precio normal y
  * así debe seguir al recalcular el registro (pasó el 2026-11-01: ver docs/04).
  */
@@ -768,6 +783,9 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       if (!nombre) return estado;
       // Mecato y «Otro» conservan su comportamiento aunque no estén en el catálogo base.
       const base = ESPECIALES[p.id] ?? PRODUCTOS.get(p.id);
+      // Opción de otro producto: el id del general (no se valida que exista: el orden de las
+      // operaciones no importa). Una opción no puede ser de sí misma.
+      const padre = typeof p.padre === "string" && /^[a-z0-9-]{1,40}$/.test(p.padre) && p.padre !== p.id ? p.padre : undefined;
       estado.productos ??= {};
       estado.productos[p.id] = {
         id: p.id,
@@ -783,6 +801,7 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
         ...(Array.isArray(p.notas) && p.notas.length ? { notas: p.notas.filter((x): x is string => typeof x === "string").map((x) => x.trim().slice(0, 30)).filter(Boolean).slice(0, 12) } : {}),
         fondo: COLOR.test(p.fondo) ? p.fondo : "#F0E9DE",
         texto: COLOR.test(p.texto) ? p.texto : "#241206",
+        ...(padre ? { padre } : {}),
       };
       return estado;
     }

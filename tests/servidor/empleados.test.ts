@@ -128,3 +128,16 @@ describe("precio de los adicionales en el servidor", () => {
     expect(r.rechazadas[0].motivo).toMatch(/ya se cobró/);
   });
 });
+
+describe("opciones de un producto en el servidor", () => {
+  let s: Servidor;
+  beforeAll(async () => { s = await arrancar(); });
+  afterAll(() => s?.apagar());
+
+  it("el servidor acepta y guarda el producto general de una opción", async () => {
+    const admin = await s.token("Administrador");
+    const r = (await s.ops(admin, [op({ t: "producto", producto: { id: "colombiana-x1", nombre: "Colombiana (personal)", corto: "COLOMBIANA", categoria: "gaseosa", precio: 3000, activo: true, fondo: "#E8892B", texto: "#241206", padre: "gaseosa" } })])) as any;
+    expect(r.rechazadas).toEqual([]);
+    expect(r.estado.productos["colombiana-x1"].padre).toBe("gaseosa");
+  });
+});

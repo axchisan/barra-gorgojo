@@ -1018,3 +1018,25 @@ html.apaisada .anotar .precio-ronda-anotar { position: static; width: 100%; }
 }
 /* H4: la fila de cuentas de «Pedir a la barra» se desliza: el degradado avisa que hay más. */
 .chips.destinos { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: 36px; }
+
+/* Opciones de un producto (docs/02, 2026-11-15): sabores y marcas al mantener presionado. */
+.producto { -webkit-touch-callout: none; }
+.producto.con-opciones { position: relative; }
+.marca-opciones { position: absolute; top: 2px; right: 6px; font-size: 1.1rem; font-weight: 900; line-height: 1; opacity: 0.85; }
+.hoja-opciones .productos { margin: 8px 0 12px; }
+.hoja-opciones .listo-opciones { width: 100%; }
+.cuantas-opciones { font-size: 0.75rem; font-weight: 700; opacity: 0.9; }
+.opciones-producto { display: grid; gap: 8px; margin-top: 12px; }
+.opciones-producto h2 { margin: 0; font-size: 1.1rem; }
+.fila-opcion { display: grid; grid-template-columns: 104px minmax(0, 1fr) 44px 44px; align-items: center; gap: 8px; }
+.fila-opcion .producto.mini { min-height: 56px; padding: 4px; font-size: 0.85rem; }
+.fila-opcion .nombre-opcion { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fila-opcion .chip { min-width: 44px; min-height: 44px; padding: 0; }
+.crear-varias { display: grid; gap: 8px; border-top: 2px dashed var(--neutro-200); padding-top: 10px; }
+.punto-color { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.2); vertical-align: middle; }
+/* En el teléfono, la hoja de opciones va a 3 columnas: «COLOMBIANA» cabe sin partirse. */
+@media (max-width: 599px) {
+  .hoja-opciones .productos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.hoja-opciones .producto .corto { overflow-wrap: normal; word-break: normal; hyphens: manual; }
+.campo select { min-height: 52px; font: inherit; font-weight: 500; padding: 8px 12px; border-radius: 12px; border: 2px solid var(--neutro-200); background: #fff; color: inherit; }
