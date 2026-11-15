@@ -8,6 +8,7 @@
 // todas releen la memoria cuando otra la cambia. Ver docs/04 «Varias pestañas».
 
 import { AREAS, esArea, type Area } from "../dominio/areas";
+import { marcarPropias } from "./propios";
 import { BASE_ORIGINAL } from "../dominio/base";
 import { aplicar, estadoVacio, recortar, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { abrirMemoria, type Ajustes, type Apartado, type Cambio, type Confirmado, type Memoria, type PersonaPublica, type Sesion } from "./memoria";
@@ -477,6 +478,8 @@ class Sincronizador {
     if ((nueva.t === "anotar" || nueva.t === "cobrar") && !nueva.area) nueva = { ...nueva, area: this.panel };
     const op = { ...nueva, id: crypto.randomUUID(), persona: this.sesion?.persona ?? "?", en: Date.now(), ...(this.sesion ? { firma: this.sesion.token } : {}) } as Operacion;
     this.pendientes.push(op);
+    // Lo anotado aquí no le suena a este mismo aparato (src/app/propios.ts).
+    if (op.t === "anotar" || op.t === "agregar") marcarPropias(op.lineas.map((l) => l.id));
     // Primero el respaldo síncrono: si la app muere antes de que IndexedDB escriba, no se pierde.
     escribirRespaldo([...leerRespaldo().filter((x) => x.id !== op.id), op]);
     this.recalcular(); // se ve al instante

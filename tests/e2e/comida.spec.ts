@@ -23,7 +23,7 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   // Comida: entra directo a su panel; los platos van primero.
   const cocina = await celular(browser, "Cocina");
   await expect(cocina.locator(".barra-superior strong").first()).toHaveText("Comida");
-  await expect(cocina.getByRole("button", { name: "Despachar" })).toHaveCount(0);
+  await expect(cocina.getByRole("button", { name: /Despachar \(/ })).toHaveCount(0); // sin pendientes (la pestaña puede seguir por lo ya despachado)
   await cocina.getByRole("button", { name: "＋ Nueva cuenta" }).click();
   await expect(cocina.locator("main > section .seccion").first()).toHaveText("Comida");
   await cocina.getByLabel("Número de mesa").fill("7");
@@ -53,7 +53,7 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   await expect(aviso).toContainText("Mesa 7: 1 Rubia");
   await aviso.click();
   const tarjetaDespacho = barra.locator(".por-despachar .despacho", { hasText: "Mesa 7" });
-  await expect(tarjetaDespacho).toContainText("Lo pidió Cocina");
+  await expect(tarjetaDespacho).toContainText("la pidió Cocina");
   await tarjetaDespacho.getByRole("button", { name: "Despachado" }).click();
   await expect(barra.locator(".por-despachar")).toContainText("Nada por despachar");
   await barra.getByRole("button", { name: "Cuentas" }).click();

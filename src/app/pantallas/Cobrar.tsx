@@ -148,7 +148,24 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
           Ya abonaron {pesos(abonado)}{yaAbonado.some((p) => p.pagador) ? ` (${yaAbonado.map((p) => `${p.pagador ?? "sin nombre"} ${pesos(p.monto)}`).join(", ")})` : ""} · falta {pesos(falta)}
         </p>
       )}
-      {totalComida(c) > 0 && <Desglose c={c} />}
+      {(() => {
+        // Cobrar solo lo de la barra o solo lo de comida de un toque (2026-11-15): escoge
+        // todos los productos por pagar de esa área, sin tocarlos uno por uno.
+        const deArea = (comida: boolean) => [...porPagar].filter(([id]) => !!c.lineas.find((l) => l.id === id)?.comida === comida);
+        const barra = deArea(false);
+        const comida = deArea(true);
+        if (!barra.length || !comida.length) return totalComida(c) > 0 ? <Desglose c={c} /> : null;
+        const valorDe = (ls: [string, number][]) => ls.reduce((t, [id, k]) => t + (c.lineas.find((l) => l.id === id)?.precio ?? 0) * k, 0);
+        const elegido = (ls: [string, number][]) => modo === "productos" && Object.entries(escogidas).filter(([, k]) => k > 0).length === ls.length
+          && ls.every(([id, k]) => escogidas[id] === k);
+        const escoger = (ls: [string, number][]) => { setModo("productos"); setEscogidas(Object.fromEntries(ls)); setRecibido(null); setOtro(""); };
+        return (
+          <div className="desglose cobro-area" role="group" aria-label="Cobrar por área">
+            <button className={elegido(barra) ? "activo" : ""} aria-pressed={elegido(barra)} onClick={() => escoger(barra)}>🍺 Solo barra <b>{pesos(valorDe(barra))}</b></button>
+            <button className={elegido(comida) ? "activo" : ""} aria-pressed={elegido(comida)} onClick={() => escoger(comida)}>🍽 Solo comida <b>{pesos(valorDe(comida))}</b></button>
+          </div>
+        );
+      })()}
 
       <div className="segmentos modo-cobro" role="group" aria-label="Qué se cobra">
         {([["todo", "Todo"], ["productos", "Productos"], ["valor", "Valor"]] as const).map(([m, texto]) => (

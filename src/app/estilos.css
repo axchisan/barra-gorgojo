@@ -1178,3 +1178,18 @@ html .inicio .panel-cuenta .pie-fijo {
 /* La marca del domicilio en su tarjeta: sutil, en la misma línea de las demás marcas. */
 .marca-domicilio { font-size: 0.85rem; font-weight: 700; color: #5b3d8a; }
 .marca-domicilio.atrasado { color: #B71C1C; }
+
+/* Despacho con detalle (2026-11-15): una tarjeta por pedida, notas y lo de las últimas 2 horas. */
+.marca.despachada { display: block; font-size: 0.8rem; font-weight: 700; color: var(--verde); padding: 0; }
+.por-despachar .lineas-despacho li { padding: 2px 0; }
+.por-despachar h3.etiqueta { margin: 20px 0 6px; }
+.despachos-recientes { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.despachos-recientes li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #fff; border: 1px solid #e3d8c6; cursor: pointer; }
+.despachos-recientes li small { font-weight: 700; }
+.despachos-recientes li.despachado small { color: var(--verde); }
+.despachos-recientes li.rechazado small { color: #C62828; }
+/* Cobrar solo lo de un área de un toque. */
+.desglose.cobro-area { display: flex; gap: 8px; }
+.desglose.cobro-area button { flex: 1; min-height: 56px; border-radius: 12px; border: 2px solid #e3d8c6; background: #fff; font: inherit; font-size: 1rem; cursor: pointer; }
+.desglose.cobro-area button.activo { border-color: var(--marron); background: var(--amarillo); }
+.desglose.cobro-area button[disabled] { opacity: 0.5; }

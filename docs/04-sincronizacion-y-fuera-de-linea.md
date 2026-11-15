@@ -379,7 +379,14 @@ le sale a quien rechazó. En el detalle, el producto anulado dice «🚫 Se acab
 | Otro aparato ya lo despachó o lo canceló | Se rechaza: «Ese pedido ya no está por despachar» |
 | Una parte sí hay | Solo lo escogido se rechaza; lo demás sigue por despachar |
 
-Pruebas: `tests/rechazo.test.ts`, `tests/servidor/empleados.test.ts`, `tests/e2e/rechazo.spec.ts`.
+**Rechazar no es cancelar** (2026-11-15): quien pidió cancela lo suyo con «Cancelar pedido»
+(operaciones `anular`) aunque también tenga la barra; «No se puede» es para los pedidos de
+otros. Si al cancelar la cuenta queda sin productos vivos ni pagos, el celular emite también
+`anular_cuenta` con motivo «Pedido cancelado» (una cuenta vacía la anula cualquiera), para
+que no quede abierta en $ 0.
+
+Pruebas: `tests/rechazo.test.ts`, `tests/servidor/empleados.test.ts`, `tests/e2e/rechazo.spec.ts`,
+`tests/e2e/pedidos-barra.spec.ts`.
 Para los pedidos de los clientes por QR, la misma idea: [18](18-roadmap-2026-11.md) fase 5.
 
 ## Lo que ve cada persona (2026-11-15)

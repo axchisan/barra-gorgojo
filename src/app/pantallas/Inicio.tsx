@@ -3,7 +3,7 @@ import { nombreArea } from "../../dominio/areas";
 import { jornada, porDespachar, situacion, total, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
 import { Apartados } from "../componentes/Apartados";
-import { HojaSonido, PorDespachar } from "../componentes/Despacho";
+import { despachosRecientes, HojaSonido, PorDespachar } from "../componentes/Despacho";
 import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
 import { ListaApartados } from "../componentes/ListaApartados";
@@ -46,6 +46,8 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   const cuentas = Object.values(sinc.visible.cuentas);
   const enCocina = cuentas.filter((c) => situacion(c) === "comida" && !c.comidaCobrada);
   const nDespacho = porDespachar(cuentas).length;
+  // La pestaña sigue un rato después de despachar: ahí se ve quién despachó y a qué hora.
+  const verDespacho = nDespacho > 0 || despachosRecientes(cuentas).length > 0 || pestana === "despacho";
   const panel = sinc.panel;
   const [cambiar, setCambiar] = useState(false);
   const [sonido, setSonido] = useState(false);
@@ -160,7 +162,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
       <nav className="pestanas">
         <button className={pestana === "cuentas" ? "activa" : ""} onClick={() => nav.ir({ v: "inicio", pestana: "cuentas" }, true)}>Cuentas</button>
         {/* Aparece cuando hay algo por despachar (y el aviso de arriba lleva aquí). */}
-        {nDespacho > 0 && (
+        {verDespacho && (
           <button className={`${pestana === "despacho" ? "activa" : ""}${nDespacho ? " con-pendientes" : ""}`} onClick={() => nav.ir({ v: "inicio", pestana: "despacho" }, true)}>
             Despachar{nDespacho ? ` (${nDespacho})` : ""}
           </button>

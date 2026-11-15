@@ -3,10 +3,11 @@
 // por eso no se pierde si la tablet estaba apagada o la app cerrada; aparece al abrirla y
 // se queda hasta que alguien de la barra toque «Despachado».
 import { useEffect, useRef, useState } from "react";
-import { porDespachar, type Cuenta, type Linea } from "../../dominio/estado";
-import { haceCuanto } from "../../dominio/formato";
+import { porDespachar, type Cuenta, type Linea, type Ronda } from "../../dominio/estado";
+import { haceCuanto, horaDe, nombreRonda } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { useAtrasCierra, type Nav } from "../navegacion";
+import { esPropia } from "../propios";
 import { sinc } from "../sincronizacion";
 
 /**
@@ -149,9 +150,33 @@ const textoLineas = (ls: { cantidad: number; nombre: string }[]) => ls.map((l) =
 const detallesDe = (c: Cuenta, ls: { ronda: string }[]) =>
   [...new Set(ls.map((l) => c.rondas.find((r) => r.id === l.ronda)?.detalle).filter((d): d is string => !!d))];
 
+/**
+ * Lo que este aparato tiene que avisar: lo por despachar que NO se anotó aquí. Quien pide
+ * bebidas a la barra desde su celular no necesita que le suene su propio pedido aunque
+ * también tenga la barra (2026-11-15); en la lista «Despachar» sí lo ve.
+ */
+function pendientesAjenos(cuentas: Iterable<Cuenta>) {
+  return porDespachar(cuentas)
+    .map((p) => ({ ...p, lineas: p.lineas.filter((l) => !esPropia(l.id)) }))
+    .filter((p) => p.lineas.length > 0);
+}
+
+/** Lo que la barra ya despachó o no pudo despachar en las últimas 2 horas (para no confundirse). */
+export function despachosRecientes(cuentas: Iterable<Cuenta>, ahora = Date.now()) {
+  const r: { cuenta: Cuenta; linea: Linea; en: number }[] = [];
+  for (const c of cuentas) {
+    if (c.anulada) continue;
+    for (const l of c.lineas) {
+      const en = l.despachada?.en ?? l.rechazada?.en;
+      if (en && ahora - en < 2 * 3600_000) r.push({ cuenta: c, linea: l, en });
+    }
+  }
+  return r.sort((a, b) => b.en - a.en);
+}
+
 /** Lo que ve la barra arriba de cualquier pantalla mientras haya bebidas por despachar. */
 export function AvisoDespacho({ nav }: { nav: Nav }) {
-  const pendientes = sinc.tieneArea("barra") ? porDespachar(Object.values(sinc.visible.cuentas)) : [];
+  const pendientes = sinc.tieneArea("barra") ? pendientesAjenos(Object.values(sinc.visible.cuentas)) : [];
   const ids = pendientes.flatMap((p) => p.lineas.map((l) => l.id));
   const vistos = useRef<Set<string> | null>(null);
   const clave = ids.join();
@@ -190,42 +215,73 @@ export function AvisoDespacho({ nav }: { nav: Nav }) {
   );
 }
 
-/** La lista «Por despachar» de la barra: cada cuenta con lo que pidieron desde comida. */
+const lineaConNota = (l: Linea) => `${l.nombre}${l.nota ? ` · ${l.nota}` : ""}`;
+
+/**
+ * La lista «Despachar»: cada pedida a la barra por separado, con quién la pidió, a qué hora,
+ * para qué cuenta y las notas. Quien la pidió la puede cancelar; la barra la despacha o dice
+ * «No se puede». Abajo, lo despachado o rechazado en las últimas 2 horas.
+ */
 export function PorDespachar({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
   const pendientes = porDespachar(cuentas);
   const puede = sinc.tieneArea("barra");
+  const yo = sinc.sesion?.persona;
   const [rechazando, setRechazando] = useState<{ c: Cuenta; lineas: Linea[] } | null>(null);
+  const recientes = despachosRecientes(cuentas);
+  // Una tarjeta por pedida (no por cuenta): si piden dos veces, se ven las dos con su hora.
+  const pedidas: { c: Cuenta; r: Ronda | undefined; lineas: Linea[] }[] = [];
+  for (const { cuenta: c, lineas } of pendientes) {
+    const porRonda = new Map<string, Linea[]>();
+    for (const l of lineas) porRonda.set(l.ronda, [...(porRonda.get(l.ronda) ?? []), l]);
+    for (const [ronda, ls] of porRonda) pedidas.push({ c, r: c.rondas.find((x) => x.id === ronda), lineas: ls });
+  }
+  pedidas.sort((a, b) => (a.r?.en ?? 0) - (b.r?.en ?? 0));
   return (
     <section className="por-despachar">
       {rechazando && <HojaRechazo c={rechazando.c} lineas={rechazando.lineas} cerrar={() => setRechazando(null)} />}
       <p className="nota">Bebidas que pidieron desde comida. Al entregarlas, toque «Despachado».</p>
-      {pendientes.length === 0 && <p className="vacio">Nada por despachar.</p>}
-      {pendientes.map(({ cuenta: c, lineas }) => {
-        const rondas = new Map(c.rondas.map((r) => [r.id, r]));
-        const primera = Math.min(...lineas.map((l) => rondas.get(l.ronda)?.en ?? Date.now()));
-        const quienes = [...new Set(lineas.map((l) => rondas.get(l.ronda)?.persona).filter(Boolean))].join(", ");
+      {pedidas.length === 0 && <p className="vacio">Nada por despachar.</p>}
+      {pedidas.map(({ c, r, lineas }) => {
+        // Quien la pidió (en este aparato o con su nombre) la cancela; no se la rechaza a sí mismo.
+        const mia = lineas.every((l) => esPropia(l.id)) || (!!yo && r?.persona === yo);
         return (
-          <article key={c.id} className="caja despacho">
+          <article key={`${c.id}-${r?.id}`} className="caja despacho">
             <header onClick={() => nav.ir({ v: "cuenta", id: c.id })}>
-              <strong>{c.nombre}</strong>
-              <span className="tenue">{haceCuanto(primera)}</span>
+              <strong>{c.nombre}{c.tipo === "mesa" && c.mesa && !/\d/.test(c.nombre) ? ` · Mesa ${c.mesa}` : ""}</strong>
+              <span className="tenue">{r ? `${horaDe(r.en)} · ${haceCuanto(r.en)}` : ""}</span>
             </header>
-            {detallesDe(c, lineas).map((d) => <p key={d} className="detalle-pedido">📝 {d}</p>)}
-            <ul>{lineas.map((l) => <li key={l.id}><b>{l.cantidad}</b> {l.nombre}</li>)}</ul>
-            {quienes && <p className="tenue">Lo pidió {quienes}</p>}
+            {r?.detalle && <p className="detalle-pedido">📝 {r.detalle}</p>}
+            <ul className="lineas-despacho">{lineas.map((l) => <li key={l.id}><b>{l.cantidad}</b> {lineaConNota(l)}</li>)}</ul>
+            <p className="tenue">{r ? `${nombreRonda(c, r)} · la pidió ${r.persona === yo ? "usted" : r.persona}` : ""}</p>
             <div className="fila-botones">
-              {/* La barra dice «no se puede» con el motivo; comida cancela lo que pidió. */}
-              {puede ? <button className="secundario" onClick={() => setRechazando({ c, lineas })}>🚫 No se puede</button> : <CancelarPedido c={c} lineas={lineas} />}
+              {mia || !puede ? <CancelarPedido c={c} lineas={lineas} /> : <button className="secundario" onClick={() => setRechazando({ c, lineas })}>🚫 No se puede</button>}
               {puede && (
                 <button className="principal" onClick={() => {
                   sinc.emitir({ t: "despachar", cuenta: c.id, lineas: lineas.map((l) => l.id) });
-                  ponerAviso({ texto: `${c.nombre}: despachado` });
+                  ponerAviso({ texto: `${c.nombre}: despachado · ${textoLineas(lineas)}` });
                 }}>Despachado</button>
               )}
             </div>
           </article>
         );
       })}
+      {recientes.length > 0 && (
+        <>
+          <h3 className="etiqueta">Últimas 2 horas</h3>
+          <ul className="despachos-recientes">
+            {recientes.map(({ cuenta: c, linea: l }) => (
+              <li key={l.id} className={l.rechazada ? "rechazado" : "despachado"} onClick={() => nav.ir({ v: "cuenta", id: c.id })}>
+                <span><b>{l.cantidad}</b> {lineaConNota(l)} · {c.nombre}</span>
+                <small>
+                  {l.despachada
+                    ? `✓ Despachado · ${l.despachada.por} · ${horaDe(l.despachada.en)}`
+                    : `🚫 ${l.rechazada!.motivo} · ${l.rechazada!.por} · ${horaDe(l.rechazada!.en)}`}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
@@ -276,7 +332,11 @@ export function CancelarPedido({ c, lineas }: { c: Cuenta; lineas: { id: string;
       <button className="secundario" onClick={() => setSeguro(false)}>No</button>
       <button className="peligro" onClick={() => {
         for (const l of lineas) sinc.emitir({ t: "anular", cuenta: c.id, linea: l.id });
-        ponerAviso({ texto: `${c.nombre}: pedido cancelado · ${textoLineas(lineas)}` });
+        // Si la cuenta solo tenía ese pedido, no se queda abierta en $ 0: se anula también.
+        const quitadas = new Set(lineas.map((l) => l.id));
+        const vacia = !c.anulada && c.lineas.every((l) => l.anulada || quitadas.has(l.id)) && !c.pagos.some((p) => !p.deshecho);
+        if (vacia) sinc.emitir({ t: "anular_cuenta", cuenta: c.id, motivo: "Pedido cancelado" });
+        ponerAviso({ texto: `${c.nombre}: pedido cancelado · ${textoLineas(lineas)}${vacia ? " (la cuenta quedó vacía y se anuló)" : ""}` });
       }}>Sí, cancelar</button>
     </>
   );

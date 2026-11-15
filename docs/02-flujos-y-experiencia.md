@@ -461,6 +461,33 @@ Un pedido a la barra que aún no se despacha se puede **cancelar** desde «Despa
 desde la pedida en el detalle de la cuenta: anula esas bebidas, con confirmación porque
 no se deshace.
 
+### Lo que se vio en producción con un pedido a la barra (2026-11-15)
+
+Prueba del dueño: desde la persona que tiene barra y comida pidió desde comida una Coca-Cola
+grande y una Águila, y salieron tres falencias, arregladas el mismo día:
+
+- **Le sonaba su propio pedido.** El aviso y el timbre son para los demás: lo anotado en un
+  aparato no le suena a ese mismo aparato (`src/app/propios.ts`), aunque tenga la barra.
+  Se cuenta por aparato y no por persona, para que la tablet de la barra sí suene aunque
+  esté abierta con el mismo nombre. En «Despachar» sí lo ve.
+- **No podía cancelarlo**: como tenía la barra, le salía «No se puede» (el rechazo de la
+  barra) en vez de «Cancelar pedido». Ahora quien pidió (en ese aparato o con su nombre)
+  ve «Cancelar pedido»; la barra, para los pedidos de otros, «No se puede».
+- **La cuenta quedaba abierta en $ 0.** Si al cancelar la cuenta no tiene nada más (ni
+  productos vivos ni pagos), se anula también («Pedido cancelado»), con aviso.
+
+Y para que no haya confusiones, «Despachar» trae más detalle: **una tarjeta por pedida**
+(no por cuenta) con la hora exacta y hace cuánto, la nota de la pedida, las notas de cada
+producto, cuál pedida es y quién la pidió. Abajo, **«Últimas 2 horas»**: lo despachado
+(quién y a qué hora) y lo que no se pudo (motivo); la pestaña sigue visible mientras haya
+algo de esas 2 horas, para comida también. En el detalle de la cuenta, cada bebida
+despachada dice «✓ despachado · Yair · 3:50 p. m.».
+
+**Cobrar por área**: cuando una cuenta tiene por pagar cosas de barra y de comida, el cobro
+muestra «🍺 Solo barra $ X» y «🍽 Solo comida $ Y»: un toque escoge todos los productos de
+esa área (de todas las pedidas) y se cobra como abono por productos. Antes había que
+tocarlos uno por uno. Prueba: `tests/e2e/pedidos-barra.spec.ts`.
+
 ### Editar una pedida (2026-11-15)
 
 En el detalle, vista Pedidas o Chicos: **«＋ Agregar»** en la cabecera de la pedida abre
