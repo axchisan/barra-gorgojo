@@ -8,6 +8,7 @@ import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
+import { useAtajos } from "../atajos";
 import { sinc } from "../sincronizacion";
 import { Cocina } from "./Cocina";
 import { ElDia } from "./ElDia";
@@ -34,6 +35,13 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
   const verBotonOcultar = pestana === "cuentas" && (ocultables > 0 || ocultar);
   const queOculta = panel === "barra" ? "comida" : "barra";
   useAtrasCierra(cambiar, () => setCambiar(false));
+  // Teclado físico (docs/02): «/» busca, «N» abre una cuenta nueva, 1…9 abren la cuenta de la lista.
+  const atajos: Record<string, () => boolean | void> = {
+    "/": () => { const b = document.querySelector<HTMLInputElement>(".inicio input.buscar"); if (!b) return false; b.focus(); },
+    n: () => nav.ir({ v: "anotar" }),
+  };
+  for (let i = 1; i <= 9; i++) atajos[String(i)] = () => { const t = document.querySelectorAll<HTMLElement>(".inicio .tarjetas .tarjeta")[i - 1]; if (!t) return false; t.click(); };
+  useAtajos(atajos, pestana === "cuentas" && !cambiar);
 
   return (
     <main className={`inicio pestana-${pestana}${sinc.panel === "comida" ? " con-pedido" : ""}`}>

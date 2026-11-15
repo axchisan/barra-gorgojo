@@ -14,6 +14,7 @@ import { CancelarPedido } from "../componentes/Despacho";
 import { ElegirProductos } from "../componentes/ElegirProductos";
 import { colorDe, iconoTipo, resumen } from "../cuentas";
 import { useAtrasCierra, type Nav } from "../navegacion";
+import { useAtajos } from "../atajos";
 import { contarPaquetes, nombrePaquete, porPaquete, textoPaquetes } from "../paquetes";
 import { sinc } from "../sincronizacion";
 
@@ -33,6 +34,13 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
   /** El abono al que se le está poniendo quién pagó, y lo escrito. */
   const [nombrando, setNombrando] = useState<{ pago: string; texto: string } | null>(null);
   useAtrasCierra(cliente, () => setCliente(false));
+  // Teclado físico (docs/02): A anota, R repite, C cobra (con las hojas cerradas).
+  const hojaAbierta = menu || cliente || juntar || !!agregarA || !!anulando || !!renombrar || !!anularCon || !!nombrando;
+  useAtajos({
+    a: () => { if (c) nav.ir({ v: "anotar", cuenta: c.id }); },
+    r: () => { if (!c?.rondas.length) return false; nav.ir({ v: "anotar", cuenta: c.id, repetir: true }); },
+    c: () => { if (!c || saldo(c) <= 0) return false; nav.ir({ v: "cobrar", id: c.id }); },
+  }, !!c && !hojaAbierta);
   if (!c) return <NoExiste nav={nav} />;
 
   const s = situacion(c);

@@ -4,6 +4,8 @@ import { Avisos } from "./avisos";
 import { AvisoDespacho, AvisoRechazo } from "./componentes/Despacho";
 import { AvisoVersion } from "./componentes/AvisoVersion";
 import { FranjaPruebas } from "./componentes/FranjaPruebas";
+import { HojaAtajos } from "./componentes/HojaAtajos";
+import { escribiendo, useAtajos } from "./atajos";
 import { useNavegacion } from "./navegacion";
 import { Anotar } from "./pantallas/Anotar";
 import { Cobrar } from "./pantallas/Cobrar";
@@ -23,6 +25,18 @@ export function App() {
   useSyncExternalStore(sinc.suscribir, sinc.instantanea);
   const nav = useNavegacion();
   const [, refrescar] = useState(0);
+  const [atajos, setAtajos] = useState(false);
+  // Teclado físico (docs/02): Esc es «atrás» (cierra la hoja o vuelve), sin salirse de la app.
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (escribiendo(e.target)) { (e.target as HTMLElement).blur(); return; }
+      if (history.state?.capa || (history.state?.d ?? 0) > 0) { e.preventDefault(); history.back(); }
+    };
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, []);
+  useAtajos({ "?": () => setAtajos(true) }, !!sinc.sesion);
   useEffect(() => {
     const t = setInterval(() => refrescar((x) => x + 1), 30_000); // «hace N min»
     return () => clearInterval(t);
@@ -52,6 +66,7 @@ export function App() {
       {vista.v === "auditoria" && <Auditoria nav={nav} />}
       <Avisos />
       <AvisoVersion />
+      {atajos && <HojaAtajos cerrar={() => setAtajos(false)} />}
     </>
   );
 }

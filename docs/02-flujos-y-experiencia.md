@@ -451,6 +451,27 @@ Revisado con el teclado real en la tablet y en un celular, en las apps instalada
 
 Pruebas: `tests/e2e/teclado.spec.ts`.
 
+## Teclado físico: la app en el portátil (2026-11-15)
+
+Para cuando solo hay un portátil a la mano (docs/18 fase 2). **No cambia nada en el
+celular**: los atajos solo actúan con teclado de verdad y nunca mientras se escribe en un
+campo (salvo `Esc` y `Ctrl/⌘ + Enter`). `?` muestra la lista en la app.
+
+| Dónde | Tecla | Qué hace |
+|---|---|---|
+| Todo | `Esc` | Atrás o cerrar la hoja; en un campo, sale del campo. En el inicio no se sale de la app |
+| Todo | `?` | Los atajos |
+| Cuentas | `/` · `N` · `1`…`9` | Buscar · nueva cuenta · abrir la cuenta 1…9 de la lista |
+| Cuenta | `A` · `R` · `C` | Anotar · repetir · cobrar |
+| Anotar | letras | Busca el producto por su botón o su nombre, sin tildes («agu» → Águila); se resalta y abajo se ve lo escrito |
+| Anotar | números y letras | Esa cantidad: «4rub» + `Enter` = 4 Rubia |
+| Anotar | `Enter` · `Retroceso` · `Esc` | Sumar el resaltado · borrar una letra · borrar lo escrito |
+| Anotar | `Ctrl/⌘ + Enter` | Anotar (o «Abrir y anotar») |
+
+Anotar una ronda en el portátil: `A`, «4agu», `Enter`, `Ctrl+Enter`. Prueba:
+`tests/e2e/teclado-fisico.spec.ts`. Pendiente de la fase 2: dos columnas en pantalla ancha
+y atajos del cobro.
+
 ## Entrada por persona (fase D, 2026-11-02)
 
 - **Una vez por celular:** se escribe el código de 6 números que da el administrador

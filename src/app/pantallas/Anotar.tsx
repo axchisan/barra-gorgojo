@@ -12,6 +12,7 @@ import { HojaNota, HojaPlato } from "../componentes/HojaNota";
 import { NoExiste } from "../componentes/NoExiste";
 import { BotonPresionable } from "../componentes/BotonPresionable";
 import { HojaOpciones } from "../componentes/HojaOpciones";
+import { normalizar, useAtajos } from "../atajos";
 import type { Nav } from "../navegacion";
 import { describir, nombrePaquete, type PaqueteEnArmado } from "../paquetes";
 import { sinc } from "../sincronizacion";
@@ -78,6 +79,8 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const [adicional, setAdicionalCrudo] = useState(false);
   // Opciones de un producto (sabores, marcas) al mantenerlo presionado (docs/02).
   const [conOpciones, setConOpciones] = useState<Producto | null>(null);
+  // Teclado físico (docs/02): lo escrito para buscar un producto, con cantidad delante («4agu»).
+  const [tecleado, setTecleado] = useState("");
   // Precio de la pedida en las canchas (docs/04): el chico a precio de cancha, el adicional
   // a precio normal; se puede escoger el otro. Cambiar chico/adicional vuelve al de siempre.
   const [aPrecioCancha, setAPrecioCancha] = useState<boolean | null>(null);
@@ -108,6 +111,38 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   useEffect(() => { if (repetir) cargarUltima(); /* solo al entrar */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  // Buscar escribiendo: la cantidad (dígitos al principio) y el texto. El resaltado es el
+  // primero del catálogo cuyo botón o nombre empieza así (o, si ninguno, que lo contiene).
+  const cantTecleada = Number(/^\d+/.exec(tecleado)?.[0] ?? "1") || 1;
+  const textoTecleado = normalizar(tecleado.replace(/^\d+/, "").trim());
+  const resaltado = textoTecleado
+    ? (() => {
+      const vivos = productos.filter((p) => p.activo && !p.conNombre);
+      const empieza = vivos.find((p) => normalizar(p.corto).startsWith(textoTecleado) || normalizar(p.nombre).startsWith(textoTecleado));
+      return empieza ?? vivos.find((p) => normalizar(p.corto).includes(textoTecleado) || normalizar(p.nombre).includes(textoTecleado)) ?? null;
+    })()
+    : null;
+  const teclas: Record<string, (e: KeyboardEvent) => boolean | void> = {
+    enter: () => {
+      if (!resaltado) return false;
+      if (resaltado.libre || pasoDe(resaltado) > 1) tocarProducto(resaltado);
+      else sumar(resaltado.id, Math.min(cantTecleada, 300));
+      setTecleado("");
+    },
+    backspace: () => { if (!tecleado) return false; setTecleado((t) => t.slice(0, -1)); },
+    escape: () => { if (!tecleado) return false; setTecleado(""); },
+    "ctrl+enter": () => { if (n === 0) return false; confirmar(false); },
+  };
+  for (const k of "abcdefghijklmnñopqrstuvwxyz0123456789 ") {
+    teclas[k] = () => {
+      if (/\d/.test(k) && textoTecleado) return false; // los números van antes del nombre
+      if (k === " " && !tecleado) return false;
+      setTecleado((t) => (t + k).slice(0, 24));
+    };
+  }
+  useAtajos(teclas, !hoja && !conOpciones && !mixto);
+  // Después de todos los hooks (también los atajos): si la cuenta ya no existe, el aviso.
   if (cuentaId && !cuenta) return <NoExiste nav={nav} />;
 
   /** Un toque en un producto: suma uno (o un petaco); los de valor libre abren su hoja. */
@@ -333,7 +368,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
               return (
                 <div key={p.id} className="producto-celda">
                   <BotonPresionable
-                    className={`${p.conNombre ? "producto otro" : "producto"}${ops.length ? " con-opciones" : ""}`}
+                    className={`${p.conNombre ? "producto otro" : "producto"}${ops.length ? " con-opciones" : ""}${resaltado?.id === p.id || (resaltado?.padre === p.id) ? " resaltado" : ""}`}
                     style={{ background: p.fondo, color: p.texto }}
                     aria-description={ops.length ? "Mantenga presionado para escoger cuál" : undefined}
                     alTocar={() => tocarProducto(p)}
@@ -426,6 +461,12 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
           cantidad={(p) => cantDe(p.id) + enPaquetes(p.id)} tocar={tocarProducto} quitar={quitar}
           precio={(p) => pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : pesos(precioVisto(p) ?? 0)}
           cerrar={() => setConOpciones(null)} />
+      )}
+      {tecleado && (
+        <p className="tecleado" role="status">
+          ⌨️ {tecleado}{" → "}
+          {resaltado ? <b>{cantTecleada > 1 ? `${cantTecleada} ` : ""}{resaltado.nombre} · Enter</b> : <span>nada con eso</span>}
+        </p>
       )}
       {error && <p className="error flotante">{error}</p>}
       <div className={cuenta?.tipo === "cancha" ? "pie-fijo con-tipo-ronda" : "pie-fijo"}>

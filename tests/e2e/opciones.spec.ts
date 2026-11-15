@@ -49,8 +49,8 @@ test("en el computador, el clic derecho abre las opciones", async ({ browser }) 
   const gaseosa = p.locator("main > section .producto.con-opciones").first();
   await gaseosa.click({ button: "right" });
   await expect(p.locator(".hoja-opciones")).toBeVisible();
-  await p.keyboard.press("Escape").catch(() => {});
-  await p.locator(".hoja-opciones .cerrar-hoja").click();
+  await p.keyboard.press("Escape"); // Esc cierra la hoja (docs/02 «Teclado físico»)
+  await expect(p.locator(".hoja-opciones")).toHaveCount(0);
   await gaseosa.click();
   await expect(p.locator("main > section .producto-celda:has(.con-opciones) .contador").first()).toContainText("1");
 });

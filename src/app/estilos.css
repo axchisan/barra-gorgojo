@@ -1076,3 +1076,16 @@ input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; u
 .aviso-rechazo span { font-weight: 600; }
 .aviso-rechazo .principal { flex: 0 0 auto; background: #fff; color: #C62828; min-height: 48px; }
 .marca.rechazo { display: block; font-size: 0.8rem; font-weight: 700; color: #C62828; }
+
+/* Teclado físico (docs/02 «Teclado físico», 2026-11-15): el producto que suma Enter y lo escrito. */
+.producto.resaltado { outline: 4px solid var(--amarillo); outline-offset: 2px; box-shadow: 0 0 0 7px var(--marron); }
+.tecleado {
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+  margin: 0; padding: 8px 16px; border-radius: 999px; background: var(--marron); color: var(--crema);
+  font-weight: 700; box-shadow: 0 3px 10px rgb(0 0 0 / 0.3); white-space: nowrap;
+}
+.tecleado b { color: var(--amarillo); }
+.hoja-atajos table { width: 100%; border-collapse: collapse; }
+.hoja-atajos th { text-align: left; font-weight: 700; padding: 6px 8px 6px 0; color: var(--cafe, #241206); white-space: nowrap; }
+.hoja-atajos td { padding: 6px 8px; border-bottom: 1px solid var(--neutro-200); }
+kbd { display: inline-block; min-width: 1.6em; padding: 2px 8px; border-radius: 6px; border: 1px solid #b9a98f; border-bottom-width: 3px; background: #fff; font: 700 0.9rem/1.4 ui-monospace, monospace; text-align: center; }
