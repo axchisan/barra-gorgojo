@@ -29,6 +29,23 @@ jobs:
       - run: pnpm build
       - run: pnpm verificar
       - run: pnpm exec playwright install --with-deps chromium
+      # Las pruebas de espacio miden qué cabe en pantalla, y la app usa la fuente del sistema
+      # (system-ui): en Android es Roboto; en Linux sería DejaVu Sans, más ancha. Se mide con
+      # Roboto, como en los aparatos del local.
+      - name: Roboto como fuente del sistema
+        run: |
+          sudo apt-get install -y fonts-roboto
+          mkdir -p ~/.config/fontconfig
+          cat > ~/.config/fontconfig/fonts.conf <<'XML'
+          <?xml version="1.0"?>
+          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+          <fontconfig>
+            <alias><family>sans-serif</family><prefer><family>Roboto</family></prefer></alias>
+            <alias><family>system-ui</family><prefer><family>Roboto</family></prefer></alias>
+          </fontconfig>
+          XML
+          fc-cache -f
+          fc-match system-ui
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
