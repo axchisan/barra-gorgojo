@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { SECCIONES_COMIDA, type Producto } from "../../dominio/catalogo";
 import { catalogo, precioPara, type ModoPrecio, type TipoCuenta } from "../../dominio/estado";
-import { pesos } from "../../dominio/formato";
+import { pesos, precioBoton } from "../../dominio/formato";
 import { useAtrasCierra } from "../navegacion";
 import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
@@ -54,7 +54,7 @@ export function ElegirProductos({ titulo, varios, tipo, modo, sinProducto, cerra
                   <div key={p.id} className="producto-celda">
                     <button className="producto" style={{ background: p.fondo, color: p.texto }} onClick={() => tocar(p)}>
                       <span className="corto">{p.corto}</span>
-                      <span className="precio">{pesos(precio(p))}</span>
+                      <span className="precio">{precioBoton(precio(p))}</span>
                     </button>
                     {varios && (cant[p.id] ?? 0) > 0 && (
                       <button className="contador" aria-label={`Quitar una ${p.nombre}`} onClick={() => setCant((c) => ({ ...c, [p.id]: Math.max(0, (c[p.id] ?? 0) - 1) }))}>

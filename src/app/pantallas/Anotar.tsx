@@ -4,7 +4,7 @@ import {
   catalogo, enCuadricula, jornada, opcionesDe, precioPara, producto as productoDe, saldo, situacion,
   type Cancha, type ModoPrecio, type TipoCuenta,
 } from "../../dominio/estado";
-import { horaDe, nombreCancha, palabraRonda, pesos } from "../../dominio/formato";
+import { horaDe, nombreCancha, palabraRonda, pesos, precioBoton } from "../../dominio/formato";
 import { horaDeHoy } from "../cuentas";
 import { ponerAviso } from "../avisos";
 import { HojaLibre, type Libre } from "../componentes/HojaLibre";
@@ -428,7 +428,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
                   >
                     <span className="corto">{p.corto}</span>
                     <span className="precio">
-                      {p.conNombre ? "nombre y valor" : p.libre ? "valor" : pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : pesos(precioVisto(p)!)}
+                      {p.conNombre ? "nombre y valor" : p.libre ? "valor" : pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : precioBoton(precioVisto(p)!)}
                     </span>
                     {ops.length > 0 && <span className="marca-opciones" aria-hidden="true">⋯</span>}
                   </BotonPresionable>
@@ -520,7 +520,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
       {conOpciones && (
         <HojaOpciones padre={conOpciones} opciones={opcionesDe(sinc.visible, conOpciones.id)}
           cantidad={(p) => cantDe(p.id) + enPaquetes(p.id)} tocar={tocarProducto} quitar={quitar}
-          precio={(p) => pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : pesos(precioVisto(p) ?? 0)}
+          precio={(p) => pasoDe(p) > 1 ? `${pasoDe(p)} por ${pesos(precioVisto(p)! * pasoDe(p))}` : precioBoton(precioVisto(p) ?? 0)}
           cerrar={() => setConOpciones(null)} />
       )}
       {tecleado && (

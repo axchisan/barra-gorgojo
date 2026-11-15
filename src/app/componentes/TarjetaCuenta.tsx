@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { abonos, saldo, totalComida, unidades, type Cuenta } from "../../dominio/estado";
+import { abonos, estadoDomicilio, nombreEstadoDomicilio, saldo, totalComida, unidades, type Cuenta } from "../../dominio/estado";
 import { haceCuanto, horaDe, pesos } from "../../dominio/formato";
 import { iconoTipo } from "../cuentas";
 import type { Nav } from "../navegacion";
@@ -38,6 +38,12 @@ export function TarjetaCuenta({ c, nav }: { c: Cuenta; nav: Nav }) {
         {totalComida(c) > 0 && <span className="marca-comida" title="Con comida"> · 🍽{sinc.panel === "comida" ? ` ${pesos(totalComida(c))}` : ""}</span>}
       </span>
       {c.lineas.some((l) => l.porDespachar && !l.anulada) && <span className="alerta despacho">🔔 Por despachar</span>}
+      {/* Domicilio (2026-11-15): en qué va y para qué hora, sutil; en rojo si se atrasó. */}
+      {c.tipo === "domicilio" && !c.anulada && estadoDomicilio(c) !== "entregado" && (
+        <span className={`marca-domicilio${c.domicilio?.entrega && c.domicilio.entrega < Date.now() ? " atrasado" : ""}`}>
+          {nombreEstadoDomicilio[estadoDomicilio(c)]}{c.domicilio?.entrega ? ` · ${horaDe(c.domicilio.entrega)}` : ""}
+        </span>
+      )}
       {(() => {
         // Apartado por entregar (2026-11-15): la hora más próxima, o «sin hora».
         const r = c.rondas.filter((x) => x.apartado && !x.entregado && c.lineas.some((l) => l.ronda === x.id && !l.anulada));

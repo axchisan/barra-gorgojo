@@ -398,7 +398,8 @@ function construirLinea(estado: Estado, c: Cuenta, l: LineaAnotada, ronda: strin
     : typeof l.precioFijado === "number"
       ? l.precioFijado
       : precioPara(p, en >= PRECIO_CANCHA_DESDE && modo === "cancha" ? c.tipo : undefined);
-  if (precio == null || !(precio > 0) || precio > TOPE_VALOR_LIBRE) return null;
+  // Un producto gratis (precio 0: los vasos, 2026-11-15) también se anota; el valor libre, no en 0.
+  if (precio == null || !(p.libre ? precio > 0 : precio >= 0) || precio > TOPE_VALOR_LIBRE) return null;
   const nombre = p.conNombre ? (l.nombre ?? "").trim().slice(0, 40) || p.nombre : p.nombre;
   const pq = l.paquete;
   const paquete = pq && typeof pq.id === "string" && (pq.tipo === "petaco" || pq.tipo === "medio")
@@ -936,7 +937,8 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       const p = op.producto;
       if (!p || typeof p.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(p.id)) return estado;
       const precio = p.precio == null ? null : Math.floor(Number(p.precio));
-      if (precio != null && !(precio > 0 && precio <= TOPE_VALOR_LIBRE)) return estado;
+      // Precio 0 = gratis (los vasos, 2026-11-15). Antes se ignoraba; no hay ninguno así en el registro.
+      if (precio != null && !(precio >= 0 && precio <= TOPE_VALOR_LIBRE)) return estado;
       const pc = p.precioCancha == null ? null : Math.floor(Number(p.precioCancha));
       const precioCancha = pc != null && pc > 0 && pc <= TOPE_VALOR_LIBRE ? pc : null;
       const nombre = String(p.nombre ?? "").trim().slice(0, 40);

@@ -31,12 +31,13 @@ test("comida en el teléfono: mesa sin número, domicilio y una picada apartada 
   await p.locator('button[aria-label="Bebidas"]').click(); // en comida, anotar abre en «Comida»
   await p.locator("main > section .producto", { hasText: "RUBIA" }).first().click();
   await p.locator(".pie-fijo .principal").click();
-  await expect(p.locator(".domicilios")).toContainText("Doña Rosa · Vereda El Carmen");
-  await expect(p.locator(".domicilios")).toContainText("11:59");
+  const rosa = p.locator(".tarjeta", { hasText: "Doña Rosa" });
+  await expect(rosa).toContainText("🛵 Domicilio · Vereda El Carmen");
+  await expect(rosa.locator(".marca-domicilio")).toContainText("11:59");
   // Se entrega (deja el servidor como estaba para las demás pruebas).
-  const rosa = p.locator(".domicilios .fila-domicilio-lista", { hasText: "Doña Rosa" });
-  for (const paso of ["🍳 En preparación", "🛵 En camino", "✅ Entregado"]) await rosa.getByRole("button", { name: paso }).click();
-  await expect(rosa).toHaveCount(0);
+  await rosa.click();
+  for (const paso of ["🍳 En preparación ›", "🛵 En camino ›", "✅ Entregado ›"]) await p.locator(".franja-domicilio").getByRole("button", { name: paso }).click();
+  await p.getByRole("button", { name: "Volver" }).click();
 
   // Un apartado: «Juan», una cerveza para las 11:59 p. m.
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();

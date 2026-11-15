@@ -1170,7 +1170,11 @@ html .inicio .panel-cuenta .pie-fijo {
 .fila-domicilio-lista .quien { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fila-domicilio-lista .siguiente { min-height: 56px; padding: 0 12px; white-space: nowrap; }
 .estado-domicilio { font-weight: 700; font-size: 0.9rem; }
-.franja-domicilio { display: grid; gap: 6px; justify-items: center; margin: 6px 0; }
-.franja-domicilio .chips { justify-content: center; }
+.franja-domicilio { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin: 4px 0; }
 .franja-domicilio .chip { min-height: 44px; }
+.franja-domicilio .hora-domicilio { min-height: 44px; }
+.franja-domicilio input[type="time"] { min-height: 44px; font: inherit; border-radius: 10px; border: 2px solid var(--neutro-200); padding: 2px 6px; }
 .aviso-domicilio { background: #C62828; color: #fff; border-color: #8e1c1c; }
+/* La marca del domicilio en su tarjeta: sutil, en la misma línea de las demás marcas. */
+.marca-domicilio { font-size: 0.85rem; font-weight: 700; color: #5b3d8a; }
+.marca-domicilio.atrasado { color: #B71C1C; }

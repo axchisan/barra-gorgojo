@@ -2,7 +2,7 @@ import { useState } from "react";
 import { SECCIONES_COMIDA as SECCIONES, type Producto } from "../../dominio/catalogo";
 // Con la sección de comida: todas las secciones del catálogo (docs/14).
 import { catalogo, enCuadricula, opcionesDe } from "../../dominio/estado";
-import { pesos } from "../../dominio/formato";
+import { precioBoton, pesos } from "../../dominio/formato";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
 import { vibrar } from "../vibrar";
@@ -48,7 +48,7 @@ export function Productos({ nav }: { nav: Nav }) {
                   onClick={() => !ordenando && nav.ir({ v: "producto", id: p.id })}
                 >
                   <span className="corto">{p.corto}</span>
-                  <span className="precio">{!p.activo ? "oculto" : p.libre ? "valor libre" : pesos(p.precio!)}</span>
+                  <span className="precio">{!p.activo ? "oculto" : p.libre ? "valor libre" : precioBoton(p.precio!)}</span>
                   {p.activo && !p.libre && p.precioCancha ? <span className="precio-cancha">🎯 {pesos(p.precioCancha)}</span> : null}
                   {(() => { const n = opcionesDe(sinc.visible, p.id, true).length; return n ? <span className="cuantas-opciones">⋯ {n} {n === 1 ? "opción" : "opciones"}</span> : null; })()}
                 </button>

@@ -48,3 +48,6 @@ export function cuantasRondas(c: Pick<Cuenta, "tipo" | "rondas" | "lineas">): st
 }
 
 export const nombreCancha = (c: string) => (c === "pequena" ? "Pequeña" : c);
+
+/** El precio de un botón de producto: «gratis» si es 0 (los vasos), si no en pesos. */
+export const precioBoton = (v: number) => (v === 0 ? "gratis" : pesos(v));

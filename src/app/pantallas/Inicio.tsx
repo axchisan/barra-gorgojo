@@ -7,7 +7,6 @@ import { HojaSonido, PorDespachar } from "../componentes/Despacho";
 import { EstadoConexion } from "../componentes/EstadoConexion";
 import { TarjetaCuenta } from "../componentes/TarjetaCuenta";
 import { ListaApartados } from "../componentes/ListaApartados";
-import { ListaDomicilios } from "../componentes/Domicilios";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
 import { useAtajos } from "../atajos";
@@ -139,7 +138,6 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
               </details>
             )}
             {/* Los apartados se manejan en comida (en la barra, la tarjeta dice «⏰ Apartado»). */}
-            {panel === "comida" && <ListaDomicilios nav={navLista} cuentas={cuentas} />}
             {panel === "comida" && <ListaApartados nav={navLista} cuentas={cuentas} />}
             <ListaCuentas nav={navLista} cuentas={cuentas} ocultar={ocultar} mostrar={() => setOcultar(false)} />
           </>

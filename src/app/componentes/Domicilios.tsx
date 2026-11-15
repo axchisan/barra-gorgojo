@@ -47,31 +47,27 @@ export function ListaDomicilios({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] 
   );
 }
 
-/** En el detalle de un domicilio: los estados (un toque) y la hora de entrega. */
+/**
+ * En el detalle de un domicilio, en una línea: en qué va, para qué hora (tocarla la cambia)
+ * y un botón al siguiente paso. Devolver un paso: «Deshacer» del aviso.
+ */
 export function FranjaDomicilio({ c }: { c: Cuenta }) {
   const e = estadoDomicilio(c);
+  const sig = siguiente(e);
   const [editando, setEditando] = useState(false);
   const [hora, setHora] = useState("");
   return (
     <section className="franja-domicilio" aria-label="Estado del domicilio">
-      <div className="chips">
-        {ESTADOS_DOMICILIO.map((x) => (
-          <button key={x} className={x === e ? `chip activo estado-domicilio ${x}` : "chip"} aria-pressed={x === e} onClick={() => { if (x !== e) pasar(c, x); }}>
-            {ICONO[x]} {nombreEstadoDomicilio[x]}
-          </button>
-        ))}
-      </div>
+      <span className={`marca-domicilio${atrasado(c) ? " atrasado" : ""}`}>{ICONO[e]} {nombreEstadoDomicilio[e]}</span>
       {editando ? (
-        <form className="fila-franja" onSubmit={(ev) => { ev.preventDefault(); const para = horaDeHoy(hora); sinc.emitir({ t: "domicilio", cuenta: c.id, entrega: para ?? null }); setEditando(false); }}>
+        <form className="fila-franja" onSubmit={(ev) => { ev.preventDefault(); sinc.emitir({ t: "domicilio", cuenta: c.id, entrega: horaDeHoy(hora) ?? null }); setEditando(false); }}>
           <input type="time" aria-label="Hora de entrega" value={hora} onChange={(ev) => setHora(ev.target.value)} />
-          <button className="principal">Guardar</button>
-          {c.domicilio?.entrega && <button type="button" className="secundario" onClick={() => { sinc.emitir({ t: "domicilio", cuenta: c.id, entrega: null }); setEditando(false); }}>Sin hora</button>}
+          <button className="chip">Guardar</button>
         </form>
       ) : (
-        <button className="enlace" onClick={() => setEditando(true)}>
-          ⏰ {c.domicilio?.entrega ? `Para las ${horaDe(c.domicilio.entrega)}` : "Sin hora de entrega"} · cambiar
-        </button>
+        <button className="enlace hora-domicilio" onClick={() => setEditando(true)}>⏰ {c.domicilio?.entrega ? horaDe(c.domicilio.entrega) : "sin hora"}</button>
       )}
+      {sig && <button className="chip siguiente-domicilio" onClick={() => pasar(c, sig)}>{ICONO[sig]} {nombreEstadoDomicilio[sig]} ›</button>}
     </section>
   );
 }

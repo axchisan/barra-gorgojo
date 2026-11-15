@@ -382,6 +382,13 @@ una abierta, con un toque. Llega a la barra como las bebidas de las mesas (aviso
 sonido y «Despachar»), con el detalle en grande. Lo pedido queda en una cuenta: se cobra
 como cualquier otra.
 
+### Productos gratis: los vasos (2026-11-15)
+
+Un producto puede costar **$ 0** (en «Productos y precios», precio 0): el botón dice
+«gratis», se anota y se cuenta pero no suma plata. Para los vasos: comida los pide para la
+mesa como cualquier bebida (le suenan a la barra para llevarlos) sin cobrar nada. Antes el
+servidor ignoraba un producto en 0, y no había ninguno así en el registro.
+
 ### Notas de comida (2026-11-15)
 
 Visto en producción: casi todas las notas de picadas dicen qué carnes lleva («Res, cerdo y
@@ -406,13 +413,14 @@ Pedido por comida (se usa en los teléfonos):
   nombre que escriban). Antes no dejaba anotar.
 - **🛵 Domicilio**: quinto tipo de cuenta, con el nombre del cliente, la dirección o
   referencia y la **hora de entrega** (opcionales). La tarjeta dice «🛵 Domicilio · …».
-  En el inicio de comida sale **«🛵 Domicilios»** por hora de entrega, con el estado
-  (📥 Recibido → 🍳 En preparación → 🛵 En camino → ✅ Entregado) y un botón que pasa al
-  siguiente con un toque (con «Deshacer»); en el detalle, los cuatro estados y «cambiar» la
-  hora. **Recordatorio**: si pasa la hora sin entregarse, aviso rojo «⏰ Domicilio
-  atrasado» arriba de cualquier pantalla (para quien tiene comida) y timbre al atrasarse y
-  cada 5 minutos. Operación `domicilio` (`cuenta, estado?, entrega?`); los domicilios
-  abiertos antes quedan «Recibido» sin cambiar lo guardado. Prueba:
+  La tarjeta va **en su lugar de siempre** (la lista aparte de arriba se quitó el mismo
+  día: incomodaba) con una marca sutil: «En preparación · 12:30» (en rojo si se atrasó).
+  En el detalle, una línea: en qué va, la hora (tocarla la cambia) y un botón al siguiente
+  paso (📥 Recibido → 🍳 En preparación → 🛵 En camino → ✅ Entregado; «Deshacer» devuelve).
+  **Recordatorio**: si pasa la hora sin entregarse, aviso rojo «⏰ Domicilio atrasado»
+  arriba de cualquier pantalla (para quien tiene comida) y timbre al atrasarse y cada 5
+  minutos. Operación `domicilio` (`cuenta, estado?, entrega?`); los domicilios abiertos
+  antes quedan «Recibido» sin cambiar lo guardado. Prueba:
   `tests/e2e/domicilios.spec.ts`.
 - **⏰ Apartar para más tarde**: al anotar (cuenta nueva o ya abierta), un chip que marca la
   pedida como apartada, con hora opcional («una picada para las 2»). En el inicio, arriba

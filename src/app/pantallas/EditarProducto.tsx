@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CATEGORIAS, TOPE_VALOR_LIBRE, type Categoria, type Producto } from "../../dominio/catalogo";
 import { catalogo, enCuadricula, opcionesDe, producto as productoDe } from "../../dominio/estado";
-import { pesos } from "../../dominio/formato";
+import { pesos, precioBoton } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { COLORES, textoPara } from "../colores";
 import type { Nav } from "../navegacion";
@@ -17,7 +17,7 @@ export function EditarProducto({ nav, id, padre: padreNuevo }: { nav: Nav; id?: 
   const [nombre, setNombre] = useState(actual?.nombre ?? "");
   const [corto, setCorto] = useState(actual?.corto ?? "");
   const [categoria, setCategoria] = useState<Categoria>(base?.categoria ?? "cerveza");
-  const [precio, setPrecio] = useState(base?.precio ? String(base.precio) : "");
+  const [precio, setPrecio] = useState(base?.precio != null ? String(base.precio) : "");
   const [precioCancha, setPrecioCancha] = useState(base?.precioCancha ? String(base.precioCancha) : "");
   const [fondo, setFondo] = useState(base?.fondo ?? COLORES[0]);
   const [padre, setPadre] = useState(actual?.padre ?? (general ? general.id : ""));
@@ -38,7 +38,8 @@ export function EditarProducto({ nav, id, padre: padreNuevo }: { nav: Nav; id?: 
     const n = nombre.trim();
     const v = Number(precio);
     if (!n) return setError("Escriba el nombre del producto.");
-    if (!libre && activo && !(v > 0)) return setError("Escriba el precio.");
+    // 0 es gratis (los vasos): se cuenta pero no suma plata.
+    if (!libre && activo && (precio.trim() === "" || !(v >= 0))) return setError("Escriba el precio (0 si es gratis).");
     if (v > TOPE_VALOR_LIBRE || Number(precioCancha) > TOPE_VALOR_LIBRE) return setError("Ese precio es demasiado alto.");
     const nuevoId = actual?.id ?? idNuevo(n);
     const p: Producto = {
@@ -46,7 +47,7 @@ export function EditarProducto({ nav, id, padre: padreNuevo }: { nav: Nav; id?: 
       nombre: n,
       corto: (corto.trim() || n).toUpperCase().slice(0, 16),
       categoria,
-      precio: libre ? null : v > 0 ? Math.floor(v) : null,
+      precio: libre ? null : precio.trim() !== "" && v >= 0 ? Math.floor(v) : null,
       precioCancha: libre ? null : Number(precioCancha) > 0 ? Math.floor(Number(precioCancha)) : null,
       activo,
       fondo,
@@ -71,7 +72,7 @@ export function EditarProducto({ nav, id, padre: padreNuevo }: { nav: Nav; id?: 
       <div className="vista-previa">
         <div className="producto" style={{ background: fondo, color: textoPara(fondo) }}>
           <span className="corto">{(corto.trim() || nombre.trim() || "PRODUCTO").toUpperCase().slice(0, 16)}</span>
-          <span className="precio">{libre ? "valor libre" : precio ? pesos(Number(precio)) : "$ —"}</span>
+          <span className="precio">{libre ? "valor libre" : precio ? precioBoton(Number(precio)) : "$ —"}</span>
           {!libre && Number(precioCancha) > 0 && <span className="precio-cancha">🎯 {pesos(Number(precioCancha))}</span>}
         </div>
       </div>
@@ -84,7 +85,7 @@ export function EditarProducto({ nav, id, padre: padreNuevo }: { nav: Nav; id?: 
       </label>
       {!libre && (
         <label className="campo">Precio por unidad
-          <input inputMode="numeric" value={precio} onChange={(e) => setPrecio(e.target.value.replace(/\D/g, ""))} placeholder="Ej.: 3500" />
+          <input inputMode="numeric" value={precio} onChange={(e) => setPrecio(e.target.value.replace(/\D/g, ""))} placeholder="Ej.: 3500 (0 si es gratis, como los vasos)" />
         </label>
       )}
       {!libre && (

@@ -113,3 +113,15 @@ describe("domicilios: estados y hora de entrega", () => {
     expect(e.cuentas.m.domicilio).toBeUndefined();
   });
 });
+
+describe("productos gratis (los vasos)", () => {
+  it("un producto puede costar 0: se anota y cuenta, sin sumar plata; el valor libre en 0 no", () => {
+    const e = correr([
+      op({ t: "producto", producto: { id: "vasos", nombre: "Vasos", corto: "VASOS", categoria: "otro", precio: 0, activo: true, fondo: "#FFFFFF", texto: "#241206" } }),
+      op({ t: "abrir", cuenta: "m", nombre: "Mesa 4", tipo: "mesa", mesa: 4 }),
+      op({ t: "anotar", cuenta: "m", ronda: "r", area: "comida", lineas: [{ id: "v", producto: "vasos", cantidad: 3 }, { id: "x", producto: "mecato", cantidad: 1, precio: 0 }] }),
+    ]);
+    expect(e.productos?.vasos.precio).toBe(0);
+    expect(e.cuentas.m.lineas.map((l) => [l.producto, l.precio, l.cantidad, !!l.porDespachar])).toEqual([["vasos", 0, 3, true]]);
+  });
+});
