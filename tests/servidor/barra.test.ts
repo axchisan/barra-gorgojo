@@ -781,10 +781,13 @@ describe("áreas por persona", () => {
   });
 
   it("un operador pasa a administrador; el último administrador no se puede quitar", async () => {
+    const comoAna = (b: Record<string, unknown>) => s.pedir(ana, "/api/admin/personas", { method: "POST", body: JSON.stringify(b) });
+    // Si un intento anterior se cortó a la mitad (miniflare pierde la conexión a veces, y hay
+    // un reintento), Ana pudo quedar como única administradora: se devuelve el rol primero.
+    await comoAna({ accion: "rol", id: "administrador", rol: "admin" });
     expect((await personas({ accion: "rol", id: "ana", rol: "admin" })).status).toBe(200);
     expect((await personas({ accion: "rol", id: "administrador", rol: "operador" })).status).toBe(200);
     // Ahora la única administradora es Ana: con su sesión, no puede quitarse el rol.
-    const comoAna = (b: Record<string, unknown>) => s.pedir(ana, "/api/admin/personas", { method: "POST", body: JSON.stringify(b) });
     expect((await personas({ accion: "areas", id: "ana", areas: ["comida"] })).status).toBe(403); // el Administrador ya no lo es
     const ultimo = await comoAna({ accion: "rol", id: "ana", rol: "operador" });
     expect(ultimo.status).toBe(400);

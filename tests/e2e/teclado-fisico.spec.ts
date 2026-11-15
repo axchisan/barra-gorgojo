@@ -40,6 +40,18 @@ test("en el portátil se anota y se cobra con el teclado", async ({ browser }) =
   await expect(p.locator(".cobrar")).toBeVisible();
   await p.keyboard.press("Escape");
   await expect(p.locator(".detalle")).toBeVisible();
+
+  // Cobrar con el teclado: N y E escogen el medio; los números son «con cuánto paga».
+  await p.keyboard.press("c");
+  await p.keyboard.press("n");
+  await expect(p.locator(".cobrar .medios .chip.activo")).toHaveText("Nequi");
+  await p.keyboard.press("e");
+  await expect(p.locator(".cobrar .medios .chip.activo")).toHaveText("Efectivo");
+  await p.keyboard.type("50000");
+  await expect(p.locator(".cobrar .cambio")).toContainText("Cambio");
+  await p.keyboard.press("Control+Enter");
+  await expect(p.locator(".cobrar")).toHaveCount(0);
+  await expect(p.locator(".aviso")).toContainText("cobrada");
 });
 
 test("en el celular nada cambia: escribir no abre nada sin teclado físico en uso", async ({ browser }) => {

@@ -8,6 +8,7 @@ import { NoExiste } from "../componentes/NoExiste";
 import { VistaCliente } from "../componentes/VistaCliente";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { cerrarConEnter } from "../teclado";
+import { useAtajos } from "../atajos";
 import { sinc } from "../sincronizacion";
 
 /** Qué se cobra: todo lo que falta (como siempre), unos productos o un valor (abonos). */
@@ -41,6 +42,32 @@ export function Cobrar({ nav, id }: { nav: Nav; id: string }) {
   const [pagaronElegido, setPagaron] = useState<number | null>(null);
   const entre = entreElegido ?? entreGuardado;
   const pagaron = pagaronElegido ?? (entre ? Math.min(vivos.length, entre - 1) : vivos.length);
+  // Teclado físico (docs/02): E, N, B, D escogen el medio; los números son «con cuánto paga»
+  // (en efectivo); Ctrl/⌘ + Enter cobra. Ninguna tecla sola cobra: así no se cobra sin querer.
+  const ponerMedio = (m: Exclude<Medio, "comida">) => { setMedio(m); setRecibido(null); setOtro(""); };
+  const atajosCobro: Record<string, () => boolean | void> = {
+    e: () => ponerMedio("efectivo"),
+    n: () => ponerMedio("nequi"),
+    b: () => ponerMedio("breve"),
+    d: () => ponerMedio("deuda"),
+    "ctrl+enter": () => {
+      const b = document.querySelector<HTMLButtonElement>(".cobrar .pie-fijo .principal");
+      if (!b || b.disabled) return false;
+      b.click();
+    },
+  };
+  for (const k of "0123456789") {
+    atajosCobro[k] = () => {
+      const campo = document.querySelector<HTMLInputElement>(".cobrar .recibido input");
+      if (!campo) return false;
+      // El primer número va al campo «Otro valor»; lo demás se escribe ahí mismo.
+      const v = `${otro}${k}`.replace(/^0+/, "");
+      setOtro(v);
+      setRecibido(v ? Number(v) : null);
+      campo.focus();
+    };
+  }
+  useAtajos(atajosCobro, !!c && !cliente);
   if (!c) return <NoExiste nav={nav} />;
   const falta = saldo(c);
   if (falta <= 0) return <NoExiste nav={nav} />;

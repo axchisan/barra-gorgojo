@@ -493,10 +493,12 @@ campo (salvo `Esc` y `Ctrl/⌘ + Enter`). `?` muestra la lista en la app.
 | Anotar | números y letras | Esa cantidad: «4rub» + `Enter` = 4 Rubia |
 | Anotar | `Enter` · `Retroceso` · `Esc` | Sumar el resaltado · borrar una letra · borrar lo escrito |
 | Anotar | `Ctrl/⌘ + Enter` | Anotar (o «Abrir y anotar») |
+| Cobrar | `E` · `N` · `B` · `D` | Efectivo, Nequi, Breve, deuda |
+| Cobrar | números | Con cuánto paga, en efectivo (calcula el cambio) |
+| Cobrar | `Ctrl/⌘ + Enter` | Cobrar. Ninguna tecla sola cobra, para no cobrar sin querer |
 
 Anotar una ronda en el portátil: `A`, «4agu», `Enter`, `Ctrl+Enter`. Prueba:
-`tests/e2e/teclado-fisico.spec.ts`. Pendiente de la fase 2: dos columnas en pantalla ancha
-y atajos del cobro.
+`tests/e2e/teclado-fisico.spec.ts`. Pendiente de la fase 2: dos columnas en pantalla ancha.
 
 ## Entrada por persona (fase D, 2026-11-02)
 

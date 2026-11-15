@@ -50,7 +50,8 @@ export function vigilarForma() {
 
 /** ✓ / Enter en un campo que no envía nada: baja el teclado. */
 export function cerrarConEnter(e: KeyboardEvent<HTMLInputElement>) {
-  if (e.key === "Enter") {
+  // Ctrl/⌘ + Enter es el atajo de anotar o cobrar en el portátil (atajos.ts): se deja pasar.
+  if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
     e.preventDefault();
     e.currentTarget.blur();
   }
