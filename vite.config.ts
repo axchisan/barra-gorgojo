@@ -25,13 +25,44 @@ function versionarSw(): Plugin {
   };
 }
 
+/**
+ * Entorno de pruebas (ENTORNO=pruebas, lo pone `pnpm desplegar:pruebas`): la app instalada
+ * se llama «Barra PRUEBA», con el ícono de la franja roja y la barra del sistema roja, para
+ * no confundirla con la de verdad en la pantalla de inicio (docs/18).
+ */
+const PRUEBAS = process.env.ENTORNO === "pruebas";
+function entornoPruebas(): Plugin {
+  let salida = "dist";
+  return {
+    name: "entorno-pruebas",
+    apply: "build",
+    configResolved(c) { salida = c.build.outDir; },
+    closeBundle() {
+      if (!PRUEBAS) return;
+      const ruta = join(salida, "manifest.webmanifest");
+      const m = JSON.parse(readFileSync(ruta, "utf8"));
+      m.name = "Barra del Gorgojo · PRUEBA";
+      m.short_name = "Barra PRUEBA";
+      m.description = "Entorno de pruebas y enseñanza: no es la caja real";
+      m.theme_color = "#C62828";
+      m.icons = m.icons.map((i: { src: string }) => ({ ...i, src: i.src.replace("/icono-", "/icono-pruebas-") }));
+      writeFileSync(ruta, JSON.stringify(m, null, 2));
+      const html = join(salida, "index.html");
+      writeFileSync(html, readFileSync(html, "utf8")
+        .replace("<title>Barra del Gorgojo</title>", "<title>Barra PRUEBA</title>")
+        .replace('content="#241206"', 'content="#C62828"')
+        .replace('href="/icono-192.png"', 'href="/icono-pruebas-192.png"'));
+    },
+  };
+}
+
 const ejemplo = fileURLToPath(new URL("./negocio.ejemplo/catalogo.ts", import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), versionarSw()],
+  plugins: [react(), versionarSw(), entornoPruebas()],
   // Versión de la app: cuándo se compiló, en hora de Colombia. La ve el administrador en
   // «Personas y celulares» para saber si un celular quedó con una versión vieja (E4).
-  define: { __VERSION__: JSON.stringify(new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 16).replace("T", " ")) },
+  define: { __ENTORNO__: JSON.stringify(PRUEBAS ? "pruebas" : "produccion"), __VERSION__: JSON.stringify(new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 16).replace("T", " ")) },
   // NEGOCIO=ejemplo compila con el catálogo de ejemplo (pruebas de extremo a extremo).
   resolve: { alias: process.env.NEGOCIO === "ejemplo" ? { "#negocio": ejemplo } : {} },
   build: { outDir: "dist", emptyOutDir: true },

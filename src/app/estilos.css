@@ -1056,3 +1056,10 @@ input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; u
   min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 2px solid var(--marron);
   background: var(--amarillo); color: var(--marron); font-weight: 800; box-shadow: 0 3px 10px rgb(0 0 0 / 0.25); white-space: nowrap;
 }
+
+/* Entorno de pruebas (docs/18): franja roja arriba de cada pantalla; no tapa nada (va en el flujo). */
+.franja-pruebas {
+  position: relative; z-index: 40; padding: calc(2px + env(safe-area-inset-top)) 8px 2px;
+  background: repeating-linear-gradient(135deg, #C62828 0 14px, #B71C1C 14px 28px); color: #fff;
+  font-size: 0.8rem; font-weight: 800; text-align: center; letter-spacing: 0.04em;
+}

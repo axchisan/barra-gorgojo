@@ -3,6 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Avisos } from "./avisos";
 import { AvisoDespacho } from "./componentes/Despacho";
 import { AvisoVersion } from "./componentes/AvisoVersion";
+import { FranjaPruebas } from "./componentes/FranjaPruebas";
 import { useNavegacion } from "./navegacion";
 import { Anotar } from "./pantallas/Anotar";
 import { Cobrar } from "./pantallas/Cobrar";
@@ -28,11 +29,12 @@ export function App() {
   }, []);
 
   if (!sinc.listo) return null; // leyendo la memoria del celular: unos milisegundos
-  if (!sinc.sesion) return <Entrada />;
+  if (!sinc.sesion) return <><FranjaPruebas /><Entrada /></>;
 
   const { vista } = nav;
   return (
     <>
+      <FranjaPruebas />
       <AvisoDespacho nav={nav} />
       {vista.v === "inicio" && <Inicio nav={nav} pestana={vista.pestana} />}
       {vista.v === "anotar" && <Anotar key={vista.despacho ? "despacho" : vista.cuenta ?? "nueva"} nav={nav} cuentaId={vista.cuenta} repetir={vista.repetir} despacho={vista.despacho} />}
