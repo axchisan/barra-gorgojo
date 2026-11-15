@@ -105,4 +105,8 @@ Para decidir los atajos de [18](18-roadmap-2026-11.md) §2.2:
 
 | # | Aparato | Pasos | Qué pasó | Qué se esperaba | Prioridad | Tarea / commit |
 |---|---|---|---|---|---|---|
+| H1 | Teléfono 360 y 412 (vertical) | Anotar: tocar un producto | El contador «N −» de cada producto mide 35 × 28 px y se sale 3 px del botón | Quitar uno con el pulgar sin fallar (≥ 44 px) | Media | Se queda como está (decisión del negocio, 2026-11-14) |
+| H2 | Teléfono 360 (vertical) | Panel de comida con dos áreas | La cabecera corta el nombre («Administrad…») y la conexión queda solo como punto | Ver quién está usando el aparato | Baja | ✅ Nombre corto en la cabecera angosta («Admin.»), `tests/e2e/telefono.spec.ts` |
+| H3 | Teléfono 360 (vertical) | Cobrar → Valor → dividir | Las sugerencias de billetes quedan debajo del botón fijo; hay que bajar para verlas | Ver «Exacto» y los billetes sin bajar, o una pista de que hay más | Media | ✅ Contadores de dividir lado a lado en el teléfono, `tests/e2e/telefono.spec.ts` |
+| H4 | Teléfono (vertical) | Pedir a la barra | La fila de cuentas se desliza de lado sin ninguna pista; las de la derecha no se ven | Saber que hay más cuentas (degradado o flecha) | Baja | ✅ Degradado a la derecha, `tests/e2e/telefono.spec.ts` |
 | | | | | | | |

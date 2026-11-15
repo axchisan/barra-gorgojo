@@ -37,7 +37,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
 
   return (
     <main className={`inicio pestana-${pestana}${sinc.panel === "comida" ? " con-pedido" : ""}`}>
-      <header className="barra-superior">
+      <header className={sinc.areas.length > 1 ? "barra-superior con-paneles" : "barra-superior"}>
         {sinc.areas.length > 1 ? (
           <div className="segmentos panel" role="group" aria-label="Área">
             {sinc.areas.map((a) => (
@@ -48,7 +48,10 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
           </div>
         ) : <strong>{nombreArea(panel)}</strong>}
         <EstadoConexion />
-        <button className="quien" onClick={() => setCambiar(!cambiar)}>{sinc.sesion!.persona} ▾</button>
+        {/* En el teléfono, con los dos paneles, el nombre largo no cabe: va corto («Admin.»). */}
+        <button className="quien" aria-label={`${sinc.sesion!.persona} ▾`} onClick={() => setCambiar(!cambiar)}>
+          <span className="largo">{sinc.sesion!.persona}</span><span className="corto">{nombreCorto(sinc.sesion!.persona)}</span> ▾
+        </button>
         {/* A toda la derecha: ocultar o mostrar lo del otro panel. */}
         {verBotonOcultar && (
           <button className={ocultar ? "ocultar-comida activo" : "ocultar-comida"} aria-pressed={ocultar}
@@ -101,6 +104,12 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
       </nav>
     </main>
   );
+}
+
+/** El nombre para la cabecera angosta: la primera palabra, y si es larga, recortada con punto. */
+function nombreCorto(nombre: string) {
+  const primera = nombre.trim().split(/\s+/)[0] ?? nombre;
+  return primera.length > 9 ? `${primera.slice(0, 5)}.` : primera;
 }
 
 /** Si este aparato oculta lo del otro panel (preferencia local). Comida empieza ocultando lo de la barra. */

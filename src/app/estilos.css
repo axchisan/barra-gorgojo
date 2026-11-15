@@ -1000,3 +1000,21 @@ html.apaisada .anotar .precio-ronda-anotar { position: static; width: 100%; }
 .horario-persona { display: grid; gap: 8px; }
 .horario-persona .fila-franja { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .horario-persona select, .horario-persona input[type="time"], .horario-persona input[type="date"] { min-height: 44px; font: inherit; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--neutro-300, #c9bca8); background: #fff; }
+
+/* Revisión del teléfono vertical (docs/19, 2026-11-14). */
+/* H2: el nombre de la cabecera, corto en el teléfono cuando están los dos paneles (con clase y no con :has, por los aparatos viejos). */
+.barra-superior .quien .corto { display: none; }
+@media (max-width: 459px) {
+  .barra-superior.con-paneles .quien .largo { display: none; }
+  .barra-superior.con-paneles .quien .corto { display: inline; }
+}
+/* H3: dividir entre varios, los dos contadores lado a lado: los billetes quedan a la vista. */
+@media (max-width: 699px) {
+  .dividir-cuenta { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; row-gap: 6px; padding: 8px 10px; }
+  .dividir-cuenta .paso { grid-template-columns: 44px minmax(1.8em, 1fr) 44px; grid-template-rows: auto auto; row-gap: 2px; column-gap: 4px; justify-items: center; }
+  .dividir-cuenta .paso > span:first-child { grid-column: 1 / -1; justify-self: start; font-size: 0.95rem; }
+  .dividir-cuenta .paso button { width: 44px; height: 44px; }
+  .dividir-cuenta .cada-uno { grid-column: 1 / -1; }
+}
+/* H4: la fila de cuentas de «Pedir a la barra» se desliza: el degradado avisa que hay más. */
+.chips.destinos { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: 36px; }
