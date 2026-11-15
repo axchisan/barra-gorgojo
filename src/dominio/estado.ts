@@ -783,7 +783,11 @@ export function aplicar(estado: Estado, op: Operacion): Estado {
       // pedidas, productos y abonos pasan a la de destino; la de origen queda sin nada.
       const o = estado.cuentas[op.desde];
       if (!c || !o || o.id === c.id || c.anulada || o.anulada) return estado;
-      if (situacion(c) !== "abierta" || situacion(o) !== "abierta" || !o.lineas.length) return estado;
+      // La de origen puede estar ya cobrada (2026-11-15, para el seguimiento): sus pagos viajan
+      // con ella, así que lo que falta en la de destino no cambia. Antes el servidor rechazaba
+      // ese caso, así que en el registro no hay juntas así: el registro viejo da lo mismo.
+      const origenSirve = situacion(o) === "abierta" || situacion(o) === "cobrada";
+      if (situacion(c) !== "abierta" || !origenSirve || !o.lineas.length) return estado;
       // Si la de origen ya tenía otras juntadas, todo pasa como suyo: separar después la
       // devuelve entera, y esas juntas internas ya no se separan.
       const comoAdicional = c.tipo === "cancha" && o.tipo !== "cancha" && op.en >= JUNTAR_ADICIONAL_DESDE;

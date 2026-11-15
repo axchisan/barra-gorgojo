@@ -818,6 +818,22 @@ describe("juntar cuentas en el servidor", () => {
   afterAll(() => s?.apagar());
   type R = { ok: string[]; rechazadas?: { id: string; motivo: string }[]; estado: any };
 
+  it("junta una cuenta ya cobrada con una abierta: lo que falta no cambia (2026-11-15)", async () => {
+    const a = `junta-ca-${Date.now()}`, b = `junta-cb-${Date.now()}`;
+    await s.ops(ana, [
+      op({ t: "abrir", cuenta: a, nombre: "Mesa 8", tipo: "mesa", mesa: 8 }), op({ t: "anotar", cuenta: a, ronda: `${a}-r`, lineas: lineas([["rubia", 2]]) }),
+      op({ t: "abrir", cuenta: b, nombre: "La que ya pagó", tipo: "grupo" }), op({ t: "anotar", cuenta: b, ronda: `${b}-r`, lineas: lineas([["rubia", 1]]) }),
+      op({ t: "cobrar", cuenta: b, pago: `${b}-p`, medio: "efectivo" }),
+    ]);
+    const r = (await s.ops(ana, [op({ t: "juntar", cuenta: a, desde: b })])) as R;
+    expect(r.rechazadas ?? []).toEqual([]);
+    const c = r.estado.cuentas[a];
+    const total = c.lineas.reduce((t: number, l: { precio: number; cantidad: number }) => t + l.precio * l.cantidad, 0);
+    const pagado = c.pagos.reduce((t: number, p: { monto: number }) => t + p.monto, 0);
+    expect(total - pagado).toBe(8_000);
+    expect(r.estado.cuentas[b].juntadaA.nombre).toBe("Mesa 8");
+  });
+
   it("junta dos cuentas, rechaza cobrar la de origen y no deja separar después de un cobro", async () => {
     const a = `junta-a-${Date.now()}`, b = `junta-b-${Date.now()}`;
     await s.ops(ana, [

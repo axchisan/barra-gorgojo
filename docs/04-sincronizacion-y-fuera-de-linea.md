@@ -409,6 +409,13 @@ mismo antes y después: nada se cobra dos veces ni se pierde. Pruebas en
 | Otro celular anota en la de origen ya juntada | Se anota ahí: la cuenta revive con la alerta de «se anotó después» |
 | Separar después de un cobro o abono en la de destino | Se rechaza: el pago ya pudo incluir lo juntado |
 
+**Juntar una cuenta ya cobrada** (2026-11-15, pedido del negocio para el seguimiento: se
+cerraron cuentas que eran de una abierta). La de origen puede estar cobrada: pasa con sus
+pedidas **y sus pagos**, así que lo que falta en la de destino no cambia; separar la
+devuelve cobrada. La de destino sigue teniendo que estar abierta; una anulada o pasada a
+comida no se junta. Antes el servidor rechazaba ese caso, así que el registro viejo da el
+mismo estado. En el menú de una cuenta cobrada: «Juntar con una cuenta abierta».
+
 Al juntar una cuenta que no es cancha con una cancha, sus pedidas llegan como
 **adicionales** (no son chicos); desde `JUNTAR_ADICIONAL_DESDE`, para que lo juntado antes
 quede igual (regla 0).

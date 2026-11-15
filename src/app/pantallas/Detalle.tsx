@@ -64,8 +64,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
           <button onClick={() => { setRenombrar(c.nombre); setMenu(false); }}>Cambiar nombre</button>
           <button onClick={() => { setCliente(true); setMenu(false); }}>Mostrar al cliente</button>
           {/* Juntar: para cobrar dos cuentas como una (docs/04 «Juntar cuentas»). */}
-          {s === "abierta" && c.lineas.length > 0 && (
-            <button onClick={() => { setJuntar(true); setMenu(false); }}>Juntar con otra cuenta</button>
+          {(s === "abierta" || s === "cobrada") && c.lineas.length > 0 && (
+            <button onClick={() => { setJuntar(true); setMenu(false); }}>{s === "cobrada" ? "Juntar con una cuenta abierta" : "Juntar con otra cuenta"}</button>
           )}
           {s === "abierta" && (c.juntadas ?? []).map((j) => (
             <button key={j.cuenta} onClick={() => {
@@ -331,7 +331,9 @@ function HojaJuntar({ c, nav, cerrar }: { c: Cuenta; nav: Nav; cerrar: () => voi
           <h2>¿Con qué cuenta se junta «{c.nombre}»?</h2>
           <button className="cerrar-hoja" aria-label="Cerrar" onClick={cerrar}>✕</button>
         </header>
-        <p className="nota">Lo de {c.nombre} ({pesos(saldo(c))}) pasa a la que escoja, y se cobran juntas.</p>
+        {situacion(c) === "cobrada"
+          ? <p className="nota">{c.nombre} ya está pagada ({pesos(total(c))}): pasa a la que escoja con lo que pagó, para el seguimiento. Lo que falta por cobrar allá no cambia.</p>
+          : <p className="nota">Lo de {c.nombre} ({pesos(saldo(c))}) pasa a la que escoja, y se cobran juntas.</p>}
         {otras.length === 0 && <p className="vacio">No hay otras cuentas abiertas.</p>}
         <div className="tarjetas">
           {otras.map((x) => (

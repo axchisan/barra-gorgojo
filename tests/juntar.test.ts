@@ -38,11 +38,12 @@ describe("juntar cuentas", () => {
     expect(e.cuentas.b.pagos).toEqual([]);
   });
 
-  it("no junta una cuenta consigo misma, ni cobradas, anuladas, vacías o que no existen; repetir no cambia nada", () => {
+  it("no junta una cuenta consigo misma, ni hacia una cobrada, ni vacías o que no existen; repetir no cambia nada", () => {
     const base = correr([...dos(), op({ t: "abrir", cuenta: "v", nombre: "Vacía", tipo: "grupo" }), op({ t: "abrir", cuenta: "c", nombre: "Cobrada", tipo: "grupo" }),
       op({ t: "anotar", cuenta: "c", ronda: "rc", lineas: [{ id: "c1", producto: "rubia", cantidad: 1 }] }), op({ t: "cobrar", cuenta: "c", pago: "pc", medio: "efectivo" })]);
     const antes = JSON.stringify(base);
-    const e = correr([op({ t: "juntar", cuenta: "a", desde: "a" }), op({ t: "juntar", cuenta: "a", desde: "c" }), op({ t: "juntar", cuenta: "c", desde: "a" }),
+    // (Una cobrada sí puede ser la de origen desde el 2026-11-15: ver abajo. La de destino tiene que estar abierta.)
+    const e = correr([op({ t: "juntar", cuenta: "a", desde: "a" }), op({ t: "juntar", cuenta: "c", desde: "a" }),
       op({ t: "juntar", cuenta: "a", desde: "v" }), op({ t: "juntar", cuenta: "a", desde: "nada" })], base);
     expect(JSON.stringify(e)).toBe(antes);
     const una = correr([op({ t: "juntar", cuenta: "a", desde: "b" })], base);
@@ -117,5 +118,24 @@ describe("juntar con una cancha y pedidas anuladas", () => {
     const c = e.cuentas.q;
     expect(cuantasRondas(c)).toBe("1 chico · 1 adicional");
     expect(nombreRonda(c, c.rondas[2])).toBe("Adicional 1");
+  });
+});
+
+describe("juntar una cuenta ya cobrada con una abierta (2026-11-15, para el seguimiento)", () => {
+  it("la cobrada pasa con lo que pagó: lo que falta en la abierta no cambia, y se puede separar", () => {
+    const e = correr([...dos(), op({ t: "cobrar", cuenta: "b", pago: "pb", medio: "efectivo" }), op({ t: "juntar", cuenta: "a", desde: "b" })]);
+    expect(situacion(e.cuentas.b)).toBe("juntada");
+    expect(saldo(e.cuentas.a)).toBe(8_000); // lo de «Los de rojo» ya estaba pagado
+    expect(pagado(e.cuentas.a)).toBe(8_500);
+    expect(e.cuentas.a.lineas.map((l) => l.id)).toEqual(["a1", "b1", "b2"]);
+    aplicar(e, op({ t: "separar", cuenta: "a", desde: "b" }));
+    expect(situacion(e.cuentas.b)).toBe("cobrada");
+    expect(saldo(e.cuentas.a)).toBe(8_000);
+  });
+
+  it("una pasada a comida o anulada no se junta", () => {
+    const e = correr([...dos(), op({ t: "anular_cuenta", cuenta: "b", motivo: "repetida" }), op({ t: "juntar", cuenta: "a", desde: "b" })]);
+    expect(e.cuentas.b.juntadaA).toBeUndefined();
+    expect(saldo(e.cuentas.a)).toBe(8_000);
   });
 });

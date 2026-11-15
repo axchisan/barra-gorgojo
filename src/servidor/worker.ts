@@ -665,7 +665,7 @@ export class Barra extends DurableObject<Env> {
       if (o.id === c.id) return "Escoja otra cuenta.";
       if (situacion(o) === "juntada") return `${o.nombre} ya se juntó con ${o.juntadaA!.nombre}.`;
       if (situacion(c) !== "abierta") return `${c.nombre} ya no está abierta.`;
-      if (situacion(o) !== "abierta") return `${o.nombre} ya no está abierta.`;
+      if (situacion(o) !== "abierta" && situacion(o) !== "cobrada") return `${o.nombre} no se puede juntar (está ${situacion(o) === "comida" ? "pasada a comida" : "anulada"}).`;
       if (!o.lineas.length) return `${o.nombre} no tiene productos.`;
       return null;
     }
