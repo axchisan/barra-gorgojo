@@ -1193,3 +1193,84 @@ html .inicio .panel-cuenta .pie-fijo {
 .desglose.cobro-area button { flex: 1; min-height: 56px; border-radius: 12px; border: 2px solid #e3d8c6; background: #fff; font: inherit; font-size: 1rem; cursor: pointer; }
 .desglose.cobro-area button.activo { border-color: var(--marron); background: var(--amarillo); }
 .desglose.cobro-area button[disabled] { opacity: 0.5; }
+
+/* ── El día para hacer cuentas (2026-11-15) ─────────────────────────────────────── */
+.dia-nuevo { max-width: 1180px; margin: 0 auto; }
+.dia-hero { background: var(--marron); color: var(--papel); border-radius: var(--radio); padding: 18px 16px 14px; margin-bottom: 12px; display: grid; gap: 2px; }
+.dia-hero-titulo { color: var(--neutro-200); font-weight: 600; }
+.dia-hero-total { font-size: 2.6rem; line-height: 1.1; color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.dia-hero-sub { color: var(--neutro-200); font-size: 0.95rem; }
+.dia-hero-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.dia-hero-areas > div { background: rgba(255, 255, 255, 0.09); border-radius: 12px; padding: 10px 12px; display: grid; }
+.dia-hero-areas > div.de-comida { background: rgba(120, 190, 210, 0.2); }
+.dia-hero-areas span { font-size: 0.9rem; color: var(--neutro-200); font-weight: 600; }
+.dia-hero-areas strong { font-size: 1.5rem; color: #fff; font-variant-numeric: tabular-nums; }
+.dia-columnas { display: grid; gap: 0 14px; }
+@media (min-width: 900px) { .dia-columnas { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; } }
+
+.dia-tabla { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.dia-tabla th, .dia-tabla td { padding: 10px 6px; text-align: right; border-bottom: 1px solid var(--neutro-100); white-space: nowrap; }
+.dia-tabla th:first-child { text-align: left; font-weight: 700; }
+.dia-tabla thead th { font-size: 0.85rem; color: var(--neutro-600); font-weight: 700; border-bottom: 2px solid var(--neutro-200); }
+.dia-tabla td.de-comida { color: var(--azul-comida); }
+.dia-tabla tbody tr, .dia-tabla tr.por-cobrar { cursor: pointer; }
+.dia-tabla tbody tr:active, .dia-tabla tr.por-cobrar:active { background: var(--neutro-100); }
+.dia-tabla tfoot th, .dia-tabla tfoot td { border-top: 2px solid var(--marron); border-bottom: 0; font-weight: 700; }
+.dia-tabla tr.por-cobrar th, .dia-tabla tr.por-cobrar td { border-top: 0; color: var(--rojo); }
+.dia-tabla tr.fila-deuda th, .dia-tabla tr.fila-deuda td { color: #4a3577; }
+@media (max-width: 380px) { .dia-tabla th, .dia-tabla td { padding: 9px 3px; font-size: 0.92rem; } }
+
+.entre-cajas { border-color: var(--amarillo); background: #fff8e6; }
+.cruce { display: grid; gap: 2px; padding: 6px 0; }
+.cruce + .cruce { border-top: 1px solid var(--neutro-200); }
+.cruce-titulo { font-size: 1.05rem; }
+.cruce-titulo strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+
+.cuadre-recibio { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.cuadre-recibio > div { border: 1px solid var(--neutro-200); border-radius: 10px; padding: 8px 10px; display: grid; font-variant-numeric: tabular-nums; }
+.cuadre-recibio > div span { font-size: 0.85rem; color: var(--neutro-600); font-weight: 600; }
+.cuadre-recibio .cuadre-efectivo { grid-column: 1 / -1; border: 2px solid var(--marron); }
+.cuadre-recibio .cuadre-efectivo strong { font-size: 1.7rem; }
+.cuadre-recibio small { color: var(--neutro-600); }
+
+.filtros-dia { flex-wrap: wrap; }
+.cuentas-dia .buscar { width: 100%; }
+.resumen-filtro { background: var(--neutro-100); border-radius: 10px; padding: 8px 12px; font-variant-numeric: tabular-nums; }
+.renglon-dia { display: grid; gap: 4px; width: 100%; text-align: left; font: inherit; background: #fff; border: 1px solid var(--neutro-200); border-radius: 12px; padding: 10px 12px; cursor: pointer; color: inherit; }
+.renglon-dia:active { background: var(--neutro-100); }
+.renglon-dia.sin-cobrar { border: 2px solid var(--rojo); }
+.renglon-dia.anulada { opacity: 0.75; text-decoration: none; }
+.renglon-dia-cabeza { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.renglon-dia-nombre { font-weight: 700; font-size: 1.05rem; }
+.renglon-dia-total { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.renglon-dia-sub { color: var(--neutro-600); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.renglon-dia-sub .parte.de-comida { color: var(--azul-comida); }
+.renglon-dia-pagos { display: flex; flex-wrap: wrap; gap: 4px; }
+.pago-chip { font-size: 0.8rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--neutro-100); font-variant-numeric: tabular-nums; }
+.pago-chip.medio-nequi { background: #f3e5f5; color: #6a1b6f; }
+.pago-chip.medio-breve { background: #e3f2fd; color: #0d47a1; }
+.pago-chip.medio-deuda { background: #efe8f7; color: #4a3577; }
+.pago-chip.medio-efectivo { background: #e8f3e3; color: #2d5a25; }
+.pago-chip.falta { background: #fdecea; color: var(--rojo); }
+.dia-nuevo .por-producto .segmentos { margin-bottom: 4px; }
+.dia-nuevo .cifras .cifra.deuda { grid-column: 1 / -1; }
+.dia-nuevo > .enlace { margin: 8px 20px 8px 0; }
+.dia-col { min-width: 0; }
+.dia-tabla-caja { overflow-x: auto; }
+.pago-chip { white-space: normal; overflow-wrap: anywhere; }
+.renglon-dia-nombre { overflow-wrap: anywhere; min-width: 0; }
+.filtros-dia .chip { white-space: nowrap; }
+/* Teléfono acostado o pantalla baja: el encabezado en una línea y el contado arriba del
+   cuadre, para verlo sin bajar (C10). Barra y comida siguen en «¿Cómo pagaron?» y «Por producto». */
+@media (max-height: 520px) {
+  .dia-hero { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 8px 14px; }
+  .dia-hero-total { font-size: 1.6rem; }
+  .dia-hero-areas { display: none; }
+  .cuadre { gap: 6px; }
+  .cuadre h2 { display: none; }
+  .cuadre > input { order: -1; }
+  .cuadre > .segmentos { order: -2; }
+  .cuadre > p.tenue { display: none; }
+  .cuadre-recibio .cuadre-efectivo strong { font-size: 1.3rem; }
+  .cuadre-recibio small { display: none; }
+}

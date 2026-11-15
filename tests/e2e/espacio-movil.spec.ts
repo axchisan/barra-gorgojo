@@ -177,7 +177,7 @@ test.describe("espacio en teléfono", () => {
 
       // El día: el cuadre de caja a la vista
       await p.locator(".pestanas button", { hasText: "El día" }).click();
-      const dia = await medir(p, ".dia .caja input");
+      const dia = await medir(p, ".dia .cuadre input");
       m.diaCuadreVisible = dia.visibles === 1;
       expect(dia.sinScrollHorizontal, "el día sin desplazamiento horizontal").toBe(true);
 

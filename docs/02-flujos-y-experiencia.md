@@ -488,6 +488,32 @@ muestra «🍺 Solo barra $ X» y «🍽 Solo comida $ Y»: un toque escoge todo
 esa área (de todas las pedidas) y se cobra como abono por productos. Antes había que
 tocarlos uno por uno. Prueba: `tests/e2e/pedidos-barra.spec.ts`.
 
+### El día para hacer cuentas (2026-11-15)
+
+Rehecho con la venta real de ese día (77 cuentas, 22 con comida y barra juntas, cobradas
+enteras en una sola caja). Lo que costaba al hacer cuentas era saber **cuánto de comida se
+pagó por Nequi** y **cuánto le pasa una caja a la otra**. Ahora, de arriba abajo:
+
+1. **Vendido hoy**, partido en 🍺 barra y 🍽 comida, y cuántas cuentas faltan por cobrar.
+2. **Cuadre de caja** (arriba, C10): el efectivo que debe haber en la caja escogida, lo que
+   entró por Nequi, Breve y fiado, el contado y «Cerrar el día».
+3. **¿Cómo pagaron?**: una tabla por medio (efectivo, Nequi, Breve, fiado) con columnas
+   barra, comida y total, más «Cobrado» y «Por cobrar». Cada pago de una cuenta mixta se
+   reparte: el pago por productos, exacto; los demás, según lo que le faltaba a cada área
+   (`cuentasDelDia` y `repartirPagos` en `src/dominio/jornada.ts`). Tocar una fila filtra
+   las cuentas.
+4. **Entre cajas**: «Efectivo: la barra le pasa a la cocina $ 305.000», con lo que cada caja
+   cobró de la otra; igual para Nequi y Breve si hubo.
+5. **Cuentas del día**: filtros (Todas, Efectivo, Nequi, Breve, Fiado, Por cobrar, Con
+   comida, Anuladas), buscador y, en cada cuenta, la hora, lo de barra y lo de comida, y
+   cada pago con medio, valor, quién cobró y en qué caja (y a nombre de quién quedó lo
+   fiado). Con un filtro, arriba sale la suma («9 cuentas · $ 604.500 · 🍺 … · 🍽 …»). Tocar
+   una cuenta la abre.
+6. **Por producto**, comida y barra por separado.
+
+En el portátil y la tablet girada va en dos columnas. Pruebas: `tests/cuentas-del-dia.test.ts`,
+`tests/e2e/el-dia.spec.ts`.
+
 ### Editar una pedida (2026-11-15)
 
 En el detalle, vista Pedidas o Chicos: **«＋ Agregar»** en la cabecera de la pedida abre

@@ -50,7 +50,7 @@ test("una cuenta pasa a deuda, queda en el panel de deudas y se recibe un pago a
   // El día: lo fiado cuenta como venta de hoy; el pago va aparte de la caja.
   await p.goBack(); await p.goBack();
   await p.locator(".pestanas button", { hasText: "El día" }).click();
-  await expect(p.locator(".cifra.deuda", { hasText: "Fiado hoy" })).toContainText(total.toLocaleString("es-CO"));
+  await expect(p.locator(".dia-tabla tr.fila-deuda")).toContainText(total.toLocaleString("es-CO"));
   await expect(p.locator(".cifra.deuda", { hasText: "Pagos de deudas" })).toContainText(mitad.toLocaleString("es-CO"));
 });
 
