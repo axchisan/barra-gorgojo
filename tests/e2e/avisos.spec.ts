@@ -20,7 +20,9 @@ const tapa = (p: Page) =>
     const venta = [...document.querySelectorAll(".pie-fijo button, .pestanas button, .tarjeta, .producto, .chip, main input")];
     return venta.filter((e) => {
       const b = e.getBoundingClientRect();
-      return b.width > 0 && b.left < a.right && b.right > a.left && b.top < a.bottom && b.bottom > a.top;
+      // Con la misma tolerancia de 4 px que se le da abajo frente a la barra superior (la
+      // altura del texto cambia un poco con la fuente del sistema: Roboto, SF).
+      return b.width > 0 && b.left < a.right && b.right > a.left && b.top < a.bottom - 4 && b.bottom > a.top + 4;
     }).map((e) => e.textContent?.trim().slice(0, 20));
   });
 
