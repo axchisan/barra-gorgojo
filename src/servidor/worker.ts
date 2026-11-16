@@ -17,6 +17,7 @@ import { dentroDeHorario, describirHorario, finDeFranja, mensajeFueraDeHorario, 
 import { esCompleta, limitarCambios, limitarEstado, cuentaDeHoy, type Vista } from "../dominio/vista";
 import { solicitudesVigentes, TOPE_LINEAS, TOPE_UNIDADES, TOPE_VALOR, valorSolicitud, type LineaSolicitud } from "../dominio/solicitudes";
 import { Lugares } from "./qr";
+import { endpointValido, enviar, leerVapid, Suscripciones, type Aviso, type Vapid } from "./push";
 
 interface Env extends ConfigCorreo {
   BARRA: DurableObjectNamespace<Barra>;
@@ -37,6 +38,10 @@ interface Env extends ConfigCorreo {
   DIRECCION?: string;
   /** Llave de la importación de la migración. Sin ella, importar está apagado. */
   MIGRACION?: string;
+  /** Llave VAPID de las notificaciones push (JWK privada P-256). Secreto: `wrangler secret put VAPID`. Sin ella, push está apagado. */
+  VAPID?: string;
+  /** Solo en las pruebas: acepta suscripciones a un servicio de push falso en 127.0.0.1. */
+  PUSH_LOCAL?: string;
 }
 
 const nombreBase = (env: Env) => env.BASE || BASE_ORIGINAL;
@@ -150,11 +155,16 @@ export class Barra extends DurableObject<Env> {
   private seq = 0;
   private acceso: Acceso;
   private lugares: Lugares;
+  private suscripciones: Suscripciones;
+  private vapid?: Promise<Vapid | null>;
+  /** Origen por el que llegan los pedidos: contacto de VAPID si no hay dirección propia. */
+  private origen?: string;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.acceso = new Acceso(ctx.storage.sql, env.PINES ?? "");
     this.lugares = new Lugares(ctx.storage.sql);
+    this.suscripciones = new Suscripciones(ctx.storage.sql);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     ctx.blockConcurrencyWhile(async () => {
       const sql = ctx.storage.sql;
@@ -184,6 +194,7 @@ export class Barra extends DurableObject<Env> {
       sql.exec("CREATE INDEX IF NOT EXISTS operaciones_en ON operaciones (json_extract(datos, '$.en'))");
       this.acceso.preparar(PERSONAS);
       this.lugares.preparar();
+      this.suscripciones.preparar();
       this.cargar();
     });
   }
@@ -802,8 +813,66 @@ export class Barra extends DurableObject<Env> {
       });
       aceptadas.push(op.id);
       this.avisarATodos({ tipo: "op", op, cambios: this.cambiosDe(op) });
+      this.avisarDespacho(op, quien.dispositivo);
     }
     return { aceptadas, rechazadas };
+  }
+
+  // ── Notificaciones push (docs/18 fase 4, ADR-19) ─────────────────────
+
+  private llaveVapid(): Promise<Vapid | null> {
+    this.vapid ??= leerVapid(this.env.VAPID);
+    return this.vapid;
+  }
+
+  /**
+   * Bebidas pedidas desde comida (por despachar): aviso push a los aparatos suscritos de
+   * quienes tienen barra hoy y están en su horario, menos el que lo pidió (como el timbre,
+   * docs/02). El celular con la app a la vista no lo muestra: ya suena el timbre.
+   */
+  private avisarDespacho(op: Operacion, desde: string) {
+    if (op.t !== "anotar" && op.t !== "agregar") return;
+    const c = this.estado.cuentas[op.cuenta];
+    if (!c) return;
+    const ids = new Set(op.lineas.map((l) => l.id));
+    const lineas = c.lineas.filter((l) => ids.has(l.id) && l.porDespachar && !l.anulada);
+    if (!lineas.length) return;
+    const detalle = lineas.map((l) => `${l.cantidad} ${l.nombre}`).join(", ");
+    this.avisar({
+      titulo: "🍺 Pedido para despachar",
+      cuerpo: `${c.nombre}: ${detalle.length > 120 ? `${detalle.slice(0, 117)}…` : detalle}`,
+      etiqueta: `despacho-${c.id}`,
+      ir: "despacho",
+    }, "barra", desde);
+  }
+
+  /** Quiénes reciben un aviso del área: aparato activo, persona activa, con el área hoy y en su horario. */
+  private destinatarios(area: Area, excepto?: string, ahora = Date.now()) {
+    const hoy = jornada(ahora);
+    return this.suscripciones.todas().filter((s) => {
+      if (s.dispositivo === excepto || !this.acceso.dispositivoActivo(s.dispositivo)) return false;
+      const p = this.acceso.persona(s.persona);
+      return !!p && p.activa && dentroDeHorario(p.horario, ahora) && this.acceso.areasDeHoy(p.id, hoy).includes(area);
+    });
+  }
+
+  /** Manda el aviso sin hacer esperar a nadie: la respuesta al celular sale antes. */
+  private avisar(aviso: Aviso, area: Area, excepto?: string) {
+    if (!this.env.VAPID) return;
+    const para = this.destinatarios(area, excepto);
+    if (para.length) this.ctx.waitUntil(this.mandar(aviso, para));
+  }
+
+  private async mandar(aviso: Aviso, para: ReturnType<Barra["destinatarios"]>): Promise<number> {
+    const vapid = await this.llaveVapid();
+    if (!vapid) { console.warn(JSON.stringify({ aviso: "push-sin-llave" })); return 0; }
+    const contacto = this.env.DIRECCION || this.origen || "https://localhost";
+    const resultados = await Promise.all(para.map(async (s) => {
+      const r = await enviar(vapid, s, aviso, contacto);
+      if (r === "vencida") this.suscripciones.quitar(s.endpoint);
+      return r;
+    }));
+    return resultados.filter((r) => r === "enviado").length;
   }
 
   /** Quién hace el pedido: sesión firmada + celular vinculado que coincide + persona activa. */
@@ -831,6 +900,7 @@ export class Barra extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const ruta = url.pathname;
+    this.origen ??= url.origin;
     const cuerpo = async <T>() => (await req.json().catch(() => ({}))) as T;
 
     // ── Sin sesión ──────────────────────────────────────────────────
@@ -890,6 +960,33 @@ export class Barra extends DurableObject<Env> {
       return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base, q.vista) ?? this.foto(q.vista)), yo: yoDe(q) });
     }
     if (ruta === "/api/foto") return json(this.foto(q.vista));
+    if (ruta === "/api/push" && req.method === "GET") {
+      // La llave pública para suscribirse (sin llave: push apagado) y si este aparato ya está.
+      const vapid = await this.llaveVapid();
+      return json({ llave: vapid?.publica ?? null, suscrito: this.suscripciones.deDispositivo(q.dispositivo) });
+    }
+    if (ruta === "/api/push" && req.method === "POST") {
+      const b = await cuerpo<{ accion?: string; endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } }>();
+      if (b.accion === "suscribir") {
+        const { p256dh, auth } = b.keys ?? {};
+        if (!endpointValido(b.endpoint, this.env.PUSH_LOCAL === "1")) return json({ error: "Ese servicio de avisos no se reconoce." }, 400);
+        if (typeof p256dh !== "string" || !/^[A-Za-z0-9_-]{80,100}$/.test(p256dh) || typeof auth !== "string" || !/^[A-Za-z0-9_-]{16,32}$/.test(auth)) return json({ error: "Suscripción inválida." }, 400);
+        this.suscripciones.guardar({ endpoint: b.endpoint, p256dh, auth, dispositivo: q.dispositivo, persona: q.id });
+        return json({ ok: true });
+      }
+      if (b.accion === "quitar") {
+        this.suscripciones.quitarDispositivo(q.dispositivo);
+        return json({ ok: true });
+      }
+      if (b.accion === "probar") {
+        // Un aviso de prueba a este mismo aparato, para ver que llega con la app cerrada.
+        const mias = this.suscripciones.todas().filter((s) => s.dispositivo === q.dispositivo);
+        if (!mias.length) return json({ error: "Este aparato no está recibiendo avisos." }, 400);
+        const enviados = await this.mandar({ titulo: "🔔 Aviso de prueba", cuerpo: "Así llegan los pedidos para despachar con la app cerrada.", etiqueta: "prueba", ir: "despacho" }, mias);
+        return enviados ? json({ ok: true }) : json({ error: "No se pudo enviar el aviso de prueba." }, 502);
+      }
+      return json({ error: "Acción desconocida." }, 400);
+    }
     // Cuentas por id, aunque ya no estén en el celular (las de días anteriores): para ver
     // el detalle de lo fiado en «Deudas» (docs/15). Solo lectura, hasta 50 a la vez.
     if (ruta === "/api/cuentas" && req.method === "GET") {
@@ -988,6 +1085,7 @@ export class Barra extends DurableObject<Env> {
       if (!revocar) return json({ error: "Falta el celular." }, 400);
       if (revocar === q.dispositivo) return json({ error: "No puede quitar el celular que está usando." }, 400);
       this.acceso.revocar(revocar);
+      this.suscripciones.quitarDispositivo(revocar);
       this.cortar(`d:${revocar}`);
       return json({ ok: true });
     }

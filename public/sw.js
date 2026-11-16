@@ -86,3 +86,39 @@ self.addEventListener("fetch", (e) => {
     ),
   );
 });
+
+// ── Avisos con la app cerrada (docs/18 fase 4) ─────────────────────────
+// El Worker manda el aviso cifrado; aquí se muestra. Con la app a la vista no se muestra:
+// ya suena el timbre (salvo el aviso de prueba, que se pide desde la app abierta).
+self.addEventListener("push", (e) => {
+  let a = {};
+  try { a = e.data ? e.data.json() : {}; } catch { /* aviso sin datos */ }
+  e.waitUntil((async () => {
+    const ventanas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (a.etiqueta !== "prueba" && ventanas.some((v) => v.visibilityState === "visible")) return;
+    await self.registration.showNotification(a.titulo || "Barra del Gorgojo", {
+      body: a.cuerpo || "",
+      tag: a.etiqueta || "aviso",
+      renotify: true,
+      icon: "/icono-192.png",
+      vibrate: [400, 150, 400, 150, 400],
+      data: { ir: a.ir || "despacho" },
+    });
+  })());
+});
+
+// Tocar el aviso abre la app en «Despachar» (o la trae al frente si ya estaba abierta).
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const ir = (e.notification.data && e.notification.data.ir) || "despacho";
+  e.waitUntil((async () => {
+    const ventanas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const v = ventanas.find((c) => new URL(c.url).origin === location.origin);
+    if (v) {
+      await v.focus();
+      v.postMessage({ tipo: "ir", ir });
+      return;
+    }
+    await self.clients.openWindow(`/?ir=${encodeURIComponent(ir)}`);
+  })());
+});

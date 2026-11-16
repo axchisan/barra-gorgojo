@@ -507,3 +507,34 @@ por QR (docs/20) necesitan que alguien sin cuenta pida desde su celular.
 
 **Costo aceptado.** Una superficie pública nueva: por eso el interruptor, los límites y
 que nada entre a una cuenta sin una persona del negocio.
+
+### ADR-19 · Notificaciones push propias, sin servicios de terceros (2026-11-16)
+
+El timbre del despacho solo suena con la app abierta y a la vista; con la pantalla apagada
+el pedido se perdía (docs/14 paso 5, docs/16 §3.1).
+
+**Decisión.**
+
+- **Web Push estándar** desde el Durable Object: el mensaje se cifra (RFC 8291,
+  `aes128gcm`) y la petición se firma con VAPID (RFC 8292) usando solo WebCrypto
+  (`src/servidor/push.ts`, sin dependencias). Nada pasa por Firebase ni OneSignal: el
+  servicio de push del navegador solo ve el mensaje cifrado.
+- La llave VAPID es **un secreto por entorno** (`VAPID`, JWK privada P-256, generada con
+  `scripts/vapid.mjs` directo a `wrangler secret put`); la pública sale de ella. Sin el
+  secreto, push queda apagado y la app lo dice.
+- **Suscripciones en una tabla del Durable Object** (`suscripciones`), una por aparato, con
+  la persona que está en él. No van en el registro: no son operaciones del negocio. Se
+  borran al quitar el aparato, al «Dejar de recibir» o cuando el servicio responde 404/410.
+- Solo se manda a servicios de push conocidos (FCM, Mozilla, Apple, Windows) por `https`:
+  el `endpoint` lo pone el navegador, pero el Worker no le hace peticiones a cualquier
+  dirección.
+- **Disparador**: una operación aceptada que deja bebidas por despachar → aviso a quienes
+  tienen barra hoy y están en su horario, menos el aparato que lo pidió. Se manda con
+  `ctx.waitUntil`, después de responder: la respuesta al celular no espera al push.
+- El Service Worker propio muestra el aviso (no si la app está a la vista: ya suena el
+  timbre) y al tocarlo abre «Despachar».
+
+**Costo aceptado.** En iPhone solo funciona con la app instalada; cambiar la llave VAPID
+obliga a reactivar los avisos en cada aparato. Playwright no recibe push de verdad: el
+cifrado se prueba descifrando como el navegador (`tests/push.test.ts`) y el envío con un
+servicio de push falso y el Worker real (`tests/servidor/push.test.ts`).

@@ -27,12 +27,12 @@ export interface Servidor {
   cookie: string;
   /** WebSocket crudo con la sesión y la cookie del celular. */
   wsCrudo(token: string, cookie?: string): WebSocket;
-  ops(token: string, ops: unknown[], base?: string): Promise<{ ok: string[]; seq: number; estado: any; base: string }>;
+  ops(token: string, ops: unknown[], base?: string, cookie?: string): Promise<{ ok: string[]; seq: number; estado: any; base: string }>;
   /** Como `ops`, pero devuelve la respuesta cruda (para ver códigos de error). */
-  opsCrudo(token: string, ops: unknown[], base?: string): Promise<Response>;
+  opsCrudo(token: string, ops: unknown[], base?: string, cookie?: string): Promise<Response>;
   foto(token: string): Promise<{ seq: number; estado: any; base: string }>;
   /** GET o POST a una ruta de la API con la sesión de `token`. */
-  pedir(token: string, ruta: string, init?: RequestInit): Promise<Response>;
+  pedir(token: string, ruta: string, init?: RequestInit, cookie?: string): Promise<Response>;
   /** Abre un WebSocket como un celular y junta lo que llega. */
   conectar(token: string): Promise<{ mensajes: any[]; cerrar(): void }>;
   apagar(): Promise<void>;
@@ -42,8 +42,10 @@ export interface Servidor {
  * @param catalogo archivo que hace de `#negocio` (por defecto, el de ejemplo)
  * @param persistir carpeta para la base; sin ella, todo vive en memoria
  */
-export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", persistir, base, migracion, direccion }: {
+export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", persistir, base, migracion, direccion, vapid }: {
   catalogo?: string; persistir?: string; base?: string; migracion?: string; direccion?: string;
+  /** Llave VAPID (JWK privada): enciende push, con un servicio de push falso en 127.0.0.1. */
+  vapid?: string;
 } = {}): Promise<Servidor> {
   const w = await unstable_startWorker({
     config: "wrangler.jsonc",
@@ -56,6 +58,7 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
       BASE: { type: "plain_text" as const, value: base ?? BASE_ORIGINAL },
       ...(migracion ? { MIGRACION: { type: "plain_text" as const, value: migracion } } : {}),
       ...(direccion ? { DIRECCION: { type: "plain_text" as const, value: direccion } } : {}),
+      ...(vapid ? { VAPID: { type: "plain_text" as const, value: vapid }, PUSH_LOCAL: { type: "plain_text" as const, value: "1" } } : {}),
     },
     dev: { persist: persistir ?? false, server: { port: 0 }, inspector: false, watch: false, logLevel: "error" },
   });
@@ -92,13 +95,13 @@ export async function arrancar({ catalogo = "./negocio.ejemplo/catalogo.ts", per
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
       return new WebSocket(url, { headers: { cookie: galleta } } as never);
     },
-    opsCrudo: (token, ops, base) => pedir("/api/ops", { method: "POST", headers: conToken(token), body: JSON.stringify({ ops, base }) }),
-    async ops(token, ops, base) {
-      const r = await s.opsCrudo(token, ops, base);
+    opsCrudo: (token, ops, base, galleta) => pedir("/api/ops", { method: "POST", headers: conToken(token), body: JSON.stringify({ ops, base }) }, galleta),
+    async ops(token, ops, base, galleta) {
+      const r = await s.opsCrudo(token, ops, base, galleta);
       if (!r.ok) throw new Error(`ops: ${r.status}`);
       return r.json() as never;
     },
-    pedir: (token, ruta, init = {}) => pedir(ruta, { ...init, headers: { ...conToken(token), ...(init.headers as Record<string, string> | undefined) } }),
+    pedir: (token, ruta, init = {}, galleta) => pedir(ruta, { ...init, headers: { ...conToken(token), ...(init.headers as Record<string, string> | undefined) } }, galleta),
     async foto(token) {
       const r = await pedir("/api/foto", { headers: conToken(token) });
       if (!r.ok) throw new Error(`foto: ${r.status}`);

@@ -52,6 +52,9 @@ function entornoPruebas(): Plugin {
         .replace("<title>Barra del Gorgojo</title>", "<title>Barra PRUEBA</title>")
         .replace('content="#241206"', 'content="#C62828"')
         .replace('href="/icono-192.png"', 'href="/icono-pruebas-192.png"'));
+      // Los avisos con la app cerrada también llevan el ícono de PRUEBA.
+      const sw = join(salida, "sw.js");
+      writeFileSync(sw, readFileSync(sw, "utf8").replaceAll('"/icono-', '"/icono-pruebas-'));
     },
   };
 }

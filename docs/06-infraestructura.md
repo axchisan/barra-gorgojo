@@ -51,7 +51,10 @@ anote en la caja real. Las personas y dispositivos también son por entorno (la 
 lección de las cuentas por rama del sitio).
 
 Cada entorno tiene sus secretos: `CLAVE` (llave de instalación), `FIRMA` (sesiones) y
-`PINES` (cifra los PIN, fase D); `MIGRACION` solo mientras se importa una base. Los de
+`PINES` (cifra los PIN, fase D); `MIGRACION` solo mientras se importa una base; `VAPID`
+(llave de las notificaciones push, ADR-19), que no se escribe a mano:
+`node scripts/vapid.mjs | pnpm wrangler secret put VAPID --env pruebas` (sin `--env` para
+producción). Generarla una sola vez: cambiarla obliga a reactivar los avisos en cada aparato. Los de
 pruebas se guardan en `.dev.vars.pruebas` (ignorado por git), que también usa
 `pnpm dev:pruebas` en local:
 

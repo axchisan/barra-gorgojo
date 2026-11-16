@@ -461,6 +461,27 @@ Un pedido a la barra que aún no se despacha se puede **cancelar** desde «Despa
 desde la pedida en el detalle de la cuenta: anula esas bebidas, con confirmación porque
 no se deshace.
 
+### Avisos con la app cerrada (2026-11-16)
+
+El timbre solo suena con la app abierta y a la vista. Para que el pedido a la barra llegue
+con la app cerrada o la pantalla apagada, cada aparato de la barra puede **recibir avisos**
+(notificaciones push, fase 4 de 18):
+
+- Se activa en el menú, «🔔 Sonido de los avisos» → **«📲 Avisos con la app cerrada» →
+  «Recibir avisos en este aparato»**. El permiso del navegador se pide en ese toque, nunca
+  al abrir la app. Luego, «Enviar aviso de prueba» (llega aunque la app esté abierta) y
+  «Dejar de recibir».
+- El aviso dice **«🍺 Pedido para despachar · Mesa 4: 3 Águila»**. Tocarlo abre la app en
+  «Despachar». Varios pedidos de la misma cuenta se juntan en un solo aviso.
+- Lo reciben los aparatos suscritos de quienes **tienen barra hoy y están en su horario**
+  (docs/17), menos el aparato que pidió (como el timbre). Si la persona que está en el
+  aparato cambia («Cambiar de persona»), el aviso sigue a quien entró.
+- Con la app **a la vista no sale el aviso**: ya suena el timbre. Un pedido de hace más
+  de 10 minutos ya no se avisa (alguien lo vio).
+- **Android**: llega con Chrome cerrado. **iPhone**: solo con la app instalada en la
+  pantalla de inicio (iOS 16.4 o más); la hoja lo explica si no está instalada.
+- Cero toques nuevos en el flujo principal: es opcional y se activa una vez por aparato.
+
 ### Lo que se vio en producción con un pedido a la barra (2026-11-15)
 
 Prueba del dueño: desde la persona que tiene barra y comida pidió desde comida una Coca-Cola

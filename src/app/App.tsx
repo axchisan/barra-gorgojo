@@ -7,6 +7,7 @@ import { FranjaPruebas } from "./componentes/FranjaPruebas";
 import { HojaAtajos } from "./componentes/HojaAtajos";
 import { escribiendo, useAtajos } from "./atajos";
 import { useNavegacion } from "./navegacion";
+import { ponerAlDiaPush } from "./push";
 import { Anotar } from "./pantallas/Anotar";
 import { Cobrar } from "./pantallas/Cobrar";
 import { Detalle } from "./pantallas/Detalle";
@@ -40,6 +41,18 @@ export function App() {
     return () => window.removeEventListener("keydown", alTeclear);
   }, []);
   useAtajos({ "?": () => setAtajos(true) }, !!sinc.sesion);
+  // Avisos con la app cerrada (docs/18 fase 4): tocar el aviso trae aquí, a «Despachar».
+  useEffect(() => {
+    const irA = (ir: unknown) => { if (ir === "despacho") nav.ir({ v: "inicio", pestana: "despacho" }); };
+    const pedido = new URLSearchParams(location.search).get("ir");
+    if (pedido) { history.replaceState(history.state, "", location.pathname); irA(pedido); }
+    const alMensaje = (e: MessageEvent) => { if (e.data?.tipo === "ir") irA(e.data.ir); };
+    navigator.serviceWorker?.addEventListener("message", alMensaje);
+    return () => navigator.serviceWorker?.removeEventListener("message", alMensaje);
+  }, []);
+  // Quien entra en un aparato que ya recibe avisos queda como su dueño (avisos por persona y área).
+  const token = sinc.sesion?.token;
+  useEffect(() => { if (token) void ponerAlDiaPush(); }, [token]);
   useEffect(() => {
     const t = setInterval(() => refrescar((x) => x + 1), 30_000); // «hace N min»
     return () => clearInterval(t);

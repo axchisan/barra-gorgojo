@@ -8,6 +8,7 @@ import { haceCuanto, horaDe, nombreRonda } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
 import { useAtrasCierra, type Nav } from "../navegacion";
 import { esPropia } from "../propios";
+import { AvisosPush } from "./AvisosPush";
 import { sinc } from "../sincronizacion";
 
 /**
@@ -292,7 +293,7 @@ export function HojaSonido({ cerrar }: { cerrar: () => void }) {
   const [timbre, setTimbre] = useState<Timbre>(() => leerTimbre());
   return (
     <div className="hoja" onClick={cerrar}>
-      <div className="hoja-cuerpo" onClick={(e) => e.stopPropagation()}>
+      <div className="hoja-cuerpo hoja-sonido" onClick={(e) => e.stopPropagation()}>
         <header className="cabeza-hoja">
           <h2>🔔 Sonido de los avisos</h2>
           <button className="cerrar-hoja" aria-label="Cerrar" onClick={cerrar}>✕</button>
@@ -315,6 +316,7 @@ export function HojaSonido({ cerrar }: { cerrar: () => void }) {
         </div>
         <button className="secundario grande" onClick={() => sonar(true, timbre)}>▶ Probar sonido</button>
         <p className="nota">Suba el volumen del aparato. El navegador solo deja sonar después de tocar la pantalla una vez al abrir la app.</p>
+        <AvisosPush />
       </div>
     </div>
   );

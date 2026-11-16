@@ -215,6 +215,9 @@ test("el sonido de los avisos se escoge en cada aparato y se recuerda", async ({
   await p.getByRole("radio", { name: /Una vez/ }).click();
   await p.getByRole("radio", { name: "Ding-dong" }).click();
   await p.getByRole("button", { name: "▶ Probar sonido" }).click();
+  // Avisos con la app cerrada (docs/02): en localhost no hay Service Worker, y lo dice.
+  await expect(p.getByText("📲 Avisos con la app cerrada")).toBeVisible();
+  await expect(p.getByText("Este navegador no recibe avisos con la app cerrada.")).toBeVisible();
   await p.reload();
   await p.getByRole("button", { name: /Administrador ▾/ }).click();
   await p.getByRole("button", { name: "🔔 Sonido de los avisos" }).click();
