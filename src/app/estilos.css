@@ -440,6 +440,9 @@ details.por-producto { display: block; }
   .contador { top: -17px; right: -4px; height: 32px; min-width: 34px; font-size: 0.95rem; padding: 0 6px; border-width: 2px; }
   .pie-fijo .grande { padding: 6px 8px; font-size: 1rem; }
   .pie-fijo .grande > span { white-space: nowrap; }
+  /* Nunca se sale del botón (con la letra del sistema grande): si no cabe, «…». */
+  .pie-fijo .grande { min-width: 0; }
+  .pie-fijo .grande > span:first-child { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .pie-fijo .secundario { font-size: 0.9rem; padding: 8px; }
   .producto .corto { font-size: 0.9rem; }
   .producto .precio { font-size: 0.8rem; }

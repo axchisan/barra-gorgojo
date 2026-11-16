@@ -44,7 +44,21 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   await cocina.locator(".producto", { hasText: "RUBIA" }).first().click();
   await expect(cocina.getByRole("tab", { name: /Comida/ })).toContainText("4");
   // El botón dice lo que va a pasar con las bebidas, y la pantalla lleva la franja de comida.
-  await expect(cocina.locator(".pie-fijo .principal")).toContainText("🔔 Abrir y pedir a la barra");
+  await expect(cocina.locator(".pie-fijo .principal")).toContainText("🔔 A la barra");
+  // Y cabe en el celular de 360 px (se vio desbordado en un celular real el 2026-11-16, con
+  // la letra del sistema grande): con letra al 118 % el texto entra completo; al 125 % se
+  // puede cortar con «…», pero el botón nunca se sale de la pantalla.
+  const medir = () => cocina.locator(".pie-fijo .principal").evaluate((b) => {
+    const t = b.firstElementChild as HTMLElement;
+    return { afuera: b.getBoundingClientRect().right > innerWidth + 1, cortado: t.scrollWidth > t.clientWidth };
+  });
+  const letra = (x: string) => cocina.evaluate((f) => { document.documentElement.style.fontSize = f; }, x);
+  expect(await medir()).toEqual({ afuera: false, cortado: false });
+  await letra("20px");
+  expect(await medir()).toEqual({ afuera: false, cortado: false });
+  await letra("21px");
+  expect((await medir()).afuera).toBe(false);
+  await letra("");
   await expect(cocina.locator("main.anotar.en-comida")).toBeVisible();
   await cocina.locator(".pie-fijo .principal").click();
   await expect(cocina.locator(".aviso")).toContainText("bebidas avisadas a la barra");

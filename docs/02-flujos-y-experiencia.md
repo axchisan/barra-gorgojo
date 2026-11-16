@@ -496,8 +496,11 @@ vio en producción: una persona con las dos áreas tenía el panel en Comida sin
 app lo recuerda) y anotó cervezas en la barra; quedaron por despachar. Para que se note sin
 quitar espacio ni sumar toques:
 
-- El botón principal dice lo que va a pasar: **«🔔 Abrir y pedir a la barra»** o
-  **«🔔 Anotar y pedir a la barra»** cuando la pedida lleva bebidas y se avisa a la barra.
+- El botón principal dice lo que va a pasar: **«🔔 A la barra»** (en vez de «Abrir y
+  anotar» o «Anotar pedida») cuando la pedida lleva bebidas y se avisa a la barra. Corto a
+  propósito: «Abrir y pedir a la barra» se desbordó en un celular real, y «Pedir a la
+  barra» cabía justo (con la letra del sistema más grande se salía). Además, el texto de
+  ese botón nunca se sale: si no cabe, se corta con «…».
 - La pantalla de anotar desde comida lleva una **franja fina del color de comida** arriba.
 
 ### Lo que se vio en producción con un pedido a la barra (2026-11-15)

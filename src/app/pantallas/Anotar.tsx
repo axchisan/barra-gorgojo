@@ -567,8 +567,10 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
         )}
         <button className="principal grande" onClick={() => confirmar(false)} disabled={n === 0}>
           {/* Desde comida, el botón dice que las bebidas van a la barra (2026-11-16: quien tiene
-              las dos áreas no notaba que estaba en comida y su pedida quedaba por despachar). */}
-          <span>{despacho ? "🔔 Pedir a la barra" : pideBarra ? (cuenta ? "🔔 Anotar y pedir a la barra" : "🔔 Abrir y pedir a la barra") : cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
+              las dos áreas no notaba que estaba en comida y su pedida quedaba por despachar).
+              Corto: «Abrir y pedir a la barra» se desbordaba en el celular, y aun «Pedir a la
+              barra» cabía justo: con la letra del sistema más grande se salía. */}
+          <span>{despacho ? "🔔 Pedir a la barra" : pideBarra ? "🔔 A la barra" : cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
           {n > 0 && <small className="detalle-boton">{n} · {pesos(valor)}</small>}
         </button>
       </div>
