@@ -449,6 +449,12 @@ quede igual (regla 0).
 `separar` devuelve todo a la de origen con sus números de pedida. Si la de origen ya
 tenía otras juntas, al juntarla todo pasa como suyo.
 
+**Cómo se ve lo juntado** (2026-11-16, pedido del dueño: juntó «Raúl» con «Raul» y nada
+decía qué pedida había llegado). En «Pedidas» del detalle, cada pedida que vino de otra
+cuenta lleva un borde morado tenue y la línea «🔗 Se unió de *nombre* (tipo) · quién, hora»
+(de `juntadas`); el nombre ya no va pegado al título de la pedida. Solo pantalla: el
+estado no cambia.
+
 ## Cómo se prueba
 
 La sincronización no se prueba a mano. Pruebas obligatorias antes de usarlo en el local:

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   abonos, modoPorDefecto, modoPrecio, porPagarPorLinea, producto as productoDe, puedeEditarLinea, saldo, situacion, total, totalComida, unidades,
-  type Cuenta, type Linea,
+  type Cuenta, type Linea, type Ronda,
 } from "../../dominio/estado";
 import { cuantasRondas, horaDe, nombreRonda, palabraRonda, pesos, rondaViva } from "../../dominio/formato";
 import { ponerAviso } from "../avisos";
@@ -211,12 +211,12 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
             const sub = lineas.reduce((t, l) => t + (l.anulada ? 0 : l.cantidad * l.precio), 0);
             const elegida = lineas.find((l) => l.id === anulando);
             return (
-              <section key={r.id} className={`ronda-tarjeta${rondaViva(c, r.id) ? "" : " anulada"}${c.tipo === "cancha" ? (r.adicional ? " adicional" : " chico") : ""}`}>
+              <section key={r.id} className={`ronda-tarjeta${rondaViva(c, r.id) ? "" : " anulada"}${r.de ? " juntada" : ""}${c.tipo === "cancha" ? (r.adicional ? " adicional" : " chico") : ""}`}>
                 <header>
                   {/* En las canchas, chico o adicional se ve de lejos: etiqueta de color (2026-11-15). */}
                   {c.tipo === "cancha" && rondaViva(c, r.id)
-                    ? <strong className={`tipo-ronda-etiqueta ${r.adicional ? "adicional" : "chico"}`}>{r.adicional ? "＋" : "🎯"} {nombreRonda(c, r).toUpperCase()}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>
-                    : <strong>{rondaViva(c, r.id) ? nombreRonda(c, r) : "Anulada"}{r.de ? ` · de ${r.de.nombre}` : ""}</strong>}
+                    ? <strong className={`tipo-ronda-etiqueta ${r.adicional ? "adicional" : "chico"}`}>{r.adicional ? "＋" : "🎯"} {nombreRonda(c, r).toUpperCase()}</strong>
+                    : <strong>{rondaViva(c, r.id) ? nombreRonda(c, r) : "Anulada"}</strong>}
                   {s === "abierta" && rondaViva(c, r.id) && (
                     <button className="chip agregar-pedida" aria-label={`Agregar a la ${nombreRonda(c, r).toLowerCase()}`} onClick={() => setAgregarA(r.id)}>＋ Agregar</button>
                   )}
@@ -239,6 +239,8 @@ export function Detalle({ nav, id }: { nav: Nav; id: string }) {
                     </button>
                   )}
                   <span className="tenue">{horaDe(r.en)} · {r.persona}{r.detalle ? ` · 📝 ${r.detalle}` : ""}</span>
+                  {/* Vino de otra cuenta al juntarlas (2026-11-16): de cuál, quién y a qué hora, sutil. */}
+                  {r.de && <MarcaJuntada c={c} de={r.de} />}
                   {/* Apartado para más tarde (2026-11-15): la hora y «Entregado». */}
                   {r.apartado && rondaViva(c, r.id) && (
                     r.entregado
@@ -361,4 +363,16 @@ function tienePrecioCancha(lineas: Linea[]): boolean {
     const p = productoDe(sinc.visible, l.producto);
     return !!p && !p.libre && !!p.precioCancha && p.precioCancha !== p.precio;
   });
+}
+
+/** «🔗 Se unió de Raúl (grupo) · Administrador, 2:17 p. m.»: de qué cuenta vino una pedida al juntarlas. */
+function MarcaJuntada({ c, de }: { c: Cuenta; de: NonNullable<Ronda["de"]> }) {
+  const j = c.juntadas?.find((x) => x.cuenta === de.cuenta);
+  const origen = sinc.visible.cuentas[de.cuenta];
+  const tipo = origen ? iconoTipo(origen) : null;
+  return (
+    <span className="marca-juntada">
+      🔗 Se unió de <b>{de.nombre}</b>{tipo && !de.nombre.includes(tipo) ? ` (${tipo})` : ""}{j ? ` · ${j.por}, ${horaDe(j.en)}` : ""}
+    </span>
+  );
 }

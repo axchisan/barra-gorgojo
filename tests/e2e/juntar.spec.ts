@@ -28,6 +28,12 @@ test("se junta una cuenta con otra, se cobran juntas y la de origen queda cerrad
   await expect(p.locator(".cabeza-total .total")).toHaveText(new RegExp(suma.toLocaleString("es-CO")));
   await expect(p.locator(".aviso")).toContainText(`${dos} quedó junto con ${uno}`);
   await expect(p.locator(".estado.juntas")).toContainText(dos);
+  // En «Pedidas», la que vino de la otra cuenta lo dice, sutil, con quién y a qué hora (2026-11-16).
+  await p.getByRole("button", { name: "Pedidas", exact: true }).click();
+  await expect(p.locator(".ronda-tarjeta.juntada")).toHaveCount(1);
+  await expect(p.locator(".ronda-tarjeta.juntada .marca-juntada")).toContainText(new RegExp(`Se unió de ${dos} · \\S+, \\d`));
+  await expect(p.locator(".ronda-tarjeta:not(.juntada) .marca-juntada")).toHaveCount(0);
+  await p.screenshot({ path: "test-results/juntada-marca.png" });
 
   // En la lista ya no sale la de origen; se cobra la junta y queda cerrada.
   await p.goBack();

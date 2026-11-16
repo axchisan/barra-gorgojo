@@ -1323,3 +1323,7 @@ html .inicio .panel-cuenta .pie-fijo {
 /* Anotar desde el panel de comida (2026-11-16): una franja fina del color de comida arriba,
    para que se note en qué panel se está sin quitar espacio. */
 .anotar.en-comida .barra-superior { box-shadow: inset 0 4px 0 var(--azul-comida); }
+
+/* Pedida que vino de otra cuenta al juntarlas (2026-11-16): borde morado, como «Con …», y una línea. */
+.ronda-tarjeta.juntada { box-shadow: inset 3px 0 0 #b9a6dc; }
+.marca-juntada { flex-basis: 100%; font-size: 0.85rem; color: #4a3577; }
