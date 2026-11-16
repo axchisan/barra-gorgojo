@@ -481,7 +481,7 @@ Y para que no haya confusiones, «Despachar» trae más detalle: **una tarjeta p
 producto, cuál pedida es y quién la pidió. Abajo, **«Últimas 2 horas»**: lo despachado
 (quién y a qué hora) y lo que no se pudo (motivo); la pestaña sigue visible mientras haya
 algo de esas 2 horas, para comida también. En el detalle de la cuenta, cada bebida
-despachada dice «✓ despachado · Yair · 3:50 p. m.».
+despachada dice «✓ despachado · (quién) · (hora)».
 
 **Cobrar por área**: cuando una cuenta tiene por pagar cosas de barra y de comida, el cobro
 muestra «🍺 Solo barra $ X» y «🍽 Solo comida $ Y»: un toque escoge todos los productos de
@@ -490,8 +490,8 @@ tocarlos uno por uno. Prueba: `tests/e2e/pedidos-barra.spec.ts`.
 
 ### El día para hacer cuentas (2026-11-15)
 
-Rehecho con la venta real de ese día (77 cuentas, 22 con comida y barra juntas, cobradas
-enteras en una sola caja). Lo que costaba al hacer cuentas era saber **cuánto de comida se
+Rehecho con la venta real de ese día (muchas cuentas con comida y barra juntas, cobradas
+enteras en una sola caja; las cifras, en `negocio/`). Lo que costaba al hacer cuentas era saber **cuánto de comida se
 pagó por Nequi** y **cuánto le pasa una caja a la otra**. Ahora, de arriba abajo:
 
 1. **Vendido hoy**, partido en 🍺 barra y 🍽 comida, y cuántas cuentas faltan por cobrar.
@@ -502,17 +502,27 @@ pagó por Nequi** y **cuánto le pasa una caja a la otra**. Ahora, de arriba aba
    reparte: el pago por productos, exacto; los demás, según lo que le faltaba a cada área
    (`cuentasDelDia` y `repartirPagos` en `src/dominio/jornada.ts`). Tocar una fila filtra
    las cuentas.
-4. **Entre cajas**: «Efectivo: la barra le pasa a la cocina $ 305.000», con lo que cada caja
+4. **Entre cajas**: «Efectivo: la barra le pasa a la cocina $ X», con lo que cada caja
    cobró de la otra; igual para Nequi y Breve si hubo.
 5. **Cuentas del día**: filtros (Todas, Efectivo, Nequi, Breve, Fiado, Por cobrar, Con
    comida, Anuladas), buscador y, en cada cuenta, la hora, lo de barra y lo de comida, y
    cada pago con medio, valor, quién cobró y en qué caja (y a nombre de quién quedó lo
-   fiado). Con un filtro, arriba sale la suma («9 cuentas · $ 604.500 · 🍺 … · 🍽 …»). Tocar
+   fiado). Con un filtro, arriba sale la suma («N cuentas · $ X · 🍺 … · 🍽 …»). Tocar
    una cuenta la abre.
 6. **Por producto**, comida y barra por separado.
 
 En el portátil y la tablet girada va en dos columnas. Pruebas: `tests/cuentas-del-dia.test.ts`,
 `tests/e2e/el-dia.spec.ts`.
+
+### Cambio de plata (2026-11-15)
+
+Un cliente pide que le cambien plata: la pasa por Nequi y se le da un billete. Se anota como
+«Otro» en su cuenta y se cobra junto con lo demás. Al tocar ese «Otro» (también con la
+cuenta ya cobrada; no hay que reabrirla) sale **«💱 Cambio de plata»** junto a 🍺 Barra y
+🍽 Es comida. Marcado, no cuenta como venta, el Nequi sigue completo y el efectivo que debe
+haber en la caja activa del aparato baja en su valor. En «El día» sale en su propia fila
+(«💱 Cambio: $ X entró por Nequi y se dio en efectivo · no es venta») y en la cuenta como
+«💱 cambio». Reglas en 04 «Cambio de plata». Un toque más solo en ese caso raro.
 
 ### Editar una pedida (2026-11-15)
 

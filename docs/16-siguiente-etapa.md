@@ -1,5 +1,6 @@
 # 16 · Estado al 2026-11-15 y siguiente etapa
 
+> **Para empezar una sesión: [21 · Estado al 2026-11-16](21-estado-2026-11-16.md).**
 > **El plan vigente es [18 · Roadmap desde el 2026-11-15](18-roadmap-2026-11.md)**, que
 > recoge lo de aquí (deuda técnica, push, QR, rendimiento, robustez) en fases. Este
 > documento queda como el estado y la deuda técnica de ese día.

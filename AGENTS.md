@@ -17,8 +17,9 @@ Lee `docs/00-vision-y-problema.md` antes de cualquier decisión de producto y
 ## Estado
 
 **En producción** desde el 2026-10-04, usada de verdad desde el 2026-11-01. **El
-trabajo actual parte de `docs/16-siguiente-etapa.md`** (estado al 2026-11-15, deuda
-técnica y siguiente etapa); el plan que lo precedió, ya cumplido, es
+trabajo actual parte de `docs/21-estado-2026-11-16.md`** (qué se hizo el 15, cosas por
+saber, lo proyectado en orden y cómo iniciar la sesión); la deuda técnica de fondo está
+en `docs/16-siguiente-etapa.md`; el plan que lo precedió, ya cumplido, es
 `docs/12-plan-de-trabajo.md`, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.
 
@@ -29,8 +30,10 @@ dominio propio, y del 2026-11-08 al 14: abonos y dividir entre varios, comida y 
 (`docs/15`) y, el 15, editar pedidas (agregar y cambiar producto, `docs/04`). **Producción tiene solo datos reales: no probar ahí**; para probar, el
 entorno de pruebas. **Lo siguiente está en `docs/18-roadmap-2026-11.md`** (el plan por fases desde el
 2026-11-15), con la deuda técnica conocida en `docs/16`. La fase 0 de 18 (precio de los
-adicionales en `docs/04` y accesos de empleados con horario en `docs/17`, ADR-17) quedó
-hecha en código el 2026-11-15; el plan de pruebas en aparatos es `docs/19`.
+adicionales en `docs/04` y accesos de empleados con horario en `docs/17`, ADR-17) está en
+producción; el plan de pruebas en aparatos es `docs/19`. El 15 también: pedidos a la barra
+que se cancelan, cobro solo barra o solo comida, «El día» rehecho para hacer cuentas y
+«cambio de plata» (`docs/02`, `docs/04`, resumen en `docs/21`).
 
 ## Reglas no negociables
 
