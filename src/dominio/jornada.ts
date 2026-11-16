@@ -3,7 +3,7 @@
 // RF-50 a RF-53 de docs/01.
 
 import { areaDe, type Area } from "./areas";
-import { efectivoDeJornada, jornada, saldo, situacion, type Cuenta, type Linea, type Medio } from "./estado";
+import { efectivoDeJornada, jornada, saldo, situacion, type CierreJornada, type Cuenta, type Linea, type Medio } from "./estado";
 import { horaDe } from "./formato";
 
 export interface RenglonDia { producto: string; nombre: string; cantidad: number; valor: number; comida?: boolean }
@@ -236,3 +236,80 @@ export function cuentasDelDia(cuentas: Iterable<Cuenta>, fecha: string): Cuentas
   lista.sort((a, b) => b.desde - a.desde);
   return { cuentas: lista, anuladas, porMedio, porCobrar, cambios, cajas };
 }
+
+// ── El CSV del día, por secciones (2026-11-16, docs/18 fase 3 b) ─────────────────────────
+// Pedido del dueño: un CSV mejor organizado, para revisar sin pelear con la hoja de
+// cálculo. Va por secciones, como «El día»: resumen, cierres, ventas (con su total), pagos
+// y por producto. Separado por «;», pesos enteros sin puntos (Excel en español de Colombia;
+// Google Sheets lo detecta solo).
+
+const NOMBRE_MEDIO: Record<Medios, string> = { efectivo: "Efectivo", nequi: "Nequi", breve: "Breve", deuda: "Fiado", comida: "Pasado a comida" };
+const TIPO_CUENTA: Record<Cuenta["tipo"], string> = { grupo: "Grupo", persona: "Persona", mesa: "Mesa", cancha: "Cancha", rapida: "Venta rápida", domicilio: "Domicilio" };
+const nombreCaja = (a: Area) => (a === "comida" ? "Cocina" : "Barra");
+
+/**
+ * El día completo en un CSV legible. `cierres`: los cierres de caja de ese día; `deudores`:
+ * nombre de cada deudor por su id (para «Fiado a»).
+ */
+export function csvDia(cuentas: Iterable<Cuenta>, fecha: string, cierres: CierreJornada[] = [], deudores: Record<string, string> = {}): string {
+  const lista = [...cuentas];
+  const r = resumenJornada(lista, fecha);
+  const d = cuentasDelDia(lista, fecha);
+  const filas: (string | number)[][] = [];
+  const blanco = () => filas.push([]);
+  const suma = (p: Parte) => p.barra + p.comida;
+
+  filas.push([`Barra del Gorgojo · día ${fecha} (de 5 a. m. a 5 a. m.)`]);
+  blanco();
+  filas.push(["RESUMEN"]);
+  filas.push(["concepto", "barra", "comida", "total"]);
+  filas.push(["Vendido", r.vendido - r.vendidoComida, r.vendidoComida, r.vendido]);
+  const medios = (Object.keys(NOMBRE_MEDIO) as Medios[]).filter((m) => m === "efectivo" || suma(d.porMedio[m]) > 0);
+  for (const m of medios) filas.push([`Pagado en ${NOMBRE_MEDIO[m].toLowerCase()}`, d.porMedio[m].barra, d.porMedio[m].comida, suma(d.porMedio[m])]);
+  if (suma(d.porCobrar) > 0) filas.push(["Quedó por cobrar", d.porCobrar.barra, d.porCobrar.comida, suma(d.porCobrar)]);
+  if (r.cambios > 0) filas.push(["Cambios de plata (no es venta)", "", "", r.cambios]);
+  filas.push(["Cuentas", "", "", d.cuentas.length]);
+  if (d.anuladas.length) filas.push(["Cuentas anuladas", "", "", d.anuladas.length]);
+
+  blanco();
+  filas.push(["CIERRES DE CAJA"]);
+  filas.push(["caja", "hora", "cerró", "efectivo contado", "debía haber", "diferencia"]);
+  if (!cierres.length) filas.push(["Sin cerrar"]);
+  for (const c of cierres) filas.push([c.area ? nombreCaja(c.area) : "Toda", horaDe(c.en), c.por, c.contado, c.esperado, c.contado - c.esperado]);
+
+  blanco();
+  filas.push(["VENTAS"]);
+  filas.push(["hora", "cuenta", "tipo", "pedida", "anotó", "área", "producto", "cantidad", "precio", "valor", "nota"]);
+  let unidades = 0;
+  for (const x of [...d.cuentas].sort((a, b) => a.desde - b.desde)) {
+    const c = x.cuenta;
+    for (const ronda of c.rondas) {
+      if (jornada(ronda.en) !== fecha) continue;
+      for (const l of c.lineas) {
+        if (l.ronda !== ronda.id || l.anulada) continue;
+        const area = l.cambio ? "cambio de plata (no es venta)" : l.comida ? "comida" : "barra";
+        if (!l.cambio) unidades += l.cantidad;
+        filas.push([horaDe(ronda.en), c.nombre, TIPO_CUENTA[c.tipo], ronda.numero, ronda.persona, area, l.nombre, l.cantidad, l.precio, l.precio * l.cantidad, l.nota ?? ""]);
+      }
+    }
+  }
+  filas.push(["TOTAL VENDIDO", "", "", "", "", "", "", unidades, "", r.vendido, ""]);
+
+  blanco();
+  filas.push(["PAGOS"]);
+  filas.push(["hora", "cuenta", "medio", "valor", "caja", "cobró", "de barra", "de comida", "fiado a / pagó"]);
+  const pagos = d.cuentas.flatMap((x) => x.pagos.map((p) => ({ p, cuenta: x.cuenta.nombre }))).sort((a, b) => a.p.en - b.p.en);
+  for (const { p, cuenta } of pagos) {
+    filas.push([horaDe(p.en), cuenta, NOMBRE_MEDIO[p.medio], p.monto, nombreCaja(p.caja), p.persona, p.barra, p.comida, p.deudor ? deudores[p.deudor] ?? p.deudor : p.pagador ?? ""]);
+  }
+  filas.push(["TOTAL COBRADO", "", "", pagos.reduce((t, x) => t + x.p.monto, 0)]);
+
+  blanco();
+  filas.push(["POR PRODUCTO"]);
+  filas.push(["producto", "área", "cantidad", "valor"]);
+  for (const x of [...r.porProducto].sort((a, b) => Number(!!a.comida) - Number(!!b.comida) || b.valor - a.valor)) {
+    filas.push([x.nombre, x.comida ? "comida" : "barra", x.cantidad, x.valor]);
+  }
+  return filas.map((f) => f.map(celda).join(";")).join("\r\n") + "\r\n";
+}
+

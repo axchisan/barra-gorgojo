@@ -566,15 +566,15 @@ Pedido del dueño: revisar los días anteriores desde la app, cómodo, no solo b
 - **El día abierto se ve igual que «El día»**: lo vendido, «¿Cómo pagaron?», «Entre
   cajas», el cuadre de cada caja (solo para leer: muestra el cierre de ese día, no deja
   contar ni cerrar), las cuentas con filtros y buscador, y por producto. **CSV** en la
-  cabecera.
+  cabecera, por secciones como la pantalla: resumen, cierres de caja, ventas con su total,
+  pagos y por producto.
 - **Tocar una cuenta** abre su detalle para leer: cada pedida con su hora y quién la anotó,
   lo agregado, cambiado, anulado o despachado (quién y a qué hora), las notas, y cada pago
   con su medio, quién cobró, a qué hora y en qué caja (con el cambio que se dio).
 - La ven el administrador y quien tiene «Ve el día» e «Historial» (docs/17). Necesita
   señal: los días anteriores no se guardan en el celular.
 
-Siguiente (fase 3 b): informes por semana y mes, y el CSV mejor organizado, cuando el
-negocio diga qué informes usa.
+Siguiente (fase 3 b): informes por semana y mes, cuando el negocio diga qué informes usa.
 
 ### Cambio de plata (2026-11-15)
 

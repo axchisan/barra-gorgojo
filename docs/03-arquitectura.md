@@ -139,17 +139,19 @@ src/
 │   ├── memoria.ts      # IndexedDB con Dexie; trae lo de localStorage (0.1)
 │   ├── sincronizacion.ts # cola, WebSocket con respaldo HTTP, una conexión por celular
 │   ├── paquetes.ts · cuentas.ts · colores.ts · teclado.ts · ajustarNombres.ts · vibrar.ts
-│   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Dias,
+│   ├── push.ts         # avisos con la app cerrada: permiso, suscripción, prueba (ADR-19)
+│   ├── pantallas/      # Entrada, Inicio, Anotar, Detalle, Cobrar, Cocina, ElDia, Dias (y DiaPasado),
 │   │                   # Productos, EditarProducto, Platos, Personas (y MiPin), Auditoria,
 │   │                   # Deudas (y DeudorDetalle)
 │   └── componentes/    # TarjetaCuenta, TarjetasProducto, EditarLinea, Desglose, VistaCliente,
 │                       # HojaLibre (mecato y «Otro»), HojaMixto, HojaNota (notas y plato de
 │                       # otro valor), Despacho (aviso, sonido, «Despachar», cancelar),
-│                       # TecladoPin, Apartados, EstadoConexion, NoExiste
+│                       # TecladoPin, Apartados, EstadoConexion, NoExiste, AvisosPush,
+│                       # CuentaPasada (una cuenta de otro día, solo para leer)
 └── servidor/
     ├── worker.ts       # Worker (rutas, archivos, Cron a R2) y Durable Object `Barra`
     ├── esquema.ts      # forma de cada operación (Zod, solo en el Worker)
-    ├── correo.ts       # respaldo semanal por correo (listo, apagado en producción)
+    ├── push.ts         # notificaciones push: cifrado, VAPID y suscripciones (ADR-19)
     └── acceso.ts       # personas, áreas, permisos, celulares, códigos, PIN y sesiones (ADR-10)
 public/sw.js            # Service Worker propio: la app abre sin señal
 negocio.ejemplo/        # catálogo de ejemplo (el real, en negocio/, privado)

@@ -8,10 +8,9 @@ import { aplicar, catalogo, enCuadricula, esModoPrecio, esOperacion, modoPorDefe
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
 import { saldoDeudor } from "../dominio/deudas";
-import { csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
+import { csvDia, csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
 import { describirConEnvio, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
-import { enviarRespaldo, esDiaDeCorreo, type ConfigCorreo } from "./correo";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
 import { dentroDeHorario, describirHorario, finDeFranja, mensajeFueraDeHorario, type Horario } from "../dominio/horario";
 import { esCompleta, limitarCambios, limitarEstado, cuentaDeHoy, type Vista } from "../dominio/vista";
@@ -19,7 +18,7 @@ import { solicitudesVigentes, TOPE_LINEAS, TOPE_UNIDADES, TOPE_VALOR, valorSolic
 import { Lugares } from "./qr";
 import { endpointValido, enviar, leerVapid, Suscripciones, type Aviso, type Vapid } from "./push";
 
-interface Env extends ConfigCorreo {
+interface Env {
   BARRA: DurableObjectNamespace<Barra>;
   ASSETS: Fetcher;
   RESPALDOS: R2Bucket;
@@ -108,8 +107,8 @@ export default {
   },
 
   /**
-   * Todos los días a las 5:30 a. m. de Colombia: copia del registro completo en R2. Los
-   * lunes, además, por correo (fuera de Cloudflare; src/servidor/correo.ts).
+   * Todos los días a las 5:30 a. m. de Colombia: copia del registro completo en R2. Sin
+   * correo desde el 2026-11-16 (decisión del dueño, docs/18 fase 3 b).
    */
   async scheduled(_evento: ScheduledController, env: Env): Promise<void> {
     const barra = barraDe(env);
@@ -120,7 +119,6 @@ export default {
       httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
       customMetadata: { operaciones: String(operaciones), base: nombreBase(env) },
     });
-    if (esDiaDeCorreo(Date.now())) await enviarRespaldo(env, { fecha, base: nombreBase(env), operaciones, comprimido });
   },
 } satisfies ExportedHandler<Env>;
 
@@ -1047,7 +1045,8 @@ export class Barra extends DurableObject<Env> {
       const fecha = url.searchParams.get("fecha") ?? "";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Falta la fecha." }, 400);
       if (ruta === "/api/dia/csv") {
-        return new Response(`\uFEFF${csvJornada(this.cuentasDe(fecha), fecha)}`, {
+        const deudores = Object.fromEntries(Object.values(this.estado.deudas ?? {}).map((x) => [x.id, x.nombre]));
+        return new Response(`\uFEFF${csvDia(this.cuentasDe(fecha), fecha, this.estado.jornadas?.[fecha] ?? [], deudores)}`, {
           headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="barra-${fecha}.csv"`, "cache-control": "no-store" },
         });
       }
@@ -1198,13 +1197,6 @@ export class Barra extends DurableObject<Env> {
     }
     if (ruta === "/api/admin/rechazadas" && req.method === "GET") {
       return json({ rechazadas: this.ctx.storage.sql.exec("SELECT id, persona, dispositivo, motivo, en, datos, error FROM rechazadas ORDER BY en DESC LIMIT 200").toArray() });
-    }
-    if (ruta === "/api/admin/respaldo/correo" && req.method === "POST") {
-      // Mandar ya la copia por correo (la misma de los lunes).
-      const { texto, operaciones } = this.respaldo();
-      const fecha = jornada(Date.now());
-      const r = await enviarRespaldo(this.env, { fecha, base: this.base, operaciones, comprimido: await comprimir(texto) });
-      return json(r === "enviado" ? { ok: true, operaciones } : { error: r === "sin-configurar" ? "El correo de respaldos no está configurado." : "No se pudo enviar; ver los logs." }, r === "enviado" ? 200 : 503);
     }
     if (ruta === "/api/admin/respaldo" && req.method === "GET") {
       return new Response(this.respaldo().texto, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
