@@ -343,6 +343,9 @@ details.por-producto { display: block; }
 /* Petacos: una fila, y la cuadrícula de cervezas marcada mientras no esté en «Unidad» */
 .segmentos.petacos { margin-bottom: 8px; }
 .segmentos.petacos button { min-height: 40px; padding: 0 4px; }
+/* Con la letra del sistema grande no cabían y «Mixto» quedaba cortado: cada botón puede
+   encoger y pasar el número («15», «30») a una segunda línea (2026-11-16). */
+.segmentos.petacos button { min-width: 0; white-space: normal; line-height: 1.1; overflow-wrap: anywhere; }
 .segmentos.petacos .mixto { border-left-style: dashed; border-left-color: var(--marron); }
 .productos.modo-paquete { outline: 3px solid var(--amarillo); outline-offset: 4px; border-radius: 8px; background: rgb(242 176 31 / 0.14); }
 

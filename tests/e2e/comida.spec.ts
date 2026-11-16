@@ -58,6 +58,8 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   expect(await medir()).toEqual({ afuera: false, cortado: false });
   await letra("21px");
   expect((await medir()).afuera).toBe(false);
+  // El selector «Unidad · Medio · Petaco · Mixto» tampoco se corta con la letra al 125 %.
+  expect(await cocina.locator(".segmentos.petacos").evaluate((g) => [...g.children].every((b) => b.scrollWidth <= b.clientWidth + 1) && g.scrollWidth <= g.clientWidth + 1)).toBe(true);
   await letra("");
   await expect(cocina.locator("main.anotar.en-comida")).toBeVisible();
   await cocina.locator(".pie-fijo .principal").click();
