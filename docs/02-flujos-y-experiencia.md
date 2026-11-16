@@ -488,6 +488,18 @@ con la app cerrada o la pantalla apagada, cada aparato de la barra puede **recib
   pantalla de inicio (iOS 16.4 o más); la hoja lo explica si no está instalada.
 - Cero toques nuevos en el flujo principal: es opcional y se activa una vez por aparato.
 
+### En qué panel se anota (2026-11-16)
+
+La regla no cambia: desde **🍺 Barra** se anota; desde **🍽 Comida**, las bebidas son un
+pedido para la barra (quedan por despachar, salvo «🔕 Sin avisar: la llevo yo»). Lo que se
+vio en producción: una persona con las dos áreas tenía el panel en Comida sin notarlo (la
+app lo recuerda) y anotó cervezas en la barra; quedaron por despachar. Para que se note sin
+quitar espacio ni sumar toques:
+
+- El botón principal dice lo que va a pasar: **«🔔 Abrir y pedir a la barra»** o
+  **«🔔 Anotar y pedir a la barra»** cuando la pedida lleva bebidas y se avisa a la barra.
+- La pantalla de anotar desde comida lleva una **franja fina del color de comida** arriba.
+
 ### Lo que se vio en producción con un pedido a la barra (2026-11-15)
 
 Prueba del dueño: desde la persona que tiene barra y comida pidió desde comida una Coca-Cola

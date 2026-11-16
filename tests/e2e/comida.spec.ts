@@ -43,6 +43,9 @@ test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", 
   await cocina.getByRole("tab", { name: /Bebidas/ }).click();
   await cocina.locator(".producto", { hasText: "RUBIA" }).first().click();
   await expect(cocina.getByRole("tab", { name: /Comida/ })).toContainText("4");
+  // El botón dice lo que va a pasar con las bebidas, y la pantalla lleva la franja de comida.
+  await expect(cocina.locator(".pie-fijo .principal")).toContainText("🔔 Abrir y pedir a la barra");
+  await expect(cocina.locator("main.anotar.en-comida")).toBeVisible();
   await cocina.locator(".pie-fijo .principal").click();
   await expect(cocina.locator(".aviso")).toContainText("bebidas avisadas a la barra");
   const mesa = cocina.locator(".tarjeta", { hasText: "Mesa 7" });

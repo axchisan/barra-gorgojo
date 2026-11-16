@@ -183,6 +183,8 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   const esPlato = (clave: string) => productoDe(sinc.visible, idDe(clave))?.categoria === "comida";
   const nPlatos = Object.entries(cant).reduce((t, [k, v]) => t + (esPlato(k) ? v : 0), 0) + libres.filter((x) => x.comida && x.producto === "otro").length;
   const nBebidas = n - nPlatos;
+  /** Desde comida, con bebidas y «Avisar a la barra»: la pedida le llega a la barra para despachar. */
+  const pideBarra = enComida && !despacho && avisarBarra && nBebidas > 0;
   const hayPlatos = productos.some((p) => p.activo && p.categoria === "comida");
 
   const agregarPaquete = (id: string) => {
@@ -284,7 +286,7 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
   };
 
   return (
-    <main className="anotar">
+    <main className={enComida && !despacho ? "anotar en-comida" : "anotar"}>
       <header className="barra-superior">
         <button className="atras" onClick={nav.volver} aria-label="Volver">←</button>
         <strong>{despacho ? "🔔 Pedir a la barra" : cuenta ? cuenta.nombre : "Nueva cuenta"}</strong>
@@ -564,7 +566,9 @@ export function Anotar({ nav, cuentaId, repetir, despacho = false }: { nav: Nav;
           </div>
         )}
         <button className="principal grande" onClick={() => confirmar(false)} disabled={n === 0}>
-          <span>{despacho ? "🔔 Pedir a la barra" : cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
+          {/* Desde comida, el botón dice que las bebidas van a la barra (2026-11-16: quien tiene
+              las dos áreas no notaba que estaba en comida y su pedida quedaba por despachar). */}
+          <span>{despacho ? "🔔 Pedir a la barra" : pideBarra ? (cuenta ? "🔔 Anotar y pedir a la barra" : "🔔 Abrir y pedir a la barra") : cuenta ? `Anotar ${adicional && tipoCuenta === "cancha" ? "adicional" : palabra}` : "Abrir y anotar"}</span>
           {n > 0 && <small className="detalle-boton">{n} · {pesos(valor)}</small>}
         </button>
       </div>

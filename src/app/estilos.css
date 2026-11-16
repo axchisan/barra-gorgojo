@@ -1291,3 +1291,6 @@ html .inicio .panel-cuenta .pie-fijo {
 .hoja-sonido > .grande { flex: none; }
 /* Rechazos por un error del sistema (fase 3, punto 5), en «Lo que no se aceptó». */
 .rechazo-error { color: var(--rojo); font-weight: 600; }
+/* Anotar desde el panel de comida (2026-11-16): una franja fina del color de comida arriba,
+   para que se note en qué panel se está sin quitar espacio. */
+.anotar.en-comida .barra-superior { box-shadow: inset 0 4px 0 var(--azul-comida); }
