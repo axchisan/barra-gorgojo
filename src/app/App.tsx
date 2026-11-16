@@ -15,6 +15,7 @@ import { EditarProducto } from "./pantallas/EditarProducto";
 import { Entrada } from "./pantallas/Entrada";
 import { Inicio } from "./pantallas/Inicio";
 import { DiaPasado, Dias } from "./pantallas/Dias";
+import { Informe } from "./pantallas/Informe";
 import { Auditoria } from "./pantallas/Auditoria";
 import { MiPin, Personas } from "./pantallas/Personas";
 import { DeudorDetalle, Deudas } from "./pantallas/Deudas";
@@ -83,8 +84,9 @@ export function App() {
       {vista.v === "deudor" && <DeudorDetalle nav={nav} id={vista.id} />}
       {vista.v === "personas" && <Personas nav={nav} />}
       {vista.v === "mipin" && <MiPin nav={nav} />}
-      {vista.v === "dias" && <Dias nav={nav} />}
+      {vista.v === "dias" && <Dias nav={nav} pestana={vista.pestana ?? "dias"} />}
       {vista.v === "dia" && <DiaPasado key={vista.fecha} nav={nav} fecha={vista.fecha} />}
+      {vista.v === "informe" && <Informe key={`${vista.tipo}-${vista.clave}`} nav={nav} tipo={vista.tipo} clave={vista.clave} />}
       {vista.v === "auditoria" && <Auditoria nav={nav} />}
       {vista.v === "solicitudes" && <Solicitudes nav={nav} />}
       {vista.v === "qr" && <CodigosQR nav={nav} />}

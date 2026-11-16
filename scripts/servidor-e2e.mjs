@@ -23,6 +23,9 @@ const w = await unstable_startWorker({
     // Una base por archivo de prueba (x-base-e2e, tests/e2e/prueba.ts): lo que deja una
     // prueba no le cambia la pantalla a la siguiente (deuda 5 de docs/16).
     BASES_E2E: { type: "plain_text", value: "1" },
+    // Importar un historial de varias semanas (informes.spec.ts): las operaciones por la API
+    // solo pueden ser de hasta un día atrás.
+    MIGRACION: { type: "plain_text", value: "migracion-solo-para-e2e" },
   },
   dev: { persist: PERSISTIR, server: { port: PUERTO }, inspector: false, watch: false, logLevel: "warn" },
 });

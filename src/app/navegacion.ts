@@ -13,7 +13,8 @@ export type Vista =
   | { v: "deudor"; id: string }
   | { v: "personas" }
   | { v: "mipin" }
-  | { v: "dias" }
+  | { v: "dias"; pestana?: "dias" | "semanas" | "meses" }
+  | { v: "informe"; tipo: "semana" | "mes"; clave: string }
   | { v: "dia"; fecha: string }
   | { v: "auditoria" }
   | { v: "solicitudes" }

@@ -4,7 +4,9 @@
 // del servidor: sin señal no se ven.
 import { useEffect, useState } from "react";
 import type { CierreJornada, Cuenta } from "../../dominio/estado";
+import { jornada } from "../../dominio/estado";
 import { pesos } from "../../dominio/formato";
+import { claveDe, comparacion, nombrePeriodo, rango, relativo, sumarDias, type TipoPeriodo } from "../../dominio/informe";
 import type { ResumenJornada } from "../../dominio/jornada";
 import { CuentaPasada } from "../componentes/CuentaPasada";
 import type { Nav } from "../navegacion";
@@ -29,7 +31,9 @@ function textoCierres(cierres: CierreJornada[]): string {
   }).join(" · ");
 }
 
-export function Dias({ nav }: { nav: Nav }) {
+type Pestana = "dias" | "semanas" | "meses";
+
+export function Dias({ nav, pestana }: { nav: Nav; pestana: Pestana }) {
   const [dias, setDias] = useState<Dia[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -42,10 +46,17 @@ export function Dias({ nav }: { nav: Nav }) {
         <button className="atras" onClick={nav.volver} aria-label="Volver">←</button>
         <strong>Días anteriores</strong>
       </header>
+      {/* Informes (docs/02 «Informes»): la misma lista, por semanas o por meses. */}
+      <div className="segmentos pestanas-dias" role="tablist">
+        {([["dias", "Días"], ["semanas", "Semanas"], ["meses", "Meses"]] as const).map(([id, nombre]) => (
+          <button key={id} role="tab" aria-selected={pestana === id} className={pestana === id ? "activo" : ""} onClick={() => nav.ir({ v: "dias", pestana: id }, true)}>{nombre}</button>
+        ))}
+      </div>
       {error && <p className="error" role="alert">{error}</p>}
       {!dias && !error && <p className="vacio">Cargando…</p>}
       {dias?.length === 0 && <p className="vacio">Todavía no hay días con ventas.</p>}
-      {dias?.map((d) => {
+      {dias && pestana !== "dias" && <Periodos nav={nav} tipo={pestana === "semanas" ? "semana" : "mes"} dias={dias} />}
+      {pestana === "dias" && dias?.map((d) => {
         const sinCerrar = !d.cierres.length;
         const descuadre = d.cierres.some((c) => c.contado !== c.esperado);
         return (
@@ -67,6 +78,53 @@ export function Dias({ nav }: { nav: Nav }) {
         );
       })}
     </main>
+  );
+}
+
+/** Las semanas o los meses con ventas, cada uno con su total, cómo va frente al anterior y sus días en barritas. */
+function Periodos({ nav, tipo, dias }: { nav: Nav; tipo: TipoPeriodo; dias: Dia[] }) {
+  const hoy = jornada(Date.now());
+  const claves = [...new Set(dias.map((d) => claveDe(tipo, d.fecha)))].sort().reverse();
+  return (
+    <>
+      {claves.map((clave) => {
+        const { desde, hasta } = rango(tipo, clave);
+        const suyos = dias.filter((d) => d.fecha >= desde && d.fecha <= hasta);
+        const vendido = suyos.reduce((t, d) => t + d.vendido, 0);
+        const comida = suyos.reduce((t, d) => t + d.vendidoComida, 0);
+        const conVentas = suyos.filter((d) => d.vendido > 0).length;
+        const comp = comparacion({ tipo, clave, desde, enCurso: hoy >= desde && hoy <= hasta, vendido }, dias, hoy);
+        const sinCerrar = suyos.filter((d) => d.fecha !== hoy && d.vendido > 0 && !d.cierres.length).length;
+        const descuadres = suyos.filter((d) => d.cierres.some((c) => c.contado !== c.esperado)).length;
+        // Las barritas: la semana, de lunes a domingo; el mes, cada día del 1 al último.
+        const n = Math.round((new Date(`${hasta}T12:00:00Z`).getTime() - new Date(`${desde}T12:00:00Z`).getTime()) / 86_400_000) + 1;
+        const tope = Math.max(1, ...suyos.map((d) => d.vendido));
+        const rel = relativo(tipo, clave, hoy);
+        return (
+          <button key={clave} className="caja dia-pasado periodo" onClick={() => nav.ir({ v: "informe", tipo, clave })} aria-label={`${nombrePeriodo(tipo, clave)}: ${pesos(vendido)}`}>
+            <span className="dia-pasado-cabeza">
+              <strong className="dia-pasado-fecha">{nombrePeriodo(tipo, clave)}</strong>
+              <strong>{pesos(vendido)}</strong>
+            </span>
+            <span className="periodo-linea">
+              <span className="tenue">{rel ? `${rel[0].toUpperCase()}${rel.slice(1)} · ` : ""}{conVentas} {conVentas === 1 ? "día" : "días"} con ventas{comida ? ` · 🍽 ${pesos(comida)}` : ""}</span>
+              {comp.cambio !== null && <span className={`periodo-cambio ${comp.cambio > 0 ? "sube" : comp.cambio < 0 ? "baja" : ""}`}>{comp.cambio === 0 ? "＝ igual" : `${comp.cambio > 0 ? "▲" : "▼"} ${Math.abs(comp.cambio)} %`}</span>}
+            </span>
+            <span className={`periodo-barritas ${tipo}`} aria-hidden>
+              {Array.from({ length: n }, (_, i) => {
+                const f = sumarDias(desde, i);
+                const d = suyos.find((x) => x.fecha === f);
+                return <i key={f} className={f > hoy ? "futuro" : ""} style={{ height: d && d.vendido ? `${Math.max(8, (d.vendido / tope) * 100)}%` : undefined }} />;
+              })}
+            </span>
+            {(sinCerrar > 0 || descuadres > 0) && (
+              <span className="cierre-hecho falta">{[descuadres ? `${descuadres} ${descuadres === 1 ? "día" : "días"} sin cuadrar` : "", sinCerrar ? `${sinCerrar} sin cerrar` : ""].filter(Boolean).join(" · ")}</span>
+            )}
+            <span className="dia-pasado-ver" aria-hidden>Ver el informe ›</span>
+          </button>
+        );
+      })}
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 // Accesos de empleados (docs/17) y precio de los adicionales (docs/04), con el Worker real.
+import { claveDe, sumarDias } from "../../src/dominio/informe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { arrancar, esperar, idDe, op, type Servidor } from "./arrancar";
 
@@ -105,11 +106,28 @@ describe("accesos de empleados", () => {
     expect(csv.status).toBe(200);
     expect(csv.headers.get("content-type")).toMatch(/text\/csv/);
     expect((await s.pedir(ana, "/api/dia?fecha=ayer")).status).toBe(400);
+    // Informes por semana y mes (docs/02 «Informes»): los días del periodo y del anterior, y su CSV.
+    const lunes = claveDe("semana", fecha);
+    const sem = await json(await s.pedir(ana, `/api/informe?tipo=semana&clave=${lunes}`));
+    expect(sem.status).toBe(200);
+    const deHoy = sem.datos.dias.find((d: { fecha: string }) => d.fecha === fecha);
+    expect(deHoy.vendido).toBeGreaterThan(0);
+    expect(deHoy.porMedio.efectivo).toEqual({ barra: expect.any(Number), comida: expect.any(Number) });
+    expect(deHoy.porProducto.length).toBeGreaterThan(0);
+    expect(deHoy.cierres.length).toBeGreaterThan(0);
+    const mes = await json(await s.pedir(ana, `/api/informe?tipo=mes&clave=${fecha.slice(0, 7)}`));
+    expect(mes.datos.dias.map((d: { fecha: string }) => d.fecha)).toContain(fecha);
+    const csvSem = await s.pedir(ana, `/api/informe/csv?tipo=semana&clave=${lunes}`);
+    expect(csvSem.status).toBe(200);
+    expect(await csvSem.text()).toContain("POR DÍA");
+    expect((await s.pedir(ana, `/api/informe?tipo=semana&clave=${sumarDias(lunes, 1)}`)).status).toBe(400); // no es lunes
+    expect((await s.pedir(ana, "/api/informe?tipo=mes&clave=2026-13")).status).toBe(400);
     // Sin «Historial» (aunque vea el día): no.
     await accion({ accion: "permisos", id: idDe("Ana"), permisos: ["dia"] });
     expect((await s.pedir(ana, "/api/dias")).status).toBe(403);
     expect((await s.pedir(ana, `/api/dia?fecha=${fecha}`)).status).toBe(403);
     expect((await s.pedir(ana, `/api/dia/csv?fecha=${fecha}`)).status).toBe(403);
+    expect((await s.pedir(ana, `/api/informe?tipo=semana&clave=${lunes}`)).status).toBe(403);
     // El administrador, siempre.
     expect((await s.pedir(admin, "/api/dias")).status).toBe(200);
     await accion({ accion: "permisos", id: idDe("Ana"), permisos: ["dia", "historial"] });

@@ -7,8 +7,9 @@ import { PERSONAS } from "../dominio/catalogo";
 import { aplicar, catalogo, enCuadricula, esModoPrecio, esOperacion, modoPorDefecto, precioPara, preciosParaModo, esVigente, estadoVacio, jornada, pagadoPorLinea, producto as productoDe, puedeEditarLinea, recortar, saldo, situacion, total, type Cuenta, type Estado, type Operacion } from "../dominio/estado";
 import { horaDe } from "../dominio/formato";
 import { esArea, nombreArea, type Area } from "../dominio/areas";
-import { saldoDeudor } from "../dominio/deudas";
-import { csvDia, csvJornada, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
+import { pagosDeudasDe, saldoDeudor } from "../dominio/deudas";
+import { csvDia, csvJornada, cuentasDelDia, jornadasConMovimiento, resumenJornada } from "../dominio/jornada";
+import { comparacion, csvInforme, fechasParaInforme, informe, type DiaInforme, type TipoPeriodo } from "../dominio/informe";
 import { describirConEnvio, type Evento } from "../dominio/auditoria";
 import { validar } from "./esquema";
 import { Acceso, ADMIN, esPin, firmarSesion, igualesEnTiempoConstante, leerSesion, type Rol } from "./acceso";
@@ -355,6 +356,30 @@ export class Barra extends DurableObject<Env> {
       const { porProducto: _, ...r } = resumenJornada(cuentas, fecha);
       dias.push({ ...r, cierres: this.estado.jornadas?.[fecha] ?? [] });
       if (dias.length === 120) break;
+    }
+    return dias;
+  }
+
+  /**
+   * Los días entre dos fechas, para los informes por semana y mes (docs/02 «Informes»): cada
+   * uno con su resumen, cómo pagaron (partido en barra y comida), por producto, cierres y
+   * pagos de deudas. De la proyección, día por día; solo los días con movimiento.
+   */
+  private diasInforme(desde: string, hasta: string): DiaInforme[] {
+    const fechas = this.ctx.storage.sql.exec<{ fecha: string }>("SELECT DISTINCT fecha FROM cuenta_jornadas WHERE fecha >= ? AND fecha <= ? ORDER BY fecha", desde, hasta).toArray().map((f) => f.fecha);
+    const deudores = Object.values(this.estado.deudas ?? {});
+    const dias: DiaInforme[] = [];
+    for (const fecha of fechas) {
+      const cuentas = this.cuentasDe(fecha);
+      if (!jornadasConMovimiento(cuentas).includes(fecha)) continue;
+      const r = resumenJornada(cuentas, fecha);
+      const d = cuentasDelDia(cuentas, fecha);
+      const pd = pagosDeudasDe(deudores, fecha, jornada);
+      dias.push({
+        fecha, vendido: r.vendido, vendidoComida: r.vendidoComida, cuentas: r.cuentas, cambios: r.cambios,
+        porMedio: d.porMedio, porCobrar: d.porCobrar, porProducto: r.porProducto,
+        cierres: this.estado.jornadas?.[fecha] ?? [], pagosDeudas: { total: pd.total, efectivo: pd.efectivo, nequi: pd.nequi, breve: pd.breve },
+      });
     }
     return dias;
   }
@@ -1064,6 +1089,25 @@ export class Barra extends DurableObject<Env> {
         });
       }
       return json({ fecha, cuentas: this.cuentasDe(fecha), cierres: this.estado.jornadas?.[fecha] ?? [] });
+    }
+    // Informes por semana y mes (docs/02 «Informes»): los días del periodo y del anterior
+    // (para comparar), y su CSV. Mismos permisos que los días anteriores.
+    if (ruta === "/api/informe" || ruta === "/api/informe/csv") {
+      if (req.method !== "GET") return json({ error: "No existe" }, 404);
+      if (q.rol !== ADMIN && !(q.vista.dia && q.vista.historial)) return json({ error: "Ver los informes necesita los permisos «Ve el día» e «Historial»." }, 403);
+      const tipo = url.searchParams.get("tipo") as TipoPeriodo;
+      const clave = url.searchParams.get("clave") ?? "";
+      const valida = tipo === "semana" ? /^\d{4}-\d{2}-\d{2}$/.test(clave) && new Date(`${clave}T12:00:00Z`).getUTCDay() === 1 : tipo === "mes" && /^\d{4}-(0[1-9]|1[0-2])$/.test(clave);
+      if (!valida) return json({ error: "Periodo no válido." }, 400);
+      const { desde, hasta } = fechasParaInforme(tipo, clave);
+      const dias = this.diasInforme(desde, hasta);
+      if (ruta === "/api/informe") return json({ tipo, clave, dias });
+      const hoy = jornada(Date.now());
+      const inf = informe(tipo, clave, dias, hoy);
+      const nombre = `barra-${tipo}-${clave}.csv`;
+      return new Response(`\uFEFF${csvInforme(inf, comparacion(inf, dias, hoy))}`, {
+        headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="${nombre}"`, "cache-control": "no-store" },
+      });
     }
     if (ruta === "/api/push" && req.method === "GET") {
       // La llave pública para suscribirse (sin llave: push apagado) y si este aparato ya está.

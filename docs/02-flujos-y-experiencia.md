@@ -574,7 +574,39 @@ Pedido del dueño: revisar los días anteriores desde la app, cómodo, no solo b
 - La ven el administrador y quien tiene «Ve el día» e «Historial» (docs/17). Necesita
   señal: los días anteriores no se guardan en el celular.
 
-Siguiente (fase 3 b): informes por semana y mes, cuando el negocio diga qué informes usa.
+### Informes por semana y mes (2026-11-16)
+
+El dueño pidió que se propusieran («algo muy cómodo, útil y bien estructurado»). En «Días
+anteriores», tres pestañas: **Días · Semanas · Meses**. Mismos permisos que los días
+anteriores; solo para leer y con señal.
+
+- **La lista de semanas o meses**: cada uno con lo vendido, «esta semana» o «la semana
+  pasada», los días con ventas, lo de comida, ▲/▼ el porcentaje frente al anterior, unas
+  barritas con cada día (la semana de lunes a domingo; el mes del 1 al último) y, en rojo,
+  los días sin cuadrar o sin cerrar. Se toca y abre el informe.
+- **El informe** (`src/app/pantallas/Informe.tsx`), con «‹ Anterior» y «Siguiente ›»
+  (no hay siguiente después del periodo en curso) y el CSV en la cabecera:
+  1. Lo vendido, barra y comida, y la comparación: «▲ 12 % más que la semana pasada». Si
+     el periodo aún no termina, se compara con **los mismos días** del anterior (lunes a
+     miércoles contra lunes a miércoles; del 1 al 16 contra del 1 al 16).
+  2. **Día por día**: una barra por día (la parte de comida en azul), el día más fuerte
+     con ★; la semana muestra también los días sin ventas. Tocar un día lo abre.
+  3. Promedio por día, cuentas por día y el día más fuerte. En el mes, además, **«¿Qué día
+     se vende más?»**: el promedio de cada día de la semana.
+  4. **Caja**: cuántos días cuadró, en cuántos sobró o faltó y cuánto, y los días sin
+     cerrar (hoy no cuenta), que se tocan para abrirlos.
+  5. **¿Cómo pagaron?**: cada medio con su total y, debajo, cuánto fue de barra y de
+     comida (en el celular una tabla de cuatro columnas no cabía con cifras de un mes).
+  6. **Lo más vendido**, barra o comida, con cantidad, valor y una barrita; los 8 primeros
+     y «Ver todos».
+  7. **Fiado**: lo que se fió y lo que pagaron de deudas.
+- **El CSV del periodo** (`csvInforme`), por secciones como el del día: resumen (con la
+  comparación), una fila por día (barra, comida, medios y cómo quedó la caja), cómo
+  pagaron, por producto, caja (cada cierre) y fiado.
+
+Las cuentas salen de `src/dominio/informe.ts` (puro, con pruebas en `tests/informe.test.ts`);
+el servidor arma cada día con `/api/informe?tipo=semana|mes&clave=` (la clave es el lunes
+de la semana o `AAAA-MM`) y manda también los del periodo anterior para comparar.
 
 ### Cambio de plata (2026-11-15)
 

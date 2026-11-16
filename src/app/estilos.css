@@ -1327,3 +1327,82 @@ html .inicio .panel-cuenta .pie-fijo {
 /* Pedida que vino de otra cuenta al juntarlas (2026-11-16): borde morado, como «Con …», y una línea. */
 .ronda-tarjeta.juntada { box-shadow: inset 3px 0 0 #b9a6dc; }
 .marca-juntada { flex-basis: 100%; font-size: 0.85rem; color: #4a3577; }
+
+/* ── Informes por semana y mes (2026-11-16, docs/02 «Informes») ─────────────────────── */
+.pestanas-dias { margin-bottom: 12px; }
+.pestanas-dias button { flex: 1; min-height: 48px; }
+.periodo-linea { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.periodo-cambio { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.periodo-cambio.sube, .informe-comparacion.sube { color: var(--verde); }
+.periodo-cambio.baja, .informe-comparacion.baja { color: var(--rojo); }
+.periodo-barritas { display: flex; align-items: flex-end; gap: 3px; height: 34px; margin: 4px 0 2px; }
+.periodo-barritas i { flex: 1; height: 3px; min-height: 3px; border-radius: 3px 3px 1px 1px; background: var(--marron-medio); }
+.periodo-barritas i:not([style]) { background: var(--neutro-200); }
+.periodo-barritas i.futuro { background: transparent; border-bottom: 2px dotted var(--neutro-200); }
+.periodo-barritas.semana { gap: 6px; }
+
+.informe { padding-bottom: 40px; }
+.informe .barra-superior strong { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.informe-pasos { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.informe-pasos span { font-weight: 700; color: var(--neutro-600); }
+.informe-pasos .chip { white-space: nowrap; padding: 8px 14px; min-height: 44px; }
+.informe-pasos .chip:disabled { opacity: 0.35; }
+.informe-pasos span { text-align: center; }
+/* En el fondo oscuro del total: verde y rojo claros para que se lean. */
+.dia-hero .informe-comparacion { font-weight: 800; font-size: 1rem; }
+.dia-hero .informe-comparacion.sube { color: #9fd98f; }
+.dia-hero .informe-comparacion.baja { color: #ffaba3; }
+
+.informe-dias, .informe-semana { gap: 2px; }
+.informe-dia { display: grid; grid-template-columns: 4.2em 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 4px 2px;
+  background: none; border: 0; border-bottom: 1px solid var(--neutro-100); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.informe-dia:last-of-type { border-bottom: 0; }
+div.informe-dia { cursor: default; }
+.informe-dia:disabled { cursor: default; color: var(--neutro-600); }
+button.informe-dia:not(:disabled):active { background: var(--neutro-100); }
+.informe-dia-fecha { font-weight: 700; text-transform: capitalize; }
+.informe-dia-barra { height: 18px; background: var(--neutro-100); border-radius: 6px; overflow: hidden; }
+.informe-dia-barra > span { display: block; height: 100%; background: var(--marron-medio); border-radius: 6px; position: relative; overflow: hidden; }
+.informe-dia-barra > span > i { position: absolute; right: 0; top: 0; bottom: 0; background: var(--azul-comida); }
+.informe-dia-valor { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 6.5em; text-align: right; }
+.informe-dia.fuerte .informe-dia-valor::before { content: "★ "; color: var(--ambar); }
+.informe-dia.sin .informe-dia-valor { color: var(--neutro-600); font-weight: 500; }
+.informe-leyenda { font-size: 0.85rem; margin-top: 6px; }
+.punto { display: inline-block; flex: none; padding: 0; min-height: 0; border: 0; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-left: 4px; }
+.punto-barra { background: var(--marron-medio); }
+.punto-comida { background: var(--azul-comida); }
+
+.informe-cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.informe-cifras > div { background: var(--papel); border: 2px solid var(--neutro-200); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.informe-cifras span { font-size: 0.85rem; color: var(--neutro-600); font-weight: 600; }
+.informe-cifras strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.informe-cifras strong::first-letter { text-transform: uppercase; }
+.informe-cifras small { color: var(--neutro-600); font-variant-numeric: tabular-nums; }
+.informe-fiado .informe-cifras { margin-bottom: 0; }
+.informe-fiado .informe-cifras > div { border-color: #d9cfea; }
+
+.informe-caja p { margin: 0; }
+.informe-sobro { color: var(--ambar); font-weight: 700; }
+.dia-tabla tr.sin-toque { cursor: default; }
+
+.informe-productos ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.informe-productos li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 0; border-bottom: 1px solid var(--neutro-100); }
+.informe-productos li:last-child { border-bottom: 0; }
+.informe-producto-nombre { min-width: 0; overflow-wrap: anywhere; }
+.informe-productos li strong { font-variant-numeric: tabular-nums; }
+.informe-producto-barra { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--marron-medio); opacity: 0.55; }
+.informe-producto-barra.comida { background: var(--azul-comida); }
+/* El tercero (el día más fuerte) va a lo ancho. */
+.informe-cifras > div:nth-child(3):last-child { grid-column: 1 / -1; }
+/* Cifras de semana y mes: más largas que las de un día; la tabla se aprieta para no cortarse. */
+.informe-medios { gap: 0; }
+.informe-medio { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 8px 0; border-bottom: 1px solid var(--neutro-100); }
+.informe-medio > span { font-weight: 700; }
+.informe-medio strong { font-variant-numeric: tabular-nums; font-size: 1.1rem; }
+.informe-medio small { grid-column: 1 / -1; color: var(--neutro-600); font-variant-numeric: tabular-nums; }
+.informe-medio small .de-comida { color: var(--azul-comida); }
+.informe-medio.fila-deuda > span, .informe-medio.fila-deuda strong { color: #4a3577; }
+.informe-medio.cobrado { border-top: 2px solid var(--marron); border-bottom: 0; }
+.informe-medio.por-cobrar > span, .informe-medio.por-cobrar strong { color: var(--rojo); }
+/* El chip de la cabecera oscura (CSV): letra oscura, que antes casi no se veía. */
+.barra-superior .chip { color: var(--marron); padding: 6px 14px; min-height: 40px; }

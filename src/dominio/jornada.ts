@@ -68,7 +68,7 @@ export function jornadasConMovimiento(cuentas: Iterable<Cuenta>): string[] {
   return [...fechas].sort().reverse();
 }
 
-const celda = (x: string | number) => {
+export const celda = (x: string | number) => {
   const t = String(x);
   return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
 };
@@ -243,7 +243,7 @@ export function cuentasDelDia(cuentas: Iterable<Cuenta>, fecha: string): Cuentas
 // y por producto. Separado por «;», pesos enteros sin puntos (Excel en español de Colombia;
 // Google Sheets lo detecta solo).
 
-const NOMBRE_MEDIO: Record<Medios, string> = { efectivo: "Efectivo", nequi: "Nequi", breve: "Breve", deuda: "Fiado", comida: "Pasado a comida" };
+export const NOMBRE_MEDIO: Record<Medios, string> = { efectivo: "Efectivo", nequi: "Nequi", breve: "Breve", deuda: "Fiado", comida: "Pasado a comida" };
 const TIPO_CUENTA: Record<Cuenta["tipo"], string> = { grupo: "Grupo", persona: "Persona", mesa: "Mesa", cancha: "Cancha", rapida: "Venta rápida", domicilio: "Domicilio" };
 const nombreCaja = (a: Area) => (a === "comida" ? "Cocina" : "Barra");
 

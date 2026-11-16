@@ -19,13 +19,8 @@ export interface Cubo {
 export const NIVELES = ["diarios", "semanales", "mensuales"] as const;
 export type Nivel = (typeof NIVELES)[number];
 
-/** El lunes de la semana de una fecha AAAA-MM-DD. */
-export function lunesDe(fecha: string): string {
-  const d = new Date(`${fecha}T12:00:00Z`);
-  const dia = d.getUTCDay(); // 0 domingo … 6 sábado
-  d.setUTCDate(d.getUTCDate() - ((dia + 6) % 7));
-  return d.toISOString().slice(0, 10);
-}
+import { lunesDe } from "../dominio/informe";
+export { lunesDe };
 
 export function claves(fecha: string): Record<Nivel, string> {
   return {
