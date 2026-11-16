@@ -91,6 +91,31 @@ describe("accesos de empleados", () => {
     expect(r.datos.ok).toHaveLength(1);
   });
 
+  it("días anteriores en la app: quien ve el día y el historial abre cada día con sus cuentas y cierres; sin esos permisos, no", async () => {
+    const fecha = hoy();
+    // Ana ve el día y el historial (las sembradas los tienen).
+    const lista = await json(await s.pedir(ana, "/api/dias"));
+    expect(lista.status).toBe(200);
+    expect(lista.datos.dias.map((d: { fecha: string }) => d.fecha)).toContain(fecha);
+    const dia = await json(await s.pedir(ana, `/api/dia?fecha=${fecha}`));
+    expect(dia.status).toBe(200);
+    expect(dia.datos.cuentas.map((c: { id: string }) => c.id)).toContain("fiada");
+    expect(dia.datos.cierres.length).toBeGreaterThan(0);
+    const csv = await s.pedir(ana, `/api/dia/csv?fecha=${fecha}`);
+    expect(csv.status).toBe(200);
+    expect(csv.headers.get("content-type")).toMatch(/text\/csv/);
+    expect((await s.pedir(ana, "/api/dia?fecha=ayer")).status).toBe(400);
+    // Sin «Historial» (aunque vea el día): no.
+    await accion({ accion: "permisos", id: idDe("Ana"), permisos: ["dia"] });
+    expect((await s.pedir(ana, "/api/dias")).status).toBe(403);
+    expect((await s.pedir(ana, `/api/dia?fecha=${fecha}`)).status).toBe(403);
+    expect((await s.pedir(ana, `/api/dia/csv?fecha=${fecha}`)).status).toBe(403);
+    // El administrador, siempre.
+    expect((await s.pedir(admin, "/api/dias")).status).toBe(200);
+    await accion({ accion: "permisos", id: idDe("Ana"), permisos: ["dia", "historial"] });
+    expect((await s.pedir(ana, "/api/dias")).status).toBe(200);
+  });
+
   it("el administrador no tiene horario", async () => {
     expect((await accion({ accion: "horario", id: idDe("Administrador"), horario: NUNCA })).status).toBe(400);
   });

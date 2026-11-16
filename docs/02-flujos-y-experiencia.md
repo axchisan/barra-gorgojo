@@ -556,6 +556,26 @@ pagó por Nequi** y **cuánto le pasa una caja a la otra**. Ahora, de arriba aba
 En el portátil y la tablet girada va en dos columnas. Pruebas: `tests/cuentas-del-dia.test.ts`,
 `tests/e2e/el-dia.spec.ts`.
 
+### Días anteriores (2026-11-16)
+
+Pedido del dueño: revisar los días anteriores desde la app, cómodo, no solo bajando un CSV
+(docs/18 fase 3 b). Se llega por el menú, «📅 Días anteriores», o desde el final de «El día».
+
+- **La lista**: cada día con lo vendido (barra y comida), los medios de pago que tuvieron
+  plata y cómo cerró cada caja (en rojo si no cuadró). Tocar un día lo abre.
+- **El día abierto se ve igual que «El día»**: lo vendido, «¿Cómo pagaron?», «Entre
+  cajas», el cuadre de cada caja (solo para leer: muestra el cierre de ese día, no deja
+  contar ni cerrar), las cuentas con filtros y buscador, y por producto. **CSV** en la
+  cabecera.
+- **Tocar una cuenta** abre su detalle para leer: cada pedida con su hora y quién la anotó,
+  lo agregado, cambiado, anulado o despachado (quién y a qué hora), las notas, y cada pago
+  con su medio, quién cobró, a qué hora y en qué caja (con el cambio que se dio).
+- La ven el administrador y quien tiene «Ve el día» e «Historial» (docs/17). Necesita
+  señal: los días anteriores no se guardan en el celular.
+
+Siguiente (fase 3 b): informes por semana y mes, y el CSV mejor organizado, cuando el
+negocio diga qué informes usa.
+
 ### Cambio de plata (2026-11-15)
 
 Un cliente pide que le cambien plata: la pasa por Nequi y se le da un billete. Se anota como

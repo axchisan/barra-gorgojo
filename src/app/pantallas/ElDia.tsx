@@ -3,7 +3,7 @@
 // una caja a la otra, el cuadre de cada caja y la lista de cuentas con filtros y detalle.
 import { useState } from "react";
 import { areaDe, type Area } from "../../dominio/areas";
-import { cambiosDeJornada, efectivoDeJornada, jornada, type Cuenta } from "../../dominio/estado";
+import { cambiosDeJornada, efectivoDeJornada, jornada, type CierreJornada, type Cuenta } from "../../dominio/estado";
 import { horaDe, pesos } from "../../dominio/formato";
 import { pagosDeudasDe } from "../../dominio/deudas";
 import { cuentasDelDia, resumenJornada, type CuentaDelDia, type Medios, type Parte } from "../../dominio/jornada";
@@ -35,13 +35,20 @@ function tipoDe(c: Cuenta): string {
   return "";
 }
 
-export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
-  const hoy = jornada(Date.now());
+/**
+ * Hoy (pestaña «El día»), o un día anterior (`fecha`, docs/18 fase 3 b): lo mismo, solo para
+ * leer, con los cierres de ese día y las cuentas que se abren con `verCuenta`.
+ */
+export function ElDia({ nav, cuentas, fecha, cierres, verCuenta }: { nav: Nav; cuentas: Cuenta[]; fecha?: string; cierres?: CierreJornada[]; verCuenta?: (c: Cuenta) => void }) {
+  const hoy = fecha ?? jornada(Date.now());
+  const pasado = !!fecha;
+  const abrir = (c: Cuenta) => (verCuenta ? verCuenta(c) : nav.ir({ v: "cuenta", id: c.id }));
   const r = resumenJornada(cuentas, hoy);
   const d = cuentasDelDia(cuentas, hoy);
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [buscar, setBuscar] = useState("");
-  const [verProductos, setVerProductos] = useState<"comida" | "barra">("comida");
+  // Abre en comida si hubo comida; si no, en barra (si no, se veía «nada anotado»).
+  const [verProductos, setVerProductos] = useState<"comida" | "barra">(() => (r.vendidoComida > 0 ? "comida" : "barra"));
   const vendidoBarra = r.vendido - r.vendidoComida;
   const pagosDeudas = pagosDeudasDe(Object.values(sinc.visible.deudas ?? {}), hoy, jornada);
   const paquetesHoy = contarPaquetes(
@@ -72,7 +79,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
     <section className="dia dia-nuevo">
       {/* 1. Lo vendido, partido en barra y comida. */}
       <article className="dia-hero">
-        <span className="dia-hero-titulo">Vendido hoy</span>
+        <span className="dia-hero-titulo">{pasado ? "Vendido ese día" : "Vendido hoy"}</span>
         <strong className="dia-hero-total">{pesos(r.vendido)}</strong>
         <span className="dia-hero-sub">{d.cuentas.length} {d.cuentas.length === 1 ? "cuenta" : "cuentas"}{porCobrarN ? ` · ${porCobrarN} sin cobrar` : " · todas cobradas"}</span>
         {r.cambios > 0 && <span className="dia-hero-sub">💱 Sin contar {pesos(r.cambios)} de cambios de plata</span>}
@@ -85,7 +92,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
       <div className="dia-columnas">
         <div className="dia-col">
           {/* Lo que se hace al cerrar, arriba (C10): el efectivo que debe haber y el contado. */}
-          <Cuadre cuentas={cuentas} hoy={hoy} d={d} />
+          <Cuadre cuentas={cuentas} hoy={hoy} d={d} cierresDelDia={cierres} />
 
           {/* 2. Cómo pagaron, partido en barra y comida (cada pago repartido). */}
           <article className="caja dia-tabla-caja">
@@ -142,7 +149,7 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
             <div className="cifras">
               {pagosDeudas.total > 0 && (
                 <button className="cifra deuda" onClick={() => nav.ir({ v: "deudas" })}>
-                  <span>📒 Pagos de deudas hoy (aparte de la caja)</span><strong>{pesos(pagosDeudas.total)}</strong>
+                  <span>📒 Pagos de deudas {pasado ? "ese día" : "hoy"} (aparte de la caja)</span><strong>{pesos(pagosDeudas.total)}</strong>
                 </button>
               )}
               {(paquetesHoy.petacos > 0 || paquetesHoy.medios > 0) && (
@@ -172,12 +179,12 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
             {filtro !== "todas" && filtro !== "anuladas" && <ResumenFiltro lista={lista} filtro={filtro} />}
             {filtro === "anuladas"
               ? d.anuladas.filter((c) => !buscar.trim() || c.nombre.toLowerCase().includes(buscar.trim().toLowerCase())).map((c) => (
-                <button key={c.id} className="renglon-dia anulada" onClick={() => nav.ir({ v: "cuenta", id: c.id })}>
+                <button key={c.id} className="renglon-dia anulada" onClick={() => abrir(c)}>
                   <span className="renglon-dia-nombre">{c.nombre}</span>
                   <span className="renglon-dia-sub">Anulada{c.anulacion ? ` por ${c.anulacion.por} · ${horaDe(c.anulacion.en)}${c.anulacion.motivo ? ` · «${c.anulacion.motivo}»` : ""}` : ""}</span>
                 </button>
               ))
-              : lista.map((x) => <FilaCuenta key={x.cuenta.id} x={x} nav={nav} />)}
+              : lista.map((x) => <FilaCuenta key={x.cuenta.id} x={x} abrir={abrir} />)}
             {filtro !== "anuladas" && lista.length === 0 && <p className="vacio">No hay cuentas así.</p>}
           </article>
 
@@ -193,8 +200,8 @@ export function ElDia({ nav, cuentas }: { nav: Nav; cuentas: Cuenta[] }) {
         </div>
       </div>
 
-      {sinc.esAdministrador && <button className="enlace" onClick={() => nav.ir({ v: "dias" })}>Días anteriores y CSV</button>}
-      <button className="enlace" onClick={() => nav.ir({ v: "inicio", pestana: "cuentas" }, true)}>Ver cuentas</button>
+      {!pasado && (sinc.esAdministrador || (sinc.veDia && sinc.veHistorial)) && <button className="enlace" onClick={() => nav.ir({ v: "dias" })}>📅 Días anteriores</button>}
+      {!pasado && <button className="enlace" onClick={() => nav.ir({ v: "inicio", pestana: "cuentas" }, true)}>Ver cuentas</button>}
     </section>
   );
 }
@@ -229,12 +236,12 @@ function ResumenFiltro({ lista, filtro }: { lista: CuentaDelDia[]; filtro: Filtr
 }
 
 /** Una cuenta del día: nombre, total, de qué fue y cómo la pagaron (quién cobró y en qué caja). */
-function FilaCuenta({ x, nav }: { x: CuentaDelDia; nav: Nav }) {
+function FilaCuenta({ x, abrir }: { x: CuentaDelDia; abrir: (c: Cuenta) => void }) {
   const c = x.cuenta;
   const deudas = sinc.visible.deudas ?? {};
   const tipo = tipoDe(c);
   return (
-    <button className={`renglon-dia${x.falta > 0 ? " sin-cobrar" : ""}`} onClick={() => nav.ir({ v: "cuenta", id: c.id })}>
+    <button className={`renglon-dia${x.falta > 0 ? " sin-cobrar" : ""}`} onClick={() => abrir(c)}>
       <span className="renglon-dia-cabeza">
         <span className="renglon-dia-nombre">{c.nombre}</span>
         <strong className="renglon-dia-total">{pesos(x.barra + x.comida)}</strong>
@@ -258,11 +265,14 @@ function FilaCuenta({ x, nav }: { x: CuentaDelDia; nav: Nav }) {
 }
 
 /** El cuadre del efectivo de cada caja: lo que debería haber, lo contado y cerrar el día. */
-function Cuadre({ cuentas, hoy, d }: { cuentas: Cuenta[]; hoy: string; d: ReturnType<typeof cuentasDelDia> }) {
+function Cuadre({ cuentas, hoy, d, cierresDelDia }: { cuentas: Cuenta[]; hoy: string; d: ReturnType<typeof cuentasDelDia>; cierresDelDia?: CierreJornada[] }) {
+  // Un día anterior (con sus cierres): solo para leer, y se ven las dos cajas.
+  const pasado = !!cierresDelDia;
+  const cajas: Area[] = pasado ? ["barra", "comida"] : sinc.areas;
   const [contado, setContado] = useState("");
-  const [caja, setCaja] = useState<Area>(sinc.panel);
+  const [caja, setCaja] = useState<Area>(pasado ? "barra" : sinc.panel);
   const recibidoEfectivo = efectivoDeJornada(cuentas, hoy, caja);
-  const cierres = (sinc.visible.jornadas?.[hoy] ?? []).filter((x) => areaDe(x.area) === caja);
+  const cierres = (cierresDelDia ?? sinc.visible.jornadas?.[hoy] ?? []).filter((x) => areaDe(x.area) === caja);
   const ultimoCierre = cierres[cierres.length - 1];
   const diferencia = contado ? Number(contado) - recibidoEfectivo : null;
   const deCaja = d.cajas[caja].porMedio;
@@ -276,16 +286,16 @@ function Cuadre({ cuentas, hoy, d }: { cuentas: Cuenta[]; hoy: string; d: Return
   return (
     <article className="caja cuadre">
       <h2>Cuadre de caja</h2>
-      {sinc.areas.length > 1 && (
+      {cajas.length > 1 && (
         <div className="segmentos cajas" role="group" aria-label="Qué caja">
-          {sinc.areas.map((a) => (
+          {cajas.map((a) => (
             <button key={a} className={caja === a ? `activo${a === "comida" ? " comida-chip" : ""}` : ""} aria-pressed={caja === a} onClick={() => { setCaja(a); setContado(""); }}>
               {a === "comida" ? "🍽 Cocina" : "🍺 Barra"}
             </button>
           ))}
         </div>
       )}
-      <p className="tenue">Lo cobrado hoy en la caja de {nombreCaja(caja)}:</p>
+      <p className="tenue">Lo cobrado {pasado ? "ese día" : "hoy"} en la caja de {nombreCaja(caja)}:</p>
       <div className="cuadre-recibio">
         <div className="cuadre-efectivo"><span>💵 Efectivo que debe haber</span><strong>{pesos(recibidoEfectivo)}</strong><small>Sin contar la base</small></div>
         {deCaja.nequi > 0 && <div><span>📱 Nequi</span><b>{pesos(deCaja.nequi)}</b></div>}
@@ -293,7 +303,8 @@ function Cuadre({ cuentas, hoy, d }: { cuentas: Cuenta[]; hoy: string; d: Return
         {deCaja.deuda > 0 && <div><span>📒 Fiado</span><b>{pesos(deCaja.deuda)}</b></div>}
       </div>
       {cambiosCaja > 0 && <p className="tenue cuadre-cambios">💱 Ya se restaron {pesos(cambiosCaja)} que se dieron en efectivo por cambios de plata (esa plata entró por Nequi o Breve).</p>}
-      <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Efectivo contado" aria-label="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />
+      {!pasado && <input inputMode="numeric" enterKeyHint="done" onKeyDown={cerrarConEnter} placeholder="Efectivo contado" aria-label="Efectivo contado" value={contado} onChange={(e) => setContado(e.target.value.replace(/\D/g, ""))} />}
+      {pasado && !ultimoCierre && <p className="tenue">Esa caja no se cerró ese día.</p>}
       {diferencia != null && (
         <p className={diferencia === 0 ? "cambio" : "cambio falta"}>
           {diferencia === 0 ? "Cuadra exacto" : diferencia > 0 ? `Sobran ${pesos(diferencia)}` : `Faltan ${pesos(-diferencia)}`}
@@ -301,10 +312,10 @@ function Cuadre({ cuentas, hoy, d }: { cuentas: Cuenta[]; hoy: string; d: Return
       )}
       {contado && <button className="principal" onClick={cerrar}>{ultimoCierre ? "Cerrar el día otra vez" : "Cerrar el día"}</button>}
       {ultimoCierre && (
-        <p className="cierre-hecho">
+        <p className={ultimoCierre.contado === ultimoCierre.esperado ? "cierre-hecho" : "cierre-hecho falta"}>
           Cerrado a las {horaDe(ultimoCierre.en)} por {ultimoCierre.por}: contado {pesos(ultimoCierre.contado)}
           {ultimoCierre.contado === ultimoCierre.esperado ? " · cuadró exacto" : ultimoCierre.contado > ultimoCierre.esperado ? ` · sobraban ${pesos(ultimoCierre.contado - ultimoCierre.esperado)}` : ` · faltaban ${pesos(ultimoCierre.esperado - ultimoCierre.contado)}`}
-          {recibidoEfectivo !== ultimoCierre.esperado && ` · desde entonces entraron ${pesos(recibidoEfectivo - ultimoCierre.esperado)} más en efectivo`}
+          {recibidoEfectivo !== ultimoCierre.esperado && ` · después ${recibidoEfectivo > ultimoCierre.esperado ? `entraron ${pesos(recibidoEfectivo - ultimoCierre.esperado)} más` : `salieron ${pesos(ultimoCierre.esperado - recibidoEfectivo)}`} en efectivo`}
         </p>
       )}
     </article>

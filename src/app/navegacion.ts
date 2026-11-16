@@ -14,6 +14,7 @@ export type Vista =
   | { v: "personas" }
   | { v: "mipin" }
   | { v: "dias" }
+  | { v: "dia"; fecha: string }
   | { v: "auditoria" }
   | { v: "solicitudes" }
   | { v: "qr" };

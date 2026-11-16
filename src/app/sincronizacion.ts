@@ -432,11 +432,29 @@ class Sincronizador {
     }
   }
 
+  /** Lectura con la sesión de una ruta de /api/… que no es de administrador (p. ej. los días anteriores). */
+  async consultar<T>(ruta: string): Promise<Respuesta<T>> {
+    if (!this.sesion) return { error: "No hay sesión." } as Respuesta<T>;
+    try {
+      const { status, datos } = await pedir<T>(`/api/${ruta}`, { headers: { authorization: `Bearer ${this.sesion.token}` } });
+      if (status === 401) this.salir();
+      if (status === 403 && datos.error === "horario") this.salir((datos as { mensaje?: string }).mensaje);
+      return datos;
+    } catch {
+      return { error: "Sin señal. Para ver los días anteriores se necesita internet." } as Respuesta<T>;
+    }
+  }
+
   /** Descarga un archivo de /api/admin/… (por ejemplo, el CSV de un día). */
   async descargarAdmin(ruta: string, nombre: string): Promise<string | null> {
+    return this.descargar(`admin/${ruta}`, nombre);
+  }
+
+  /** Descarga un archivo de /api/… con la sesión. */
+  async descargar(ruta: string, nombre: string): Promise<string | null> {
     if (!this.sesion) return "No hay sesión.";
     try {
-      const r = await fetch(`/api/admin/${ruta}`, { credentials: "same-origin", headers: { authorization: `Bearer ${this.sesion.token}` } });
+      const r = await fetch(`/api/${ruta}`, { credentials: "same-origin", headers: { authorization: `Bearer ${this.sesion.token}` } });
       if (!r.ok) return "No se pudo descargar.";
       const a = document.createElement("a");
       a.href = URL.createObjectURL(await r.blob());

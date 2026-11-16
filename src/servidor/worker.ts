@@ -341,6 +341,20 @@ export class Barra extends DurableObject<Env> {
       .sort((a, b) => a.abiertaEn - b.abiertaEn || (a.id < b.id ? -1 : 1));
   }
 
+  /** Días anteriores (RF-52) con su resumen: de la proyección, día por día (el celular no los guarda). */
+  private diasAnteriores() {
+    const fechas = this.ctx.storage.sql.exec<{ fecha: string }>("SELECT DISTINCT fecha FROM cuenta_jornadas ORDER BY fecha DESC LIMIT 200").toArray().map((f) => f.fecha);
+    const dias = [];
+    for (const fecha of fechas) {
+      const cuentas = this.cuentasDe(fecha);
+      if (!jornadasConMovimiento(cuentas).includes(fecha)) continue; // solo abrió, sin pedidas ni cobros
+      const { porProducto: _, ...r } = resumenJornada(cuentas, fecha);
+      dias.push({ ...r, cierres: this.estado.jornadas?.[fecha] ?? [] });
+      if (dias.length === 120) break;
+    }
+    return dias;
+  }
+
   /** Lo que una operación necesita en memoria para aplicarse igual que con el registro completo. */
   private traerPara(op: Operacion) {
     if ("cuenta" in op) this.traerCuenta(op.cuenta);
@@ -1024,6 +1038,21 @@ export class Barra extends DurableObject<Env> {
       return json({ ok: aceptadas, rechazadas, ...(this.novedades(seq, base, q.vista) ?? this.foto(q.vista)), yo: yoDe(q) });
     }
     if (ruta === "/api/foto") return json(this.foto(q.vista));
+    // Días anteriores en la app (docs/18 fase 3 b): el administrador, o quien ve el día y
+    // el historial (docs/17). Solo lectura.
+    if (ruta === "/api/dias" || ruta === "/api/dia" || ruta === "/api/dia/csv") {
+      if (req.method !== "GET") return json({ error: "No existe" }, 404);
+      if (q.rol !== ADMIN && !(q.vista.dia && q.vista.historial)) return json({ error: "Ver los días anteriores necesita los permisos «Ve el día» e «Historial»." }, 403);
+      if (ruta === "/api/dias") return json({ dias: this.diasAnteriores() });
+      const fecha = url.searchParams.get("fecha") ?? "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Falta la fecha." }, 400);
+      if (ruta === "/api/dia/csv") {
+        return new Response(`\uFEFF${csvJornada(this.cuentasDe(fecha), fecha)}`, {
+          headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="barra-${fecha}.csv"`, "cache-control": "no-store" },
+        });
+      }
+      return json({ fecha, cuentas: this.cuentasDe(fecha), cierres: this.estado.jornadas?.[fecha] ?? [] });
+    }
     if (ruta === "/api/push" && req.method === "GET") {
       // La llave pública para suscribirse (sin llave: push apagado) y si este aparato ya está.
       const vapid = await this.llaveVapid();
@@ -1153,19 +1182,7 @@ export class Barra extends DurableObject<Env> {
       this.cortar(`d:${revocar}`);
       return json({ ok: true });
     }
-    if (ruta === "/api/admin/jornadas" && req.method === "GET") {
-      // Días anteriores (RF-52): de la proyección, día por día (el celular no los guarda).
-      const fechas = this.ctx.storage.sql.exec<{ fecha: string }>("SELECT DISTINCT fecha FROM cuenta_jornadas ORDER BY fecha DESC LIMIT 200").toArray().map((f) => f.fecha);
-      const dias = [];
-      for (const fecha of fechas) {
-        const cuentas = this.cuentasDe(fecha);
-        if (!jornadasConMovimiento(cuentas).includes(fecha)) continue; // solo abrió, sin pedidas ni cobros
-        const { porProducto: _, ...r } = resumenJornada(cuentas, fecha);
-        dias.push({ ...r, cierres: this.estado.jornadas?.[fecha] ?? [] });
-        if (dias.length === 120) break;
-      }
-      return json({ dias });
-    }
+    if (ruta === "/api/admin/jornadas" && req.method === "GET") return json({ dias: this.diasAnteriores() });
     if (ruta === "/api/admin/jornadas/csv" && req.method === "GET") {
       const fecha = url.searchParams.get("fecha") ?? "";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return json({ error: "Falta la fecha." }, 400);

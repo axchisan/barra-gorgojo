@@ -20,11 +20,30 @@ test("se cierra el día con el efectivo contado y el administrador ve el día y 
   await expect(p.locator(".cierre-hecho")).toContainText("por Administrador: contado $ 1");
   await expect(p.locator(".cierre-hecho")).toContainText("faltaban");
 
-  await p.getByRole("button", { name: "Días anteriores y CSV" }).click();
+  // Días anteriores (docs/18 fase 3 b): la lista, y el día abierto como «El día».
+  await p.getByRole("button", { name: "📅 Días anteriores" }).click();
   const dia = p.locator(".dia-pasado").first();
-  await expect(dia).toContainText("Cerrado");
+  await expect(dia).toContainText("Barra: contado $ 1, faltaban");
+  await p.screenshot({ path: "test-results/capturas/dias-anteriores.png" });
+  await dia.click();
+  await expect(p.locator(".dia-hero-titulo")).toHaveText("Vendido ese día");
+  await p.screenshot({ path: "test-results/capturas/dia-anterior.png", fullPage: true });
+  // El cuadre de ese día es solo para leer: muestra el cierre y no deja contar ni cerrar.
+  await expect(p.locator(".cuadre .cierre-hecho")).toContainText("por Administrador: contado $ 1");
+  await expect(p.getByPlaceholder("Efectivo contado")).toHaveCount(0);
+  // La cuenta, con su pedida (quién y a qué hora) y su pago.
+  await p.locator(".renglon-dia", { hasText: "Venta del cierre" }).click();
+  const cuenta = p.getByRole("dialog", { name: "Cuenta Venta del cierre" });
+  await expect(cuenta).toContainText("Pedida 1");
+  await expect(cuenta.locator(".pasada-ronda h3")).toContainText("Administrador");
+  await expect(cuenta.locator(".pasada-pago")).toContainText("💵 Efectivo");
+  await expect(cuenta).toContainText("Cobrada");
+  await p.screenshot({ path: "test-results/capturas/dia-anterior-cuenta.png" });
+  await p.keyboard.press("Escape");
+  await expect(cuenta).toHaveCount(0);
+  // El CSV del día, desde la cabecera.
   const descarga = p.waitForEvent("download");
-  await dia.getByRole("button", { name: "Descargar CSV" }).click();
+  await p.getByRole("button", { name: "Descargar el CSV de este día" }).click();
   const archivo = await descarga;
   expect(archivo.suggestedFilename()).toMatch(/^barra-\d{4}-\d{2}-\d{2}\.csv$/);
 });

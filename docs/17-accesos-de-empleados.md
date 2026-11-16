@@ -28,6 +28,10 @@ tiene siempre; los demás, si se les dan en «Personas y celulares».
 
 «Administra deudas» incluye ver todas las deudas (no tendría sentido anular lo que no se ve).
 
+**Días anteriores** (2026-11-16, docs/18 fase 3 b): los ve quien tiene **los dos**, «Ve el
+día» e «Historial» (o el administrador). `GET /api/dias`, `/api/dia?fecha=` y
+`/api/dia/csv?fecha=` responden 403 a los demás.
+
 **Esconder un botón no es seguridad** (docs/03): el servidor recorta lo que manda a cada
 celular según su persona — en la foto, en las novedades y en cada operación que reparte
 por WebSocket (`src/dominio/vista.ts`, función pura con sus pruebas). Quien ve menos recibe

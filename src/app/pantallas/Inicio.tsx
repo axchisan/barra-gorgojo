@@ -120,6 +120,7 @@ export function Inicio({ nav, pestana: pedida }: { nav: Nav; pestana: "cuentas" 
               <button onClick={() => { setCambiar(false); nav.ir({ v: "qr" }); }}>📱 Códigos QR</button>
             </>
           )}
+          {(sinc.esAdministrador || (sinc.veDia && sinc.veHistorial)) && <button onClick={() => { setCambiar(false); nav.ir({ v: "dias" }); }}>📅 Días anteriores</button>}
           <button onClick={() => { setCambiar(false); nav.ir({ v: "deudas" }); }}>📒 Deudas</button>
           {barra && <button onClick={() => { setCambiar(false); setSonido(true); }}>🔔 Sonido de los avisos</button>}
           <button onClick={() => { setCambiar(false); nav.ir({ v: "mipin" }); }}>Cambiar mi PIN</button>

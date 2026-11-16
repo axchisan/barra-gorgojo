@@ -724,7 +724,30 @@ html.apaisada-baja .dia .cifra.pendiente { grid-column: 1 / -1; }
 .cierre-hecho { margin: 0; padding: 8px 10px; border-radius: 8px; background: #e3f0de; color: var(--verde); font-weight: 700; }
 .cierre-hecho.falta { background: #fbe3e0; color: var(--rojo); }
 .dias { padding-bottom: 40px; }
-.dia-pasado header strong:first-child::first-letter { text-transform: uppercase; }
+/* Días anteriores (docs/18 fase 3 b): cada día es un botón que abre el día completo. */
+.dia-pasado { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.dia-pasado-cabeza { display: flex; justify-content: space-between; gap: 8px; font-size: 1.1rem; }
+.dia-pasado-fecha::first-letter, .dia-pasado-pantalla .barra-superior strong::first-letter { text-transform: uppercase; }
+.dia-pasado-ver { align-self: flex-end; font-weight: 700; color: var(--marron-medio); }
+.dia-pasado-pantalla .barra-superior strong { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dia-pasado-pantalla { padding-bottom: 32px; }
+/* Una cuenta de un día anterior, solo para leer. */
+.cuenta-pasada h2 small { font-size: 0.8em; font-weight: 600; }
+.cuenta-pasada-resumen { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0; }
+.cuenta-pasada-resumen strong { font-size: 1.6rem; }
+.estado-pasada { font-weight: 700; }
+.estado-pasada.abierta, .estado-pasada.anulada { color: var(--rojo); }
+.pasada-ronda, .pasada-pagos { border-top: 1px solid var(--neutro-200); padding-top: 8px; }
+.pasada-ronda h3, .pasada-pagos h3 { margin: 0 0 6px; font-size: 1rem; }
+.pasada-ronda h3 .tenue { font-weight: 500; }
+.pasada-linea, .pasada-pago { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.pasada-linea-que, .pasada-pago > span { display: flex; flex-direction: column; min-width: 0; }
+.pasada-linea small, .pasada-pago small { color: var(--neutro-600); font-size: 0.85rem; }
+.pasada-linea-valor, .pasada-pago strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pasada-linea.anulada { color: var(--neutro-600); }
+.pasada-linea.anulada .pasada-linea-texto { text-decoration: line-through; }
+.pasada-pago.deshecho { color: var(--neutro-600); }
+.pasada-pago.deshecho strong { text-decoration: line-through; }
 
 /* Auditoría (E4) */
 .auditoria .fecha-auditoria { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 10px; }
