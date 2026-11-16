@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AREAS, nombreArea, type Area } from "../../dominio/areas";
 import { jornada } from "../../dominio/estado";
 import { describirHorario, HORARIO_EMPLEADO, minutosDe, textoMinutos, type Horario } from "../../dominio/horario";
-import { haceCuanto, horaDe } from "../../dominio/formato";
+import { fechaCorta, haceCuanto, horaDe } from "../../dominio/formato";
 import type { Nav } from "../navegacion";
 import { sinc } from "../sincronizacion";
 import { cerrarConEnter } from "../teclado";
@@ -22,6 +22,7 @@ export function Personas({ nav }: { nav: Nav }) {
   const [celulares, setCelulares] = useState<Celular[]>([]);
   const [este, setEste] = useState("");
   const [rechazadas, setRechazadas] = useState<Rechazada[]>([]);
+  const [respaldos, setRespaldos] = useState<Record<"diarios" | "semanales" | "mensuales", { clave: string | null; subido: number | null; cuantos: number }> | null>(null);
   const [conexiones, setConexiones] = useState<Conexion[]>([]);
   const [verPin, setVerPin] = useState<string | null>(null);
   const [cambiando, setCambiando] = useState<string | null>(null);
@@ -44,6 +45,8 @@ export function Personas({ nav }: { nav: Nav }) {
     setEste(d.este);
     setConexiones(d.conexiones ?? []);
     setRechazadas(r.rechazadas ?? []);
+    // Aparte: si R2 tarda, no detiene lo demás.
+    void sinc.admin<{ niveles: NonNullable<typeof respaldos> }>("respaldos").then((x) => { if (!x.error) setRespaldos(x.niveles); });
   }, []);
   useEffect(() => { void cargar(); }, [cargar]);
   // El código se vence: el contador se actualiza solo.
@@ -141,6 +144,23 @@ export function Personas({ nav }: { nav: Nav }) {
           </div>
         ))}
       </section>
+
+      {respaldos && (
+        <section className="caja respaldos">
+          <h2>Respaldos</h2>
+          <p className="tenue">El registro completo, cada día a las 5:30 a. m., guardado en Cloudflare R2.</p>
+          {([["diarios", "Diario", "se guardan 30 días"], ["semanales", "Semanal", "se guardan 6 meses"], ["mensuales", "Mensual", "para siempre"]] as const).map(([n, nombre, cuanto]) => {
+            const x = respaldos[n];
+            const viejo = n === "diarios" && x.subido != null && Date.now() - x.subido > 36 * 3600_000;
+            return (
+              <p key={n} className={viejo ? "rechazo-error" : ""}>
+                <b>{nombre}:</b> {x.clave ? `${x.clave.replace(/^.*\/|\.json\.gz$/g, "")}${x.subido ? ` (${fechaCorta(x.subido)} ${horaDe(x.subido)})` : ""}` : "todavía ninguno (se guarda con el próximo respaldo, a las 5:30 a. m.)"} · {x.cuantos} guardados · {cuanto}
+                {viejo ? " · ⚠️ el último diario tiene más de un día" : ""}
+              </p>
+            );
+          })}
+        </section>
+      )}
 
       {rechazadas.length > 0 && (
         <section className="caja">

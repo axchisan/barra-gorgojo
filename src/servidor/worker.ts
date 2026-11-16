@@ -17,6 +17,7 @@ import { esCompleta, limitarCambios, limitarEstado, cuentaDeHoy, type Vista } fr
 import { solicitudesVigentes, TOPE_LINEAS, TOPE_UNIDADES, TOPE_VALOR, valorSolicitud, type LineaSolicitud } from "../dominio/solicitudes";
 import { Lugares } from "./qr";
 import { endpointValido, enviar, leerVapid, Suscripciones, type Aviso, type Vapid } from "./push";
+import { guardarRespaldo, ultimos } from "./respaldos";
 
 interface Env {
   BARRA: DurableObjectNamespace<Barra>;
@@ -112,13 +113,18 @@ export default {
    */
   async scheduled(_evento: ScheduledController, env: Env): Promise<void> {
     const barra = barraDe(env);
-    const { texto, operaciones } = await barra.respaldo();
-    const comprimido = await comprimir(texto);
-    const fecha = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
-    await env.RESPALDOS.put(`respaldos/${fecha}.json.gz`, comprimido, {
-      httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-      customMetadata: { operaciones: String(operaciones), base: nombreBase(env) },
-    });
+    try {
+      const { texto, operaciones } = await barra.respaldo();
+      const comprimido = await comprimir(texto);
+      const fecha = new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
+      // Por niveles (src/servidor/respaldos.ts): diario, y el semanal y el mensual si faltan.
+      const guardados = await guardarRespaldo(env.RESPALDOS, fecha, comprimido, { operaciones: String(operaciones), base: nombreBase(env) });
+      console.log(JSON.stringify({ aviso: "respaldo", fecha, operaciones, guardados }));
+    } catch (e) {
+      // Que el administrador se entere (push), y que quede el error en los logs.
+      await barra.alertarRespaldo(String(e));
+      throw e;
+    }
   },
 } satisfies ExportedHandler<Env>;
 
@@ -925,19 +931,26 @@ export class Barra extends DurableObject<Env> {
    * administradores, uno cada 30 minutos como mucho. El detalle queda en «Lo que no se
    * aceptó» y en los logs; el aviso no lleva datos.
    */
-  private alertarAdmin(detalle: string, ahora = Date.now()) {
-    console.error(JSON.stringify({ aviso: "alerta-administrador", detalle: detalle.slice(0, 300) }));
+  private alertarAdmin(detalle: string, ahora = Date.now(), clave = "error", aviso: Aviso = { titulo: "⚠️ La barra tuvo un error", cuerpo: "No se aceptó una anotación por un error del sistema. Revise «Personas y celulares» → «Lo que no se aceptó».", etiqueta: "error", ir: "personas" }) {
+    console.error(JSON.stringify({ aviso: "alerta-administrador", clave, detalle: detalle.slice(0, 300) }));
     if (!this.env.VAPID) return;
     const sql = this.ctx.storage.sql;
-    const ultima = sql.exec<{ en: number }>("SELECT en FROM alertas WHERE clave = 'error'").toArray()[0]?.en ?? 0;
+    const ultima = sql.exec<{ en: number }>("SELECT en FROM alertas WHERE clave = ?", clave).toArray()[0]?.en ?? 0;
     if (ahora - ultima < ESPERA_ALERTA) return;
     const para = this.suscripciones.todas().filter((s) => {
       const p = this.acceso.persona(s.persona);
       return !!p && p.activa && p.rol === ADMIN && this.acceso.dispositivoActivo(s.dispositivo);
     });
     if (!para.length) return;
-    sql.exec("INSERT INTO alertas (clave, en) VALUES ('error', ?) ON CONFLICT (clave) DO UPDATE SET en = excluded.en", ahora);
-    this.ctx.waitUntil(this.mandar({ titulo: "⚠️ La barra tuvo un error", cuerpo: "No se aceptó una anotación por un error del sistema. Revise «Personas y celulares» → «Lo que no se aceptó».", etiqueta: "error", ir: "personas" }, para));
+    sql.exec("INSERT INTO alertas (clave, en) VALUES (?, ?) ON CONFLICT (clave) DO UPDATE SET en = excluded.en", clave, ahora);
+    this.ctx.waitUntil(this.mandar(aviso, para));
+  }
+
+  /** Lo llama el Cron si el respaldo falló (docs/06 «Respaldos»): aviso push al administrador. */
+  async alertarRespaldo(detalle: string) {
+    this.alertarAdmin(`Falló el respaldo: ${detalle}`, Date.now(), "respaldo", {
+      titulo: "⚠️ No se pudo guardar el respaldo", cuerpo: "El respaldo de esta mañana falló. Revise «Personas y celulares» → «Respaldos».", etiqueta: "respaldo", ir: "personas",
+    });
   }
 
   /** Quién hace el pedido: sesión firmada + celular vinculado que coincide + persona activa. */
@@ -1197,6 +1210,10 @@ export class Barra extends DurableObject<Env> {
     }
     if (ruta === "/api/admin/rechazadas" && req.method === "GET") {
       return json({ rechazadas: this.ctx.storage.sql.exec("SELECT id, persona, dispositivo, motivo, en, datos, error FROM rechazadas ORDER BY en DESC LIMIT 200").toArray() });
+    }
+    if (ruta === "/api/admin/respaldos" && req.method === "GET") {
+      // Cuándo fue el último respaldo de cada nivel (docs/06 «Respaldos»).
+      return json({ niveles: await ultimos(this.env.RESPALDOS) });
     }
     if (ruta === "/api/admin/respaldo" && req.method === "GET") {
       return new Response(this.respaldo().texto, { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });

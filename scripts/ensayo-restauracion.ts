@@ -42,10 +42,13 @@ function bajarUltimo(): string {
     const fecha = new Date(Date.now() - 5 * 3600_000 - d * 86400_000).toISOString().slice(0, 10);
     const destino = `migracion/respaldos/${fecha}.json`; // wrangler lo entrega descomprimido
     if (existsSync(destino)) return destino;
-    try {
-      execFileSync("npx", ["wrangler", "r2", "object", "get", `${BUCKET}/respaldos/${fecha}.json.gz`, "--remote", "--file", destino], { stdio: "pipe" });
-      if (existsSync(destino)) return destino;
-    } catch { /* ese día no hay: el anterior */ }
+    // Desde el 2026-11-16 los diarios van en respaldos/diarios/; antes, en respaldos/.
+    for (const clave of [`respaldos/diarios/${fecha}.json.gz`, `respaldos/${fecha}.json.gz`]) {
+      try {
+        execFileSync("npx", ["wrangler", "r2", "object", "get", `${BUCKET}/${clave}`, "--remote", "--file", destino], { stdio: "pipe" });
+        if (existsSync(destino)) return destino;
+      } catch { /* ese día no está ahí: la otra carpeta, o el día anterior */ }
+    }
   }
   throw new Error("No encontré respaldos en R2 de los últimos 10 días.");
 }

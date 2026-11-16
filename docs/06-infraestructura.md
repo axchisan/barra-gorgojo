@@ -124,9 +124,24 @@ Tres capas, de la más inmediata a la más lejana:
 1. **Recuperación a un punto en el tiempo** del SQLite de Durable Objects: Cloudflare
    permite devolver el objeto a cualquier momento de los últimos 30 días.
 2. **Exportación diaria a R2** a las 5:30 a. m. (después del corte de jornada): el
-   registro de operaciones **completo**, en JSON comprimido (`respaldos/AAAA-MM-DD.json.gz`).
-   Se conservan 365 días con una regla de ciclo de vida del bucket (`respaldos-365-dias`,
-   activa desde el 2026-11-02). El respaldo es de la base vigente (`vars.BASE`).
+   registro de operaciones **completo**, en JSON comprimido. El respaldo es de la base
+   vigente (`vars.BASE`). **Por niveles desde el 2026-11-16** (pedido del dueño: que no se
+   llene de copias; `src/servidor/respaldos.ts`):
+
+   | Carpeta | Cuál | Se guarda (regla del bucket) |
+   |---|---|---|
+   | `respaldos/diarios/AAAA-MM-DD.json.gz` | todos los días | 30 días (`respaldos-diarios-30-dias`) |
+   | `respaldos/semanales/AAAA-MM-DD.json.gz` | el primero de cada semana (fecha de su lunes) | 6 meses (`respaldos-semanales-183-dias`) |
+   | `respaldos/mensuales/AAAA-MM.json.gz` | el primero de cada mes | para siempre (sin regla) |
+
+   El semanal y el mensual son «el primero que falte»: si el Cron no corrió un lunes o un
+   día 1, quedan con el siguiente. Si el respaldo falla, el administrador recibe un aviso
+   push («⚠️ No se pudo guardar el respaldo») y en «Personas y celulares» → «Respaldos» ve
+   el último de cada nivel (en rojo si el diario tiene más de un día). Los de antes
+   (`respaldos/AAAA-MM-DD.json.gz`, del 2026-11-02 al 16) se quedan hasta cumplir 365 días
+   (regla `respaldos-365-dias`, con el prefijo `respaldos/2026-` para que no alcance a los
+   mensuales). `pnpm ensayo-restauracion` busca primero en `diarios/` y luego en la carpeta
+   vieja.
 3. **Exportación manual a CSV** de cada día desde «Días anteriores» (E1), que el negocio
    puede guardar donde quiera, y el respaldo completo a demanda (`/api/admin/respaldo`).
 

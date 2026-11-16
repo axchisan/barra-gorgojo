@@ -116,6 +116,14 @@ describe("accesos de empleados", () => {
     expect((await s.pedir(ana, "/api/dias")).status).toBe(200);
   });
 
+  it("el administrador ve cuándo fue el último respaldo de cada nivel; los demás no", async () => {
+    const r = await json(await s.pedir(admin, "/api/admin/respaldos"));
+    expect(r.status).toBe(200);
+    expect(Object.keys(r.datos.niveles)).toEqual(["diarios", "semanales", "mensuales"]);
+    expect(r.datos.niveles.diarios).toMatchObject({ cuantos: expect.any(Number) });
+    expect((await s.pedir(ana, "/api/admin/respaldos")).status).toBe(403);
+  });
+
   it("el administrador no tiene horario", async () => {
     expect((await accion({ accion: "horario", id: idDe("Administrador"), horario: NUNCA })).status).toBe(400);
   });
