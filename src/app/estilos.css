@@ -1289,3 +1289,5 @@ html .inicio .panel-cuenta .pie-fijo {
    flexible encogía los botones hasta montarlos unos sobre otros. */
 .hoja-sonido > * { flex-shrink: 0; }
 .hoja-sonido > .grande { flex: none; }
+/* Rechazos por un error del sistema (fase 3, punto 5), en «Lo que no se aceptó». */
+.rechazo-error { color: var(--rojo); font-weight: 600; }

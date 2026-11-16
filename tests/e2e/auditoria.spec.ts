@@ -1,5 +1,5 @@
 // Auditoría y celulares conectados (E4 de docs/12), por la pantalla.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 test("el administrador ve el día en la auditoría, con lo delicado resaltado, y los celulares conectados", async ({ browser }) => {

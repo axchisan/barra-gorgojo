@@ -1,6 +1,6 @@
 // Mantener presionado en el teléfono (docs/02 «Opciones de un producto»): con un toque largo
 // de verdad (eventos táctiles), no debe quedar texto seleccionado ni salir el menú de copiar.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };
@@ -15,6 +15,9 @@ test("un toque largo en un producto con opciones abre la hoja sin seleccionar te
   await p.getByRole("button", { name: "＋ Nueva cuenta" }).click();
   const boton = p.locator("main > section .producto.con-opciones").first();
   await expect(boton).toBeVisible();
+  // El toque va por coordenadas de la pantalla: el botón tiene que estar a la vista (con una
+  // base propia la gaseosa queda debajo del borde; antes pasaba por datos de otra prueba).
+  await boton.scrollIntoViewIfNeeded();
   const caja = (await boton.boundingBox())!;
   const x = caja.x + caja.width / 2, y = caja.y + caja.height / 2;
   const cdp = await p.context().newCDPSession(p);

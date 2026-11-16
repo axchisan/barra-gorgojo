@@ -2,7 +2,7 @@
 // tocándolos o deslizándolos, uno nuevo reemplaza al anterior y los rechazos del
 // servidor se quedan hasta que se toquen.
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./prueba";
 import { APARATOS, celular } from "./ayuda";
 
 /** Abre una cuenta con un producto: deja el aviso «Anotado · Deshacer». */

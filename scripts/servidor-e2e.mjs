@@ -20,6 +20,9 @@ const w = await unstable_startWorker({
     CLAVE: { type: "plain_text", value: "prueba" }, // llave de instalación: saca códigos de vinculación
     PINES: { type: "plain_text", value: "pines-solo-para-e2e" },
     FIRMA: { type: "plain_text", value: "firma-solo-para-e2e" },
+    // Una base por archivo de prueba (x-base-e2e, tests/e2e/prueba.ts): lo que deja una
+    // prueba no le cambia la pantalla a la siguiente (deuda 5 de docs/16).
+    BASES_E2E: { type: "plain_text", value: "1" },
   },
   dev: { persist: PERSISTIR, server: { port: PUERTO }, inspector: false, watch: false, logLevel: "warn" },
 });

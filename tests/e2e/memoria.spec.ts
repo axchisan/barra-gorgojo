@@ -2,7 +2,7 @@
 // se trae sin perder ni duplicar; lo pendiente sobrevive a cerrar la app sin señal; y con
 // varias pestañas, una sola tiene la conexión y las demás anotan a través de ella.
 
-import { expect, test, type Page, type WebSocket } from "@playwright/test";
+import { expect, test, type Page, type WebSocket } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 /** Lo que hay en la cola de IndexedDB, como `t:cuenta`. */

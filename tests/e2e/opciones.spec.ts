@@ -1,6 +1,6 @@
 // Opciones de un producto (docs/02): el administrador crea los sabores de la gaseosa de una
 // vez; al anotar, un toque es la gaseosa general y mantener presionado deja escoger cuál.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };

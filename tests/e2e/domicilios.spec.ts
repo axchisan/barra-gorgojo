@@ -1,6 +1,6 @@
 // Domicilios en el teléfono de comida (2026-11-15): hora de entrega, estados y recordatorio.
 // Las tarjetas van en su lugar de siempre, con una marca sutil (sin lista aparte arriba).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };

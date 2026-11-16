@@ -1,6 +1,6 @@
 // Conflictos de docs/04 con tres celulares de verdad (E6): uno sin señal anota en una
 // cuenta que otro cobra; uno sin señal cobra una cuenta que otro ya cobró.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./prueba";
 import { celular } from "./ayuda";
 
 const tarjeta = (p: Page, nombre: string) => p.locator(".tarjeta", { hasText: nombre });

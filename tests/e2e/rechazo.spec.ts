@@ -1,6 +1,6 @@
 // Rechazar un pedido a la barra (docs/04): comida pide, la barra dice «no se puede» con el
 // motivo, y a comida le llega el aviso rojo hasta «Entendido».
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 test("la barra rechaza un pedido con motivo y comida recibe el aviso", async ({ browser }) => {

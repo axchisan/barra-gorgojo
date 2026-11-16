@@ -1,7 +1,7 @@
 // Cobrar (F2 y F3 de docs/12): sugerencias de con cuánto pagan y «Mostrar al cliente»
 // sin perder lo escogido.
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { sugerirPago } from "../../src/dominio/pago";
 import { celular } from "./ayuda";
 

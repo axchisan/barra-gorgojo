@@ -1,6 +1,6 @@
 // Notas de comida (2026-11-15): las notas que se escriben se aprenden como chips para ese
 // tipo de plato, y la «📝 Nota larga» de la pedida.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };

@@ -2,7 +2,7 @@
 // quien pide desde comida y también tiene la barra no oye su propio pedido, lo puede
 // cancelar (no «rechazar»), y si la cuenta queda vacía se anula sola. Y en el cobro, «Solo
 // barra» escoge de un toque todo lo de la barra.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };

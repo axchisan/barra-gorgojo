@@ -1,5 +1,5 @@
 // Cerrar el día (RF-51), días anteriores (RF-52) y CSV (RF-53), por la pantalla.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 test("se cierra el día con el efectivo contado y el administrador ve el día y baja su CSV", async ({ browser }) => {

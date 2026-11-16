@@ -1,7 +1,7 @@
 // Un celular con anotaciones pendientes de otra base (la vieja, después de migrar) no
 // las envía: las aparta, avisa, y el administrador las descarga. Ver negocio/docs/10.
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { sesionApi } from "./ayuda";
 
 test("los pendientes de otra base se apartan, se avisan y nunca llegan al servidor", async ({ browser }) => {

@@ -1,6 +1,6 @@
 // Editar una pedida ya anotada por la pantalla: agregar productos y cambiar uno por otro;
 // queda en la auditoría como edición (2026-11-15).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 test("en el detalle se agrega a una pedida y se cambia un producto por otro; la auditoría lo muestra como edición", async ({ browser }) => {

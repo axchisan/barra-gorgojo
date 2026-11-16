@@ -1,5 +1,5 @@
 // Fase 0 de docs/18: precio de los adicionales (docs/04) y accesos de empleados (docs/17).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, codigo, sesionApi, teclearPin } from "./ayuda";
 
 test("el adicional va a precio normal; se puede cobrar a precio de cancha al anotar y cambiar después", async ({ browser }) => {

@@ -2,7 +2,7 @@
 // Worker espera la red un momento y si no responde abre la copia (docs/13, punto 1; RNF-04).
 // En localhost la app no registra el Service Worker: aquí se entra por 127.0.0.1.
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 
 const DIR = "http://127.0.0.1:8788/";
 

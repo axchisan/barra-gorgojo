@@ -1,7 +1,7 @@
 // Acceso por persona (fase D), por la pantalla: vincular con el código del administrador,
 // crear y escribir el PIN, y lo que cada rol puede hacer.
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, entrarComo, teclearPin, PIN } from "./ayuda";
 
 test("el administrador vincula un celular con un código; la persona crea su PIN y él lo ve", async ({ browser }) => {

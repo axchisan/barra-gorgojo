@@ -2,7 +2,7 @@
 // ✓/Enter hace lo esperable, las barras fijas no se montan sobre el teclado y «atrás»
 // cierra la hoja o el menú abierto en vez de sacar a la persona de la pantalla.
 
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "./prueba";
 import { celular as vinculado } from "./ayuda";
 
 async function celular(browser: Browser, viewport = { width: 360, height: 740 }): Promise<Page> {

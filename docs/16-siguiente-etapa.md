@@ -55,6 +55,7 @@ Lo que conviene saber antes de tocar el código. En orden de importancia.
    veces no arranca o pierde la conexión (`retry: 1` en `vite.config.ts`); y las e2e
    comparten un servidor, así que una prueba que deja cuentas abiertas puede cambiarle las
    medidas a `espacio-movil`. Si una falla, repetirla sola antes de buscar el error.
+   **Resuelto el 2026-11-16 para las e2e**: una base por archivo (docs/18 fase 3, punto 3).
 6. **`GET /api/cuentas?ids=`** devuelve cualquier cuenta a cualquier sesión válida. Está
    bien para el personal; **no** debe quedar expuesta a los clientes cuando haya QR.
 7. **El sonido del aviso necesita un toque previo** (lo exige el navegador) y no suena

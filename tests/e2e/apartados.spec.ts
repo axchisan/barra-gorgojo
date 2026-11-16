@@ -1,5 +1,5 @@
 // Apartados, domicilios y mesa sin número en el teléfono de comida (2026-11-15).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };

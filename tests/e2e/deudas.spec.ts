@@ -1,5 +1,5 @@
 // Deudas (docs/15) por la pantalla: pasar una cuenta a deuda, verla en «Deudas» y recibir un pago.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 const soloDigitos = (s: string) => Number(s.replace(/\D/g, ""));

@@ -257,6 +257,12 @@ Personas con su rol y su PIN (el administrador lo ve, ADR-10): agregar, activar 
 desactivar y quitar el PIN (la persona crea uno nuevo al entrar). Celulares: vincular uno
 con un código de 6 números y quitar uno perdido (RF-72).
 
+Abajo, **«Lo que no se aceptó»**: las anotaciones que el servidor rechazó, con su motivo.
+Desde el 2026-11-16 las que fueron por un **error del sistema** (no por las reglas del
+negocio) salen en rojo y le llegan al administrador como aviso push («⚠️ La barra tuvo un
+error», uno cada 30 minutos como mucho, si activó los avisos en su aparato); tocar el
+aviso abre esta pantalla.
+
 ### 10 b · Accesos de empleados (administrador, 2026-11-15)
 
 En «Personas y celulares», al tocar la persona: «📊 Ve el día de ventas», «🗂 Ve deudas y

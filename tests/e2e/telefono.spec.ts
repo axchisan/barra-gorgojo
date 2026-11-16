@@ -1,5 +1,5 @@
 // Revisión del teléfono vertical (docs/19, hallazgos H2 a H4): 360 × 740, como se usa en el local.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 const TELEFONO = { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true };

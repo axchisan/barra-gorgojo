@@ -3,7 +3,7 @@
 // (7 cervezas, 8 gaseosas, 4 otros, con nombres largos) y 11 cuentas, y mide en cinco
 // tamaños. Las metas se miden a 360 × 740; en tablet, que nada empeore.
 
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "./prueba";
 import { sesionApi, vincularYEntrar } from "./ayuda";
 
 const TAMANOS = {

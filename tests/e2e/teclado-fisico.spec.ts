@@ -1,5 +1,5 @@
 // Teclado físico en el portátil (docs/02 «Teclado físico», docs/18 fase 2).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 const PORTATIL = { viewport: { width: 1366, height: 768 }, hasTouch: false, isMobile: false }; // sin lo táctil del perfil «Pixel 5» de las pruebas

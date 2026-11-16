@@ -1,7 +1,7 @@
 // Visto en la tablet del local (2026-11-15): la pestaña de Chrome escondida tenía la
 // conexión, Chrome la congeló, y la app visible no recibía nada. Ahora la pestaña que se
 // congela suelta la conexión y la visible la toma.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 test.setTimeout(90_000);

@@ -3,7 +3,7 @@
 // Corre contra `pnpm e2e:servidor` (catálogo de ejemplo, base nueva). Cada celular se
 // vincula con un código y entra con su PIN (tests/e2e/ayuda.ts).
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./prueba";
 import { celular } from "./ayuda";
 
 const soloDigitos = (s: string) => Number(s.replace(/\D/g, ""));

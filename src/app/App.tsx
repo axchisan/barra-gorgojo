@@ -43,7 +43,10 @@ export function App() {
   useAtajos({ "?": () => setAtajos(true) }, !!sinc.sesion);
   // Avisos con la app cerrada (docs/18 fase 4): tocar el aviso trae aquí, a «Despachar».
   useEffect(() => {
-    const irA = (ir: unknown) => { if (ir === "despacho") nav.ir({ v: "inicio", pestana: "despacho" }); };
+    const irA = (ir: unknown) => {
+      if (ir === "despacho") nav.ir({ v: "inicio", pestana: "despacho" });
+      else if (ir === "personas") nav.ir({ v: "personas" });
+    };
     const pedido = new URLSearchParams(location.search).get("ir");
     if (pedido) { history.replaceState(history.state, "", location.pathname); irA(pedido); }
     const alMensaje = (e: MessageEvent) => { if (e.data?.tipo === "ir") irA(e.data.ir); };

@@ -3,7 +3,7 @@
 // la tablet del negocio, en vertical y girados. Mide, guarda captura y comprueba.
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./prueba";
 import { APARATOS, celular, sesionApi } from "./ayuda";
 
 type Aparato = keyof typeof APARATOS;

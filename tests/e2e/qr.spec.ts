@@ -1,6 +1,6 @@
 // Pedidos de los clientes por QR, de punta a punta (docs/20): el cliente pide desde la
 // mesa, al personal le llega con aviso, lo acepta en parte y el cliente ve qué no había.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 test("un cliente pide por QR, la barra acepta una parte y el cliente ve la confirmación", async ({ browser }) => {

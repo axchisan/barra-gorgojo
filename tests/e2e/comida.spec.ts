@@ -1,6 +1,6 @@
 // Comida y barra en la misma app (docs/14): comida anota un plato con nota y una cerveza,
 // la barra recibe el aviso y despacha, y comida cobra la cuenta en su caja.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 test("comida pide una cerveza, la barra la despacha y comida cobra en su caja", async ({ browser }) => {

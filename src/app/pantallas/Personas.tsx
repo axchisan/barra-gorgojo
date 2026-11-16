@@ -12,7 +12,7 @@ interface PersonaAdmin {
   areas?: Area[]; dias?: { area: Area; fecha: string }[]; permisos?: string[]; horario?: Horario | null;
 }
 interface Celular { id: string; nombre: string; creado: number; por: string; ultimo_uso: number | null; revocado: number | null }
-interface Rechazada { id: string; persona: string; motivo: string; en: number }
+interface Rechazada { id: string; persona: string; motivo: string; en: number; error?: number }
 /** Un WebSocket abierto ahora (E4): quién lo usa, con qué versión y cuánto le falta enviar. */
 interface Conexion { dispositivo: string; persona: string; version?: string; pendientes?: number; visto?: number }
 
@@ -145,8 +145,11 @@ export function Personas({ nav }: { nav: Nav }) {
       {rechazadas.length > 0 && (
         <section className="caja">
           <h2>Lo que no se aceptó</h2>
+          {rechazadas.some((r) => r.error) && (
+            <p className="nota">⚠️ Las marcadas como <b>error del sistema</b> no son de las reglas del negocio: avísele a quien mantiene la app.</p>
+          )}
           {rechazadas.slice(0, 20).map((r) => (
-            <p key={`${r.id}-${r.en}`} className="tenue">{horaDe(r.en)} · {r.persona}: {r.motivo}</p>
+            <p key={`${r.id}-${r.en}`} className={r.error ? "rechazo-error" : "tenue"}>{horaDe(r.en)} · {r.persona}: {r.error ? "⚠️ error del sistema · " : ""}{r.motivo}</p>
           ))}
         </section>
       )}

@@ -1,5 +1,5 @@
 // Abonos por la pantalla: pagar una pedida, dividir entre varios y cobrar el resto.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./prueba";
 import { APARATOS, celular, sesionApi } from "./ayuda";
 
 const soloDigitos = (s: string) => Number(s.replace(/\D/g, ""));

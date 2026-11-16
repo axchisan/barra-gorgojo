@@ -1,6 +1,6 @@
 // Deuda 1 de docs/16 (regla 3): una anotación no se pierde aunque la app se recargue en el
 // mismo instante en que se anota, antes de que IndexedDB termine de guardarla.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular, sesionApi } from "./ayuda";
 
 test("anotar y recargar en el mismo instante: la cuenta no se pierde y llega al servidor una vez", async ({ browser }) => {

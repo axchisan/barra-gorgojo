@@ -42,10 +42,31 @@ interface Env extends ConfigCorreo {
   VAPID?: string;
   /** Solo en las pruebas: acepta suscripciones a un servicio de push falso en 127.0.0.1. */
   PUSH_LOCAL?: string;
+  /**
+   * Solo en el servidor de las pruebas de Playwright (scripts/servidor-e2e.mjs): cada
+   * archivo de prueba usa su propia base, por la cabecera `x-base-e2e` o la cookie que
+   * deja. Producción y pruebas no la tienen: ahí la cabecera no hace nada.
+   */
+  BASES_E2E?: string;
 }
 
 const nombreBase = (env: Env) => env.BASE || BASE_ORIGINAL;
-const barraDe = (env: Env) => env.BARRA.get(env.BARRA.idFromName(nombreBase(env)));
+const barraDe = (env: Env, e2e?: string | null) => env.BARRA.get(env.BARRA.idFromName(e2e ? `${nombreBase(env)}--${e2e}` : nombreBase(env)));
+
+const COOKIE_E2E = "bg_base_e2e";
+/** La base de un archivo de prueba de Playwright (ver `BASES_E2E`); `null` en los entornos de verdad. */
+function baseE2e(req: Request, env: Env): string | null {
+  if (env.BASES_E2E !== "1") return null;
+  const v = req.headers.get("x-base-e2e") ?? (req.headers.get("cookie") ?? "").split(/;\s*/).map((c) => c.split("=")).find(([k]) => k === COOKIE_E2E)?.[1];
+  return v && /^[a-z0-9-]{1,60}$/.test(v) ? v : null;
+}
+/** Deja la base en una cookie: así también la llevan el WebSocket y el Service Worker. */
+function conCookieE2e(req: Request, r: Response, e2e: string | null): Response {
+  if (!e2e || !req.headers.get("x-base-e2e") || r.status === 101 || (req.headers.get("cookie") ?? "").includes(`${COOKIE_E2E}=${e2e}`)) return r;
+  const n = new Response(r.body, r);
+  n.headers.append("set-cookie", `${COOKIE_E2E}=${e2e}; Path=/; SameSite=Strict`);
+  return n;
+}
 
 const DIA = 24 * 3600_000;
 const comprimir = (texto: string) => new Response(new Blob([texto]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
@@ -58,6 +79,8 @@ const VERSION_PROYECCION = 1;
 const VENTANA_VIGENTE = 36 * 3600_000;
 /** Ventana en que quien cobró o anuló puede deshacerlo sin ser administrador. */
 const VENTANA_DESHACER = 5 * 60_000;
+/** Entre una alerta de error al administrador y la siguiente. */
+const ESPERA_ALERTA = 30 * 60_000;
 const COOKIE = "bg_disp";
 
 const json = (datos: unknown, status = 200, extra: Record<string, string> = {}) =>
@@ -79,8 +102,9 @@ export default {
     }
     // La página del cliente que pide con el QR (docs/20): /m/<código> sirve cliente.html.
     if (url.pathname.startsWith("/m/") && req.method === "GET") return env.ASSETS.fetch(new Request(new URL("/cliente", url), req));
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
-    return barraDe(env).fetch(req);
+    const e2e = baseE2e(req, env);
+    if (!url.pathname.startsWith("/api/")) return conCookieE2e(req, await env.ASSETS.fetch(req), e2e);
+    return conCookieE2e(req, await barraDe(env, e2e).fetch(req), e2e);
   },
 
   /**
@@ -180,6 +204,12 @@ export class Barra extends DurableObject<Env> {
         id TEXT NOT NULL, persona TEXT NOT NULL, dispositivo TEXT NOT NULL,
         datos TEXT NOT NULL, motivo TEXT NOT NULL, en INTEGER NOT NULL
       )`);
+      // Desde el 2026-11-16: si el rechazo fue por un error del sistema (fase 3, punto 5).
+      if (!sql.exec<{ name: string }>("PRAGMA table_info(rechazadas)").toArray().some((c) => c.name === "error")) {
+        sql.exec("ALTER TABLE rechazadas ADD COLUMN error INTEGER NOT NULL DEFAULT 0");
+      }
+      // Cuándo se mandó cada clase de alerta, para no mandar más de una cada tanto.
+      sql.exec("CREATE TABLE IF NOT EXISTS alertas (clave TEXT PRIMARY KEY, en INTEGER NOT NULL)");
       // Proyección (E3, docs/13 punto 3): cada cuenta como quedó, los días en que tuvo
       // movimiento y lo general (catálogo, orden, cierres, seq). Se escribe en la misma
       // transacción que la operación; al despertar se cargan solo las cuentas vigentes en
@@ -714,11 +744,14 @@ export class Barra extends DurableObject<Env> {
     const aceptadas: string[] = [];
     const rechazadas: Rechazo[] = [];
     const ahora = Date.now();
-    const rechazar = (id: string, t: unknown, crudo: unknown, motivo: string) => {
-      this.ctx.storage.sql.exec("INSERT INTO rechazadas (id, persona, dispositivo, datos, motivo, en) VALUES (?, ?, ?, ?, ?, ?)",
-        id, quien.nombre, quien.dispositivo, JSON.stringify(crudo).slice(0, 10_000), motivo, ahora);
-      console.warn(JSON.stringify({ aviso: "operacion-rechazada", id, t, persona: quien.nombre, motivo }));
+    // `error`: no es una regla del negocio sino algo que no debería pasar (la app mandó algo
+    // que el servidor no entiende, o una regla falló): se marca y se avisa al administrador.
+    const rechazar = (id: string, t: unknown, crudo: unknown, motivo: string, error = false) => {
+      this.ctx.storage.sql.exec("INSERT INTO rechazadas (id, persona, dispositivo, datos, motivo, en, error) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        id, quien.nombre, quien.dispositivo, JSON.stringify(crudo).slice(0, 10_000), motivo, ahora, error ? 1 : 0);
+      console.warn(JSON.stringify({ aviso: error ? "operacion-rechazada-por-error" : "operacion-rechazada", id, t, persona: quien.nombre, motivo }));
       rechazadas.push({ id, motivo });
+      if (error) this.alertarAdmin(`${quien.nombre}: ${motivo}`);
     };
     for (const crudo of ops.slice(0, 200)) {
       const idCrudo = crudo && typeof crudo === "object" && typeof (crudo as { id?: unknown }).id === "string" ? (crudo as { id: string }).id : null;
@@ -733,7 +766,7 @@ export class Barra extends DurableObject<Env> {
         continue;
       }
       const v = validar(crudo);
-      if ("motivo" in v) { rechazar(idCrudo, (crudo as { t?: unknown }).t, crudo, v.motivo); continue; }
+      if ("motivo" in v) { rechazar(idCrudo, (crudo as { t?: unknown }).t, crudo, v.motivo, true); continue; }
       // Fuera de su horario (docs/17) solo entra lo que se anotó dentro de él (o hasta un
       // rato después): lo anotado sin señal que llega tarde no se pierde (regla 3).
       if (quien.fuera) {
@@ -783,7 +816,7 @@ export class Barra extends DurableObject<Env> {
         // Una regla que falla a medias pudo dejar el estado tocado: se rearma del registro.
         console.error(JSON.stringify({ aviso: "aplicar-fallo", id: op.id, t: op.t, error: String(e) }));
         this.cargar();
-        rechazar(op.id, op.t, crudo, "No se pudo anotar. Avise al administrador.");
+        rechazar(op.id, op.t, crudo, "No se pudo anotar. Avise al administrador.", true);
         continue;
       }
       // Queda escrito el precio con que se cobró cada línea, para que recalcular el
@@ -875,6 +908,26 @@ export class Barra extends DurableObject<Env> {
     return resultados.filter((r) => r === "enviado").length;
   }
 
+  /**
+   * Algo que no debería pasar (fase 3, punto 5): aviso push a los aparatos suscritos de los
+   * administradores, uno cada 30 minutos como mucho. El detalle queda en «Lo que no se
+   * aceptó» y en los logs; el aviso no lleva datos.
+   */
+  private alertarAdmin(detalle: string, ahora = Date.now()) {
+    console.error(JSON.stringify({ aviso: "alerta-administrador", detalle: detalle.slice(0, 300) }));
+    if (!this.env.VAPID) return;
+    const sql = this.ctx.storage.sql;
+    const ultima = sql.exec<{ en: number }>("SELECT en FROM alertas WHERE clave = 'error'").toArray()[0]?.en ?? 0;
+    if (ahora - ultima < ESPERA_ALERTA) return;
+    const para = this.suscripciones.todas().filter((s) => {
+      const p = this.acceso.persona(s.persona);
+      return !!p && p.activa && p.rol === ADMIN && this.acceso.dispositivoActivo(s.dispositivo);
+    });
+    if (!para.length) return;
+    sql.exec("INSERT INTO alertas (clave, en) VALUES ('error', ?) ON CONFLICT (clave) DO UPDATE SET en = excluded.en", ahora);
+    this.ctx.waitUntil(this.mandar({ titulo: "⚠️ La barra tuvo un error", cuerpo: "No se aceptó una anotación por un error del sistema. Revise «Personas y celulares» → «Lo que no se aceptó».", etiqueta: "error", ir: "personas" }, para));
+  }
+
   /** Quién hace el pedido: sesión firmada + celular vinculado que coincide + persona activa. */
   private async quien(req: Request, url: URL): Promise<Quien | Response> {
     const disp = await this.acceso.dispositivo(cookieDe(req));
@@ -898,6 +951,17 @@ export class Barra extends DurableObject<Env> {
   }
 
   async fetch(req: Request): Promise<Response> {
+    try {
+      return await this.atender(req);
+    } catch (e) {
+      // Un error que no se esperaba: el celular reintenta (nada se pierde, regla 3), pero
+      // el administrador se entera.
+      this.alertarAdmin(`Error interno en ${new URL(req.url).pathname}: ${String(e)}`);
+      return json({ error: "Error interno. Avise al administrador." }, 500);
+    }
+  }
+
+  private async atender(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const ruta = url.pathname;
     this.origen ??= url.origin;
@@ -1116,7 +1180,7 @@ export class Barra extends DurableObject<Env> {
       return json(this.auditoria(fecha));
     }
     if (ruta === "/api/admin/rechazadas" && req.method === "GET") {
-      return json({ rechazadas: this.ctx.storage.sql.exec("SELECT id, persona, dispositivo, motivo, en, datos FROM rechazadas ORDER BY en DESC LIMIT 200").toArray() });
+      return json({ rechazadas: this.ctx.storage.sql.exec("SELECT id, persona, dispositivo, motivo, en, datos, error FROM rechazadas ORDER BY en DESC LIMIT 200").toArray() });
     }
     if (ruta === "/api/admin/respaldo/correo" && req.method === "POST") {
       // Mandar ya la copia por correo (la misma de los lunes).

@@ -1,5 +1,5 @@
 // Canchas: una pedida suelta se anota como «adicional» en vez de chico, o se cambia después.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./prueba";
 import { celular } from "./ayuda";
 
 test("en la cancha se anota un adicional sin que cuente como chico", async ({ browser }) => {

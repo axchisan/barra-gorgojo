@@ -147,4 +147,23 @@ describe("notificaciones push", () => {
     await pausa(200);
     expect(de("beto").length).toBe(antes);
   });
+
+  it("un rechazo por error del sistema avisa a los administradores (uno cada 30 minutos) y queda marcado", async () => {
+    const antes = de("admin").length;
+    // La app manda algo que el servidor no entiende (una pedida sin cuenta): error del sistema.
+    const r1 = (await s.ops(ana, [op({ t: "anotar", ronda: "x", lineas: [] })], undefined, celAna)) as any;
+    expect(r1.rechazadas).toHaveLength(1);
+    await esperar(() => de("admin").length === antes + 1);
+    const aviso = await leer("admin", de("admin")[antes]);
+    expect(aviso).toMatchObject({ titulo: "⚠️ La barra tuvo un error", etiqueta: "error", ir: "personas" });
+    // Otro error enseguida: queda registrado, pero no vuelve a avisar.
+    await s.ops(ana, [op({ t: "anotar", ronda: "y", lineas: [] })], undefined, celAna);
+    // Un rechazo de las reglas del negocio no es error ni avisa.
+    await s.ops(ana, [op({ t: "producto", producto: { id: "nuevo", nombre: "Nuevo", categoria: "otro", precio: 1000, activo: true, fondo: "#FFFFFF", texto: "#000000" } })], undefined, celAna);
+    await pausa(300);
+    expect(de("admin").length).toBe(antes + 1);
+    const { rechazadas } = (await (await s.pedir(admin, "/api/admin/rechazadas")).json()) as { rechazadas: { motivo: string; error: number }[] };
+    expect(rechazadas.slice(0, 3).map((r) => r.error)).toEqual([0, 1, 1]);
+    expect(rechazadas[0].motivo).toBe("Solo el administrador cambia productos y precios.");
+  });
 });

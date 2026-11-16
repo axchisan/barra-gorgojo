@@ -1,5 +1,5 @@
 // Juntar dos cuentas para cobrarlas juntas, por la pantalla (docs/04 «Juntar cuentas»).
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./prueba";
 import { celular } from "./ayuda";
 
 const soloDigitos = (s: string) => Number(s.replace(/\D/g, ""));
