@@ -72,6 +72,8 @@ QR de la Mesa 4 ──► /m/<código> (página del cliente, sin PIN ni datos pe
 
 ## Lo que falta (siguiente paso)
 
+- **La pieza física de cada mesa y cancha** (número, QR y NFC): diseño en
+  [23](23-mesas-con-identidad.md). Antes de imprimir, decidir el dominio del enlace (23 §3).
 - **El sitio web** (`axchisan/retendelgorgojo`): la misma página con la marca y las fotos,
   usando estas rutas públicas (ya responden con CORS) o reenviando desde su servidor.
 - **Push** (fase 4) para que el aviso llegue con la app cerrada.

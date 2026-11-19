@@ -17,8 +17,9 @@ Lee `docs/00-vision-y-problema.md` antes de cualquier decisión de producto y
 ## Estado
 
 **En producción** desde el 2026-10-04, usada de verdad desde el 2026-11-01. **El
-trabajo actual parte de `docs/21-estado-2026-11-16.md`** (qué se hizo el 15, cosas por
-saber, lo proyectado en orden y cómo iniciar la sesión); la deuda técnica de fondo está
+trabajo actual parte de `docs/22-estado-2026-11-19.md`** (qué hay en producción y en
+pruebas, cosas por saber, lo proyectado en orden y cómo iniciar la sesión); lo siguiente
+son las mesas con número, QR y NFC (`docs/23-mesas-con-identidad.md`); la deuda técnica de fondo está
 en `docs/16-siguiente-etapa.md`; el plan que lo precedió, ya cumplido, es
 `docs/12-plan-de-trabajo.md`, que sale de la auditoría `negocio/docs/09-auditoria-2026-11-02.md` (privada).
 Antes de tocar producción, leer las «Reglas para trabajar en producción» de 12.
@@ -33,7 +34,9 @@ entorno de pruebas. **Lo siguiente está en `docs/18-roadmap-2026-11.md`** (el p
 adicionales en `docs/04` y accesos de empleados con horario en `docs/17`, ADR-17) está en
 producción; el plan de pruebas en aparatos es `docs/19`. El 15 también: pedidos a la barra
 que se cancelan, cobro solo barra o solo comida, «El día» rehecho para hacer cuentas y
-«cambio de plata» (`docs/02`, `docs/04`, resumen en `docs/21`).
+«cambio de plata» (`docs/02`, `docs/04`, resumen en `docs/21`). Del 16 al 19: días anteriores, CSV por secciones, respaldos por
+niveles, marca de lo juntado e informes por semana y mes (`docs/22`; dos de ellos esperan
+permiso para producción).
 
 ## Reglas no negociables
 
